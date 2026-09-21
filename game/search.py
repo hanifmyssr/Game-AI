@@ -41,17 +41,18 @@ class SearchContract:
     """Standar format dictionary hasil pencarian untuk UI/statistik."""
 
     @staticmethod
-    def create_result(path=None, visited_nodes=None, total_expanded=0, execution_time_ms=0.0):
+    def create_result(path=None, visited_nodes=None, total_expanded=0, execution_time_ms=0.0, total_cost=0.0):
         return {
             "path": list(path) if path else [],
             "visited_nodes": list(visited_nodes) if visited_nodes else [],
             "total_expanded": total_expanded,
             "execution_time_ms": execution_time_ms,
+            "total_cost": total_cost,
         }
 
     @staticmethod
     def create_empty_result():
-        return SearchContract.create_result([], [], 0, 0.0)
+        return SearchContract.create_result([], [], 0, 0.0, 0.0)
 
 
 # --------------------------------------------------------------------------- #
@@ -145,6 +146,7 @@ class UCS:
                     list(closed_list),
                     len(closed_list),
                     (end_time - start_time) * 1000.0,
+                    current.g,
                 )
 
             for neighbor_pos in grid_manager.get_neighbors(current.pos):
@@ -209,6 +211,7 @@ class AStarAlgorithm:
                     list(closed_list),
                     len(closed_list),
                     (end_time - start_time) * 1000.0,
+                    current.g,
                 )
 
             for neighbor_pos in grid_manager.get_neighbors(current.pos):

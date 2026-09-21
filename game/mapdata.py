@@ -12,16 +12,6 @@ import pygame
 from . import config
 
 
-def _is_dirt_road_tile(atlas_coords):
-    """Ubin jalan cokelat pada atlas Ext_10a_DEMO (baris 2-4, kolom 0-11).
-
-    Disediakan untuk paritas dengan map_data.gd. Pada peta aktual tidak ada
-    ubin jalan, sehingga semua sel tanah yang tertutup obstacle adalah blocker.
-    """
-    ax, ay = atlas_coords
-    return 0 <= ax <= 11 and 2 <= ay <= 4
-
-
 class MapData:
     def __init__(self, map_file=None):
         self.map_file = map_file or config.MAP_FILE
@@ -31,10 +21,11 @@ class MapData:
         self.width = 0
         self.height = 0
 
-        self.ground = {}        # (nx, ny) -> (atlas_x, atlas_y)
-        self.obstacles = {}     # (nx, ny) -> (src_name, atlas_x, atlas_y)
+        self.ground = {}          # (nx, ny) -> (atlas_x, atlas_y)
+        self.obstacles = {}       # (nx, ny) -> (src_name, atlas_x, atlas_y)
         self.ground_set = set()
         self.obstacle_set = set()
+        self.dirt_road_set = set()
         self.walkable_set = set()
 
         self._ground_surface = None
@@ -58,19 +49,24 @@ class MapData:
         self.obstacles = {}
         self.ground_set = set()
         self.obstacle_set = set()
+        self.dirt_road_set = set()
 
         for c in doc["ground"]:
             key = (c["x"] - self.min_x, c["y"] - self.min_y)
-            self.ground[key] = (c["atlas_x"], c["atlas_y"])
+            ax, ay = c["atlas_x"], c["atlas_y"]
+            self.ground[key] = (ax, ay)
             self.ground_set.add(key)
+
+            # (10, 11) adalah ubin rumput murni. Ubin tanah lainnya (11,12 / 10,12 / 11,11) adalah jalan tanah
+            if not (ax == 10 and ay == 11):
+                self.dirt_road_set.add(key)
 
         for c in doc["obstacles"]:
             key = (c["x"] - self.min_x, c["y"] - self.min_y)
-            self.obstacles[key] = (c["src"], c["atlas_x"], c["atlas_y"])
+            self.obstacles[key] = (c.get("src", ""), c["atlas_x"], c["atlas_y"])
             self.obstacle_set.add(key)
 
-        # walkable = ground minus obstacle (logika setara map_data.gd, yang
-        # hanya menambahkan 'road' jika ubin tanah adalah jalan).
+        # Sel yang bisa dilalui: seluruh sel tanah dikurangi seluruh rintangan
         self.walkable_set = set(self.ground_set) - self.obstacle_set
 
     # ------------------------------------------------------------------ #
@@ -85,8 +81,17 @@ class MapData:
     def is_obstacle(self, pos):
         return not self.is_walkable(pos)
 
-    def get_step_cost(self, _pos):
-        return 1.0
+    def is_dirt_road(self, pos):
+        return tuple(pos) in self.dirt_road_set
+
+    def is_grass_tile(self, pos):
+        return tuple(pos) not in self.dirt_road_set
+
+    def get_step_cost(self, pos):
+        """Cost langkah: 1.0 untuk jalan tanah, 2.0 untuk rumput."""
+        if self.is_dirt_road(pos):
+            return 1.0
+        return 2.0
 
     def get_map_center(self):
         return (self.width // 2, self.height // 2)

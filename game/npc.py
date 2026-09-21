@@ -121,6 +121,59 @@ class NPC:
             result.get("visited_nodes", []),
             result.get("execution_time_ms", 0.0),
         )
+
+        # --- Hitung perbandingan UCS vs algoritma terpilih ---
+        selected_key = self.algorithm
+        selected_label = ""
+        selected_heuristic = "—"
+        for key, label in config.ALGORITHMS:
+            if key == selected_key:
+                selected_label = label
+                break
+
+        if "MANHATTAN" in selected_key:
+            selected_heuristic = "Manhattan: |Δx| + |Δy|"
+        elif "EUCLIDEAN" in selected_key:
+            selected_heuristic = "Euclidean: √(Δx² + Δy²)"
+        elif "CHEBYSHEV" in selected_key:
+            selected_heuristic = "Chebyshev: max(|Δx|, |Δy|)"
+
+        # Jalankan UCS sebagai baseline jika algoritma terpilih bukan UCS
+        if selected_key != "UCS":
+            ucs_result = UCS.search(self.grid, target_pos, self.grid_manager)
+            ucs_expanded = ucs_result.get("total_expanded", 0)
+            ucs_time = ucs_result.get("execution_time_ms", 0.0)
+            ucs_path = ucs_result.get("path", [])
+            ucs_steps = max(0, len(ucs_path) - 1)
+            ucs_cost = ucs_result.get("total_cost", 0.0)
+        else:
+            ucs_expanded = result.get("total_expanded", 0)
+            ucs_time = result.get("execution_time_ms", 0.0)
+            ucs_steps = max(0, len(path) - 1)
+            ucs_cost = result.get("total_cost", 0.0)
+
+        comparison = {
+            "ucs_expanded": ucs_expanded,
+            "ucs_time_ms": ucs_time,
+            "ucs_path_len": ucs_steps,
+            "ucs_cost": ucs_cost,
+            "cur_expanded": result.get("total_expanded", 0),
+            "cur_time_ms": result.get("execution_time_ms", 0.0),
+            "cur_path_len": max(0, len(path) - 1),
+            "cur_cost": result.get("total_cost", 0.0),
+            "cur_label": selected_label,
+            "cur_heuristic": selected_heuristic,
+        }
+
+        # Kirim data ke overlay melalui events
+        overlay = getattr(self.events, "debug_overlay", None)
+        if overlay:
+            overlay.set_comparison_data(comparison)
+            overlay.update_stats(
+                result.get("total_expanded", 0),
+                result.get("execution_time_ms", 0.0),
+            )
+
         return result
 
     def move_one_step_towards(self, target_grid_pos):

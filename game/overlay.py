@@ -20,7 +20,7 @@ class Dropdown:
 
     @property
     def option_height(self):
-        return max(self.rect.height, 22)
+        return max(self.rect.height, 28)
 
     def menu_rect(self):
         w = self.rect.width
@@ -51,35 +51,42 @@ class Dropdown:
         return False
 
     def draw(self, surface, fonts):
-        panel = config.UI_PANEL
-        border = config.UI_ACCENT if self.open else config.UI_PANEL_BORDER
-        pygame.draw.rect(surface, panel, self.rect, border_radius=4)
-        pygame.draw.rect(surface, border, self.rect, 2, border_radius=4)
+        # --- Dark background dropdown ---
+        bg_surf = pygame.Surface((self.rect.width, self.rect.height), pygame.SRCALPHA)
+        bg_surf.fill(config.DEBUG_DROPDOWN_BG)
+        surface.blit(bg_surf, (self.rect.x, self.rect.y))
+
+        border_color = config.DEBUG_PANEL_BORDER if self.open else (70, 80, 100, 180)
+        pygame.draw.rect(surface, border_color, self.rect, 2, border_radius=4)
 
         label = self.labels[self.selected] if self.selected < len(self.labels) else ""
         if label:
-            surf = fonts["sm"].render(label, True, config.UI_TEXT)
-            surface.blit(surf, (self.rect.x + 8, self.rect.y + (self.rect.height - surf.get_height()) // 2))
+            surf = fonts["sm"].render(label, True, config.DEBUG_TEXT_PRIMARY)
+            surface.blit(surf, (self.rect.x + 10, self.rect.y + (self.rect.height - surf.get_height()) // 2))
 
-        # panah dropdown
-        cx = self.rect.right - 14
+        # Panah dropdown
+        cx = self.rect.right - 16
         cy = self.rect.centery
+        arrow_color = config.DEBUG_TEXT_HIGHLIGHT if self.open else config.DEBUG_TEXT_SECONDARY
         if self.open:
-            pygame.draw.polygon(surface, config.UI_TEXT, [(cx - 5, cy - 2), (cx + 5, cy - 2), (cx, cy + 4)])
+            pygame.draw.polygon(surface, arrow_color, [(cx - 5, cy - 2), (cx + 5, cy - 2), (cx, cy + 4)])
         else:
-            pygame.draw.polygon(surface, config.UI_TEXT, [(cx - 5, cy + 2), (cx + 5, cy + 2), (cx, cy - 4)])
+            pygame.draw.polygon(surface, arrow_color, [(cx - 5, cy + 2), (cx + 5, cy + 2), (cx, cy - 4)])
 
+        # Menu pilihan saat dropdown terbuka
         if self.open:
             menu = self.menu_rect()
             for i, lbl in enumerate(self.labels):
                 r = pygame.Rect(menu.x, menu.y + i * self.option_height, menu.w, self.option_height)
+                item_surf = pygame.Surface((r.width, r.height), pygame.SRCALPHA)
                 if i == self.selected:
-                    pygame.draw.rect(surface, config.UI_SELECTED, r)
+                    item_surf.fill(config.DEBUG_DROPDOWN_SELECTED)
                 else:
-                    pygame.draw.rect(surface, config.UI_PANEL, r)
-                pygame.draw.rect(surface, config.UI_PANEL_BORDER, r, 1)
-                ts = fonts["sm"].render(lbl, True, config.UI_TEXT)
-                surface.blit(ts, (r.x + 6, r.y + (r.height - ts.get_height()) // 2))
+                    item_surf.fill(config.DEBUG_DROPDOWN_BG)
+                surface.blit(item_surf, (r.x, r.y))
+                pygame.draw.rect(surface, (60, 90, 140, 160), r, 1)
+                ts = fonts["sm"].render(lbl, True, config.DEBUG_TEXT_PRIMARY)
+                surface.blit(ts, (r.x + 10, r.y + (r.height - ts.get_height()) // 2))
 
 
 class DebugOverlay:
@@ -91,14 +98,19 @@ class DebugOverlay:
         self.path_nodes = []
         self.last_time_ms = 0.0
 
-        left = 10
-        top = 10
+        # Data perbandingan UCS vs algoritma terpilih
+        self.comparison_data = None
+
+        left = 15
+        top = 15
+        # Dropdown di kiri atas
         self.dropdown = Dropdown(
-            (left, top, 250, 30),
+            (left, top, 310, 34),
             [label for _, label in config.ALGORITHMS],
             self._on_algorithm_selected,
         )
-        self.stats_rect = pygame.Rect(left, top + 40, 250, 118)
+        # Position panel debug overlay lebih ke bawah (top = 175) agar tidak tertutup dropdown saat terbuka
+        self.stats_rect = pygame.Rect(left, 175, 310, 200)
         self.stats_surface = None
 
         events.register_overlay(self)
@@ -110,6 +122,10 @@ class DebugOverlay:
         self.update_stats(len(self.expanded_nodes), self.last_time_ms)
 
     # ------------------------------------------------------------------ #
+    def set_comparison_data(self, data):
+        """Menerima data perbandingan dari NPC untuk ditampilkan di panel."""
+        self.comparison_data = data
+
     def update_debug_data(self, new_expanded, new_path, time_ms):
         self.expanded_nodes = [tuple(p) for p in new_expanded]
         self.path_nodes = [tuple(p) for p in new_path]
@@ -118,25 +134,109 @@ class DebugOverlay:
 
     def update_stats(self, count, time_ms):
         self.last_time_ms = time_ms
-        selected = config.ALGORITHMS[self.dropdown.selected][1]
+        selected_label = config.ALGORITHMS[self.dropdown.selected][1]
         steps = max(0, len(self.path_nodes) - 1)
-        text = (
-            f"Algoritma: {selected}\n"
-            f"Node Diekspansi: {count}\n"
-            f"Panjang Langkah: {steps}\n"
-            f"Waktu: {time_ms:.3f} ms\n"
-            "(Tekan [Spasi] untuk Toggle Kejar NPC)"
-        )
-        lines = text.split("\n")
-        line_h = self.fonts["sm"].get_linesize() + 3
-        self.stats_rect.height = line_h * len(lines) + 12
-        surface = pygame.Surface((self.stats_rect.width, self.stats_rect.height), pygame.SRCALPHA)
-        surface.fill((0, 0, 0, 0))
-        y = 6
-        for line in lines:
-            ts = self.fonts["sm"].render(line, True, config.UI_TEXT)
-            surface.blit(ts, (6, y))
+        cur_cost = self.comparison_data.get("cur_cost", 0.0) if self.comparison_data else 0.0
+
+        # --- Bangun baris-baris teks dengan warna ---
+        lines = []  # list of (text, color)
+
+        # Header: Algoritma aktif
+        lines.append(("▶ ALGORITMA AKTIF", config.DEBUG_TEXT_HIGHLIGHT))
+        lines.append((f"  {selected_label}", config.DEBUG_TEXT_PRIMARY))
+        lines.append(("", None))  # spacer
+
+        # Bobot Terrain
+        lines.append(("── BOBOT MEDAN (TERRAIN COST) ─────────", config.DEBUG_TEXT_SECONDARY))
+        lines.append(("  • Jalan Tanah  : Cost 1.0 (Normal)", config.DEBUG_TEXT_PRIMARY))
+        lines.append(("  • Area Rumput  : Cost 2.0 (2x Lebih Berat)", config.DEBUG_TEXT_WARN))
+        lines.append(("", None))  # spacer
+
+        # Statistik utama
+        lines.append(("── STATISTIK ──────────────────────────", config.DEBUG_TEXT_SECONDARY))
+        lines.append((f"  Node Diekspansi : {count}", config.DEBUG_TEXT_PRIMARY))
+        lines.append((f"  Panjang Jalur   : {steps} langkah", config.DEBUG_TEXT_PRIMARY))
+        lines.append((f"  Total Cost Rute : {cur_cost:.1f}", config.DEBUG_TEXT_PRIMARY))
+        lines.append((f"  Waktu Eksekusi  : {time_ms:.3f} ms", config.DEBUG_TEXT_PRIMARY))
+        lines.append(("", None))  # spacer
+
+        # Perbandingan UCS vs A*
+        if self.comparison_data:
+            cd = self.comparison_data
+            lines.append(("── PERBANDINGAN ───────────────────────", config.DEBUG_TEXT_SECONDARY))
+
+            ucs_expanded = cd.get("ucs_expanded", 0)
+            ucs_time = cd.get("ucs_time_ms", 0.0)
+            ucs_steps = cd.get("ucs_path_len", 0)
+            ucs_cost = cd.get("ucs_cost", 0.0)
+
+            cur_expanded = cd.get("cur_expanded", count)
+            cur_time = cd.get("cur_time_ms", time_ms)
+            cur_steps = cd.get("cur_path_len", steps)
+            cur_label = cd.get("cur_label", selected_label)
+            cur_heuristic = cd.get("cur_heuristic", "—")
+
+            lines.append(("  UCS (h=0):", config.DEBUG_TEXT_WARN))
+            lines.append((f"    Node: {ucs_expanded} │ Cost: {ucs_cost:.1f} │ {ucs_time:.3f} ms", config.DEBUG_TEXT_PRIMARY))
+
+            lines.append((f"  {cur_label}:", config.DEBUG_TEXT_HIGHLIGHT))
+            lines.append((f"    Node: {cur_expanded} │ Cost: {cur_cost:.1f} │ {cur_time:.3f} ms", config.DEBUG_TEXT_PRIMARY))
+
+            if cur_heuristic != "—":
+                lines.append((f"    Heuristik: {cur_heuristic}", config.DEBUG_TEXT_SECONDARY))
+
+            # Efisiensi
+            if ucs_expanded > 0 and cur_expanded > 0:
+                ratio = ucs_expanded / cur_expanded
+                if ratio > 1.0:
+                    eff_text = f"  ⚡ A* {ratio:.1f}x lebih efisien dari UCS"
+                    lines.append((eff_text, (100, 255, 120)))
+                elif ratio < 1.0:
+                    eff_text = f"  ⚠ UCS {1/ratio:.1f}x lebih efisien"
+                    lines.append((eff_text, config.DEBUG_TEXT_WARN))
+                else:
+                    lines.append(("  ≈ Efisiensi sama", config.DEBUG_TEXT_SECONDARY))
+
+        lines.append(("", None))  # spacer
+        lines.append(("(Tekan [Spasi] Toggle Kejar NPC)", config.DEBUG_TEXT_SECONDARY))
+
+        # --- Render ke surface dengan kalkulasi lebar dinamis ---
+        line_h = self.fonts["sm"].get_linesize() + 4
+        pad_x, pad_y = 12, 10
+        total_h = pad_y * 2
+
+        # Hitung lebar maksimum yang dibutuhkan teks agar tidak terpotong
+        max_line_w = 280
+        for text, color in lines:
+            if text:
+                ts = self.fonts["sm"].render(text, True, color or config.DEBUG_TEXT_PRIMARY)
+                max_line_w = max(max_line_w, ts.get_width())
+            if text == "":
+                total_h += line_h // 3
+            else:
+                total_h += line_h
+
+        w = max(320, max_line_w + pad_x * 2)
+        self.stats_rect.width = w
+        self.stats_rect.height = total_h
+
+        surface = pygame.Surface((w, total_h), pygame.SRCALPHA)
+
+        # Background gelap transparan
+        surface.fill(config.DEBUG_PANEL_BG)
+
+        # Border halus
+        pygame.draw.rect(surface, config.DEBUG_PANEL_BORDER, (0, 0, w, total_h), 1, border_radius=6)
+
+        y = pad_y
+        for text, color in lines:
+            if text == "":
+                y += line_h // 3
+                continue
+            ts = self.fonts["sm"].render(text, True, color)
+            surface.blit(ts, (pad_x, y))
             y += line_h
+
         self.stats_surface = surface
 
     # ------------------------------------------------------------------ #
@@ -144,16 +244,20 @@ class DebugOverlay:
         """Gambar visualisasi di world-space (node ekspansi + jalur)."""
         tile_size = map_data.cell_size
 
-        # 1. Node yang diekspansi: kotak biru transparan
+        # 1. Node yang diekspansi: kotak biru sangat transparan
+        exp_surf = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
         for node_pos in self.expanded_nodes:
             if not (0 <= node_pos[0] < map_data.width and 0 <= node_pos[1] < map_data.height):
                 continue
             center = map_data.world_to_px(node_pos)
             half = tile_size / 2.0
             topleft = (center[0] - half, center[1] - half)
-            rect = (*camera.world_to_screen(topleft[0], topleft[1]), tile_size * camera.zoom, tile_size * camera.zoom)
-            pygame.draw.rect(surface, config.COLOR_EXPANDED_FILL, rect)
-            pygame.draw.rect(surface, config.COLOR_EXPANDED_BORDER, rect, 1)
+            screen_pos = camera.world_to_screen(topleft[0], topleft[1])
+            sz = tile_size * camera.zoom
+            rect = (screen_pos[0], screen_pos[1], sz, sz)
+            pygame.draw.rect(exp_surf, config.COLOR_EXPANDED_FILL, rect)
+            pygame.draw.rect(exp_surf, config.COLOR_EXPANDED_BORDER, rect, 1)
+        surface.blit(exp_surf, (0, 0))
 
         # 2. Jalur terpendek: garis kuning + titik
         if self.path_nodes:
@@ -178,9 +282,11 @@ class DebugOverlay:
 
     # ------------------------------------------------------------------ #
     def draw_ui(self, surface):
-        self.dropdown.draw(surface, self.fonts)
+        # 1. Gambar panel statistik terlebih dahulu
         if self.stats_surface:
             surface.blit(self.stats_surface, (self.stats_rect.x, self.stats_rect.y))
+        # 2. Gambar dropdown SETELAHNYA agar menu dropdown yang terbuka selalu tampil DI ATAS panel statistik
+        self.dropdown.draw(surface, self.fonts)
 
     def handle_event(self, event):
         return self.dropdown.handle_event(event)

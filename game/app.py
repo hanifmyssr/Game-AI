@@ -54,18 +54,18 @@ class Camera:
         self.map_h = map_h
         self.win_w = win_w
         self.win_h = win_h
-        self.left_panel_w = 340
+        self.left_panel_w = config.DEBUG_LEFT_PANEL_WIDTH
         self.offset_x = 0.0
         self.offset_y = 0.0
         self.reset(win_w, win_h, map_w, map_h, margin)
 
-    def reset(self, win_w, win_h, map_w, map_h, margin=0.02, left_panel_w=340):
+    def reset(self, win_w, win_h, map_w, map_h, margin=0.02, left_panel_w=None):
         self.win_w = win_w
         self.win_h = win_h
         self.map_w = map_w
         self.map_h = map_h
-        self.left_panel_w = left_panel_w
-        usable_w = max(100.0, win_w - left_panel_w)
+        self.left_panel_w = left_panel_w or config.DEBUG_LEFT_PANEL_WIDTH
+        usable_w = max(100.0, win_w - self.left_panel_w)
         self.fit_zoom = min(usable_w / map_w, win_h / map_h) * (1.0 - margin)
         self.zoom = self.fit_zoom * 1.2
         self._center_map()
@@ -211,6 +211,7 @@ class App:
         )
 
     def _zoom_camera(self, factor, focus_screen=None):
+        self.overlay.on_camera_zoom()
         if self.camera.zoom_by(factor, focus_screen):
             self._refresh_scaled_map()
 
@@ -373,7 +374,7 @@ class App:
     def _draw_battle_arena(self):
         # Tampilkan arena pertempuran di area kerja kanan
         w, h = self.screen.get_size()
-        panel_w = 340
+        panel_w = config.DEBUG_LEFT_PANEL_WIDTH
         area_x = panel_w + (w - panel_w) // 2
         area_y = h // 2
 

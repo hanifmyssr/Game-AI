@@ -108,13 +108,14 @@ class DebugOverlay:
         self.chasing_visualization = False
         self.show_costs = False
         self.depth_help_open = False
+        self.move_ordering_help_open = False
         self.last_time_ms = 0.0
         self.comparison_data = None
 
         # Posisi Sidebar Kiri
         self.panel_x = 12
         self.panel_y = 12
-        self.panel_w = 326
+        self.panel_w = config.DEBUG_PANEL_WIDTH
         self.cost_toggle_rect = pygame.Rect(self.panel_x + self.panel_w + 10, self.panel_y + 12, 104, 30)
 
         # --- Dropdown Mode Eksplorasi ---
@@ -171,6 +172,7 @@ class DebugOverlay:
 
         # Tombol Move Ordering Toggle
         self.btn_move_ordering = pygame.Rect(px + pw - 60, self.panel_y + 182, 54, 24)
+        self.btn_move_ordering_help = pygame.Rect(px + 132, self.panel_y + 182, 26, 24)
 
     def set_battle_system(self, battle_system):
         self.battle_system = battle_system
@@ -239,6 +241,10 @@ class DebugOverlay:
 
     def stop_path_animation(self):
         self.visualization_active = False
+
+    def on_camera_zoom(self):
+        if not self.chasing_visualization:
+            self.stop_path_animation()
 
     def set_chasing_visualization(self, chasing):
         self.chasing_visualization = chasing
@@ -502,6 +508,10 @@ class DebugOverlay:
         mo_on = battle_system.use_move_ordering
         mo_label = self.fonts["sm"].render("Move Ordering:", True, config.DEBUG_TEXT_PRIMARY)
         surface.blit(mo_label, (px, mo_y + 4))
+        pygame.draw.rect(surface, (70, 105, 155), self.btn_move_ordering_help, border_radius=4)
+        pygame.draw.rect(surface, config.DEBUG_PANEL_BORDER, self.btn_move_ordering_help, 1, border_radius=4)
+        help_text = self.fonts.get("bubble", self.fonts["sm"]).render("?", True, (255, 255, 255))
+        surface.blit(help_text, (self.btn_move_ordering_help.centerx - help_text.get_width() // 2, self.btn_move_ordering_help.centery - help_text.get_height() // 2))
 
         mo_color = (40, 150, 70) if mo_on else (90, 40, 40)
         pygame.draw.rect(surface, mo_color, self.btn_move_ordering, border_radius=4)
@@ -602,6 +612,8 @@ class DebugOverlay:
         self.dropdown_battle_algo.draw(surface, self.fonts)
         if self.depth_help_open:
             self._draw_depth_help(surface)
+        if self.move_ordering_help_open:
+            self._draw_move_ordering_help(surface)
 
     def _draw_depth_help(self, surface):
         help_font = self.fonts["sm"]
@@ -630,6 +642,33 @@ class DebugOverlay:
     def _depth_help_popup_rect(self, line_count):
         height = 31 + line_count * 17 + 10
         return pygame.Rect(self.panel_x + self.panel_w + 10, self.panel_y + 145, 270, height)
+
+    def _draw_move_ordering_help(self, surface):
+        help_font = self.fonts["sm"]
+        help_lines = self._move_ordering_help_lines(help_font, 250)
+        popup = self._move_ordering_help_popup_rect(len(help_lines))
+        popup_surface = pygame.Surface(popup.size, SRCALPHA)
+        popup_surface.fill((250, 250, 247, 242))
+        pygame.draw.rect(popup_surface, config.DEBUG_PANEL_BORDER, popup_surface.get_rect(), 1, border_radius=6)
+        title = self.fonts.get("bubble", self.fonts["sm"]).render("Tentang Move Ordering", True, config.DEBUG_TEXT_HIGHLIGHT)
+        popup_surface.blit(title, (10, 8))
+        y = 31
+        for line in help_lines:
+            popup_surface.blit(help_font.render(line, True, config.DEBUG_TEXT_PRIMARY), (10, y))
+            y += 17
+        surface.blit(popup_surface, popup.topleft)
+
+    def _move_ordering_help_lines(self, font, max_width):
+        help_text = (
+            "Move Ordering mengatur urutan langkah yang diperiksa AI. "
+            "ON memeriksa langkah yang dianggap lebih baik lebih dulu, sehingga AI bisa memilih lebih cepat. "
+            "OFF memeriksa langkah tanpa pengurutan khusus dan dapat membutuhkan lebih banyak waktu."
+        )
+        return self._wrap_overlay_text(help_text, font, max_width)
+
+    def _move_ordering_help_popup_rect(self, line_count):
+        height = 31 + line_count * 17 + 10
+        return pygame.Rect(self.panel_x + self.panel_w + 10, self.panel_y + 175, 270, height)
 
     @staticmethod
     def _wrap_overlay_text(text, font, max_width):
@@ -670,10 +709,20 @@ class DebugOverlay:
             if self.btn_depth_help.collidepoint(pos):
                 self.depth_help_open = not self.depth_help_open
                 return True
+            if self.btn_move_ordering_help.collidepoint(pos):
+                self.move_ordering_help_open = not self.move_ordering_help_open
+                return True
             if self.depth_help_open:
                 popup = self._depth_help_popup_rect(len(self._depth_help_lines(self.fonts["sm"], 250)))
                 if not popup.collidepoint(pos):
                     self.depth_help_open = False
+                    return True
+            if self.move_ordering_help_open:
+                popup = self._move_ordering_help_popup_rect(
+                    len(self._move_ordering_help_lines(self.fonts["sm"], 250))
+                )
+                if not popup.collidepoint(pos):
+                    self.move_ordering_help_open = False
                     return True
 
             # Tombol Depth

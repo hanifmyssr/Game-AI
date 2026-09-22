@@ -59,8 +59,8 @@ class MapData:
             self.ground[key] = (ax, ay)
             self.ground_set.add(key)
 
-            # (10, 11) adalah ubin rumput murni. Ubin tanah lainnya (11,12 / 10,12 / 11,11) adalah jalan tanah
-            if not (ax == 10 and ay == 11):
+            # (10,11) dan (10,12) adalah rumput; (11,11) dan (11,12) adalah jalan tanah.
+            if ax == 11:
                 self.dirt_road_set.add(key)
 
         for c in doc["obstacles"]:

@@ -62,7 +62,7 @@ class BattleSystem:
             player_heavy_cd=0,
             npc_heavy_cd=0,
         )
-        self.battle_logs = ["Duel dimulai! Bolu (Player) berhadapan dengan Kucing Hitam (NPC)!"]
+        self.battle_logs = ["Duel dimulai! Player berhadapan dengan Kucing Bolu (NPC)!"]
         self.last_ai_stats = {}
         self.is_finished = False
         self.winner = None

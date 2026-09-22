@@ -1,48 +1,82 @@
-# Bakekok
+# Bakekok / BoluKesepian - Game AI (Tahap 1 & Tahap 2)
 
-## Deskripsi
-Proyek Bakekok ini merupakan tugas besar mata kuliah Kecerdasan Buatan untuk kelompok 7. Implementasi ini menggunakan Godot Engine untuk membuat visualisasi algoritma A* (A-star) dan UCS dalam game atau simulasi.
+Proyek Tugas Besar Mata Kuliah Kecerdasan Buatan - Kelompok 7 (Universitas Pendidikan Indonesia).
 
-## Fitur
-- Implementasi algoritma pencarian jalur A*.
-- Visualisasi langkah‑langkah pencarian secara real‑time.
-- Kontrol interaktif untuk mengatur titik mulai dan tujuan.
-- Dukungan export ke berbagai platform melalui Godot.
+---
 
-## Algoritma Pencarian NPC
-NPC (Non‑Player Character) dapat mencari jalur terpendek pada grid menggunakan beberapa algoritma:
+## 🌟 Ringkasan Fitur
 
-### Uniform Cost Search (UCS)
-Varian Dijkstra yang memperluas node dengan biaya kumulatif terendah terlebih dahulu. Tidak memerlukan heuristik, memastikan solusi optimal bila semua biaya sisi non‑negatif.
+### Tahap 1: Pathfinding & Algoritma Pencarian Jalur
+- **Uniform Cost Search (UCS)** & **A* Search** pada peta grid berbobot (*cost jalan tanah 0.5 vs rumput 1.0*).
+- **Heuristik**: Manhattan, Euclidean, Chebyshev.
+- **Visualisasi World-Space**: Pewarnaan ubin yang diekspansi dan lintasan optimal *real-time*.
+- **Sidebar Debug Overlay**: Menampilkan statistik komparasi node ekspansi, waktu eksekusi (ms), dan rasio efisiensi.
 
-### A* Search
-Menggabungkan keunggulan UCS dengan heuristik. Nilai f = g + h, dimana **g** adalah biaya dari start ke node saat ini, dan **h** adalah perkiraan biaya ke tujuan.
+### Tahap 2: Duel Turn-Based NPC vs Player (Adversarial Search)
+- **Transisi Otomatis**: Jika NPC mendekati Player (jarak Manhattan $\le 1$), permainan beralih ke arena pertempuran bergilir.
+- **Formulasi Game AI**:
+  - **State**: $HP_{\text{player}}, HP_{\text{npc}} \in [0, 100]$, $Potions \in [0, 3]$, status `Defending`, dan giliran petarung.
+  - **Aksi Legal ($b \le 4$)**:
+    1. `ATTACK`: Serangan standar (18 damage, tereduksi jadi 6 jika musuh bertahan).
+    2. `HEAVY_ATTACK`: Serangan telak berisiko tinggi (30 damage, akurasi 75% pada Expectimax).
+    3. `DEFEND`: Memasang perisai/tangkisan untuk mengurangi damage musuh sebesar ~65%.
+    4. `POTION`: Memulihkan +25 HP jika persediaan tersedia.
+  - **Terminal Test & Utility**: Evaluasi kemenangan $+1000$ (NPC menang) vs $-1000$ (Player menang) vs $0$ (seri).
+  - **Evaluation Functions**:
+    - `Balanced`: Pertimbangan selisih HP dan simpanan potion proporsional.
+    - `Aggressive`: Prioritas tinggi menekan dan mengeksekusi HP player.
+    - `Defensive`: Fokus menjaga kelangsungan hidup, pertahanan, dan pemulihan diri.
+- **Mesin AI Adversarial**:
+  - **Pure Minimax**: Pencarian tanpa pemangkasan.
+  - **Alpha-Beta Pruning**: Memangkas hingga **85.7% node** pada depth 6 dengan keputusan identik.
+  - **Move Ordering**: Mengurutkan aksi menjanjikan untuk mempercepat pemangkasan hingga **55.8%**.
+  - **Expectimax**: Memodelkan ketidakpastian/stokastik pada akurasi serangan.
+- **Live Battle Debug Overlay**:
+  - Pilihan Dropdown Algoritma & Fungsi Evaluasi.
+  - Pengaturan batas kedalaman (*depth limit 1–8*) dan tombol toggle *Move Ordering*.
+  - Tabel live pertimbangan nilai/skor setiap aksi di root node (`ATTACK`, `HEAVY_ATTACK`, `DEFEND`, `POTION`).
+  - Metrik node count, cabang yang terpotong (*pruned*), dan waktu berpikir (ms).
 
-## Heuristik yang Digunakan
-Pengguna dapat memilih tipe heuristik melalui inspector Godot (variabel `HeuristicType` di `Pathfinder.gd`):
+---
 
-- **Manhattan Distance**: `h = |x1 - x2| + |y1 - y2|` – cocok untuk gerakan empat arah.
-- **Euclidean Distance**: `h = sqrt((x1 - x2)^2 + (y1 - y2)^2)` – untuk gerakan bebas arah.
-- **Diagonal Distance**: `h = max(|dx|, |dy|)` – kombinasi Manhattan dan Euclidean, cocok untuk gerakan delapan arah.
-- **Chebyshev Distance**: `h = max(|dx|, |dy|)` – secara khusus memperhitungkan gerakan diagonal seperti gerakan Raja pada catur, memberikan estimasi yang cepat dan admissible bila diagonal diizinkan.
+## 🎮 Kontrol Permainan
 
-## Cara Kerja dalam Godot
-1. **Node Grid**: Dibangun dari TileMap, setiap tile menjadi node dengan koordinat `(x, y)`.
-2. **Pathfinder.gd**: Skrip utama yang mengimplementasikan UCS dan A* menggunakan `PriorityQueue`.
-3. **Pemilihan Algoritma**: Pada inspector, pilih `SearchAlgorithm` (UCS atau A*) dan, bila A* dipilih, pilih `Heuristic` (termasuk Chebyshev).
-4. **Visualisasi**: Node yang sedang diproses ditandai biru, jalur akhir berwarna hijau.
+### Mode Eksplorasi (Peta)
+- **[W, A, S, D]** atau **[Tombol Panah]**: Gerakkan Player (Bolu).
+- **[Spasi]**: Panggil / aktifkan NPC agar mengejar Player.
+- **[B]**: Pintas langsung masuk ke Mode Duel (Pertarungan).
+- **[Esc]**: Keluar dari permainan.
 
-## Cara Menjalankan
-1. Pastikan **Godot Engine** versi 4.x sudah terpasang.
-2. Buka proyek dengan menjalankan `godot` pada folder proyek atau buka `project.godot` melalui UI Godot.
-3. Jalankan scene utama yang berada di dalam folder `Scenes`.
+### Mode Duel (Pertarungan Turn-Based)
+- **[1 / A]**: Aksi `ATTACK` (18 damage)
+- **[2 / S]**: Aksi `HEAVY_ATTACK` (30 damage)
+- **[3 / D]**: Aksi `DEFEND` (-65% damage reduction)
+- **[4 / W]**: Aksi `POTION` (+25 HP heal)
+- **[R]**: Reset / mulai ulang duel.
+- **[Tab]**: Kembali ke Mode Eksplorasi Peta.
 
-## Instalasi
-- **Godot Engine**: Unduh dari https://godotengine.org/download
-- Tidak ada dependensi tambahan karena semua skrip berada di dalam folder `Scripts`.
+---
 
-## Kelompok
-Kelompok 7 - Universitas Pendidikan Indonesia
+## 🚀 Cara Menjalankan
+
+1. Pastikan Python 3.10+ dan Pygame telah terpasang:
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. Jalankan permainan:
+   ```bash
+   python main.py
+   ```
+3. Menjalankan rangkaian uji eksperimen & benchmark:
+   ```bash
+   python scratch/run_experiments.py
+   ```
+
+Dokumen lengkap hasil pengujian dan analisis akademis tersedia di [`LAPORAN_TAHAP_2.md`](file:///c:/Users/Pavilion/Documents/DOKUMEN%20TUGAS/Kuliah/Tubes_ai_kel7/Fix_nya/Game-AI/LAPORAN_TAHAP_2.md).
+
+---
+
+## 👥 Kelompok 7 - Universitas Pendidikan Indonesia
 - Hanif Muyassar
 - Moch Fadillah Pratama
 - Muhammad Zidan Mirza Fedrieka

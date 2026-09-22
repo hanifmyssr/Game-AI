@@ -10,10 +10,10 @@ grass_count = 0
 
 for pos in m.walkable_set:
     cost = m.get_step_cost(pos)
-    if cost == 1.0:
+    if cost == 0.5:
         dirt_count += 1
-    elif cost == 2.0:
+    elif cost == 1.0:
         grass_count += 1
 
-print(f"Walkable Dirt Road Tiles (Cost 1.0): {dirt_count}")
-print(f"Walkable Grass Tiles (Cost 2.0): {grass_count}")
+print(f"Walkable Dirt Road Tiles (Cost 0.5): {dirt_count}")
+print(f"Walkable Grass Tiles (Cost 1.0): {grass_count}")

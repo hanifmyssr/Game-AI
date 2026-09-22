@@ -25,6 +25,6 @@ class GameManager:
         for fn in list(self._algorithm_changed_listeners):
             fn(algo_name)
 
-    def path_calculated(self, path, visited, time_ms):
+    def path_calculated(self, path, visited, time_ms, start_pos=None):
         if self.debug_overlay is not None:
-            self.debug_overlay.update_debug_data(visited, path, time_ms)
+            self.debug_overlay.update_debug_data(visited, path, time_ms, start_pos)

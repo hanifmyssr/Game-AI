@@ -11,7 +11,7 @@ ALGO_TO_SEARCH = None
 
 
 def _build_dispatch():
-    def ucs(start, target, gm, h):
+    def ucs(start, target, gm, _h):
         return UCS.search(start, target, gm)
 
     def astar(hname):
@@ -120,6 +120,7 @@ class NPC:
             path,
             result.get("visited_nodes", []),
             result.get("execution_time_ms", 0.0),
+            self.grid,
         )
 
         # --- Hitung perbandingan UCS vs algoritma terpilih ---

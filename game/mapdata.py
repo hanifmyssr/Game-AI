@@ -11,6 +11,8 @@ import pygame
 
 from . import config
 
+SRCALPHA = getattr(pygame, "SRCALPHA", 0x00010000)
+
 
 class MapData:
     def __init__(self, map_file=None):
@@ -88,10 +90,10 @@ class MapData:
         return tuple(pos) not in self.dirt_road_set
 
     def get_step_cost(self, pos):
-        """Cost langkah: 1.0 untuk jalan tanah, 2.0 untuk rumput."""
+        """Cost langkah: 0.5 untuk jalan tanah, 1.0 untuk rumput."""
         if self.is_dirt_road(pos):
-            return 1.0
-        return 2.0
+            return 0.5
+        return 1.0
 
     def get_map_center(self):
         return (self.width // 2, self.height // 2)
@@ -152,7 +154,7 @@ class MapData:
         size = (self.width * cs, self.height * cs)
 
         ground_surf = pygame.Surface(size).convert()
-        obstacle_surf = pygame.Surface(size, pygame.SRCALPHA).convert_alpha()
+        obstacle_surf = pygame.Surface(size, SRCALPHA).convert_alpha()
 
         tileset = pygame.image.load(
             os.path.join(config.ASSET_DIR, "tileset_ground.png")

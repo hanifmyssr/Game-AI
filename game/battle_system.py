@@ -46,7 +46,7 @@ class BattleSystem:
         # Format: {"text": str, "timer": float, "color": tuple}
         self.player_action_text: Optional[Dict] = None
         self.npc_action_text: Optional[Dict] = None
-        self.ACTION_TEXT_DURATION = 1.2  # Detik teks ditampilkan
+        self.ACTION_TEXT_DURATION = 2.5  # Detik teks ditampilkan
 
         self.reset()
 

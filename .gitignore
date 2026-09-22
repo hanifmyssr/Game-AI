@@ -1,0 +1,17 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment (jika ada di dalam proyek)
+venv/
+.venv/
+env/
+
+# Folder hasil compile / distribusi
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/

@@ -3,11 +3,14 @@
 2. Mode Battle (Turn-Based Duel: Minimax vs Alpha-Beta vs Expectimax, evaluation functions, depth limit, node counts, skor aksi)
 """
 
+import math
 import pygame
-from pygame.locals import MOUSEBUTTONDOWN
 
 from . import config
 from .battle_ai import ACTION_ATTACK, ACTION_HEAVY, ACTION_DEFEND, ACTION_POTION
+
+MOUSEBUTTONDOWN = getattr(pygame, "MOUSEBUTTONDOWN", 1025)
+SRCALPHA = getattr(pygame, "SRCALPHA", 0x00010000)
 
 
 class Dropdown:
@@ -51,7 +54,7 @@ class Dropdown:
         return False
 
     def draw(self, surface, fonts):
-        bg_surf = pygame.Surface((self.rect.width, self.rect.height), pygame.SRCALPHA)
+        bg_surf = pygame.Surface((self.rect.width, self.rect.height), SRCALPHA)
         bg_surf.fill(config.DEBUG_DROPDOWN_BG)
         surface.blit(bg_surf, (self.rect.x, self.rect.y))
 
@@ -98,6 +101,13 @@ class DebugOverlay:
         # State Pathfinding (Exploration)
         self.expanded_nodes = []
         self.path_nodes = []
+        self.animation_time = 0.0
+        self.expanded_reveal = 1.0
+        self.path_reveal = 1.0
+        self.visualization_active = False
+        self.chasing_visualization = False
+        self.show_costs = False
+        self.depth_help_open = False
         self.last_time_ms = 0.0
         self.comparison_data = None
 
@@ -105,6 +115,7 @@ class DebugOverlay:
         self.panel_x = 12
         self.panel_y = 12
         self.panel_w = 326
+        self.cost_toggle_rect = pygame.Rect(self.panel_x + self.panel_w + 10, self.panel_y + 12, 104, 30)
 
         # --- Dropdown Mode Eksplorasi ---
         dropdown_y = self.panel_y + 60
@@ -156,6 +167,7 @@ class DebugOverlay:
         # Tombol Kedalaman AI (Depth - dan +)
         self.btn_depth_minus = pygame.Rect(px + pw - 75, self.panel_y + 152, 32, 26)
         self.btn_depth_plus = pygame.Rect(px + pw - 38, self.panel_y + 152, 32, 26)
+        self.btn_depth_help = pygame.Rect(px + 184, self.panel_y + 152, 26, 26)
 
         # Tombol Move Ordering Toggle
         self.btn_move_ordering = pygame.Rect(px + pw - 60, self.panel_y + 182, 54, 24)
@@ -192,11 +204,55 @@ class DebugOverlay:
     def set_comparison_data(self, data):
         self.comparison_data = data
 
-    def update_debug_data(self, new_expanded, new_path, time_ms):
-        self.expanded_nodes = [tuple(p) for p in new_expanded]
+    def update_debug_data(self, new_expanded, new_path, time_ms, start_pos=None):
+        expanded_nodes = [tuple(p) for p in new_expanded]
+        if start_pos is None and expanded_nodes:
+            start_pos = expanded_nodes[0]
+        if start_pos is not None:
+            start_pos = tuple(start_pos)
+            expanded_nodes = [
+                node
+                for _, node in sorted(
+                    enumerate(expanded_nodes),
+                    key=lambda item: (
+                        abs(item[1][0] - start_pos[0]) + abs(item[1][1] - start_pos[1]),
+                        item[0],
+                    ),
+                )
+            ]
+        self.expanded_nodes = expanded_nodes
         self.path_nodes = [tuple(p) for p in new_path]
+        if self.visualization_active and not self.chasing_visualization:
+            self.expanded_reveal = 0.0
+            self.path_reveal = 0.0
+        else:
+            self.expanded_reveal = 1.0
+            self.path_reveal = 1.0
         self.last_time_ms = time_ms
         self.update_stats(len(self.expanded_nodes), time_ms)
+
+    def start_path_animation(self):
+        self.visualization_active = True
+        self.animation_time = 0.0
+        self.expanded_reveal = 0.0
+        self.path_reveal = 0.0
+
+    def stop_path_animation(self):
+        self.visualization_active = False
+
+    def set_chasing_visualization(self, chasing):
+        self.chasing_visualization = chasing
+        if chasing:
+            self.visualization_active = True
+            self.expanded_reveal = 1.0
+            self.path_reveal = 1.0
+
+    def update_animation(self, dt):
+        if not self.visualization_active:
+            return
+        self.animation_time += dt
+        self.expanded_reveal = min(1.0, self.expanded_reveal + dt * 1.4)
+        self.path_reveal = min(1.0, self.path_reveal + dt * 2.2)
 
     def update_stats(self, count, time_ms):
         self.last_time_ms = time_ms
@@ -206,8 +262,8 @@ class DebugOverlay:
 
         lines = []
         lines.append(("── BOBOT MEDAN (COST) ────────────────", config.DEBUG_TEXT_SECONDARY))
-        lines.append(("  • Jalan Tanah  : Cost 1.0 (Normal)", config.DEBUG_TEXT_PRIMARY))
-        lines.append(("  • Area Rumput  : Cost 2.0 (Berat)", config.DEBUG_TEXT_WARN))
+        lines.append(("  • Jalan Tanah  : Cost 0.5 (Ringan)", config.DEBUG_TEXT_PRIMARY))
+        lines.append(("  • Area Rumput  : Cost 1.0 (Normal)", config.DEBUG_TEXT_WARN))
         lines.append(("", None))
 
         lines.append(("── STATISTIK JALUR ────────────────────", config.DEBUG_TEXT_SECONDARY))
@@ -222,12 +278,10 @@ class DebugOverlay:
             lines.append(("── PERBANDINGAN RUTE ──────────────────", config.DEBUG_TEXT_SECONDARY))
             ucs_expanded = cd.get("ucs_expanded", 0)
             ucs_time = cd.get("ucs_time_ms", 0.0)
-            ucs_steps = cd.get("ucs_path_len", 0)
             ucs_cost = cd.get("ucs_cost", 0.0)
 
             cur_expanded = cd.get("cur_expanded", count)
             cur_time = cd.get("cur_time_ms", time_ms)
-            cur_steps = cd.get("cur_path_len", steps)
             cur_label = cd.get("cur_label", selected_label)
             cur_heuristic = cd.get("cur_heuristic", "—")
 
@@ -244,34 +298,54 @@ class DebugOverlay:
                 ratio = ucs_expanded / cur_expanded
                 if ratio > 1.0:
                     eff_text = f"  ⚡ A* {ratio:.1f}x lebih hemat ekspansi"
-                    lines.append((eff_text, (100, 255, 120)))
+                    lines.append((eff_text, config.DEBUG_TEXT_HIGHLIGHT))
                 elif ratio < 1.0:
                     eff_text = f"  ⚠ UCS {1/ratio:.1f}x lebih hemat"
-                    lines.append((eff_text, config.DEBUG_TEXT_WARN))
+                    lines.append((eff_text, config.DEBUG_TEXT_HIGHLIGHT))
                 else:
                     lines.append(("  ≈ Efisiensi node sama", config.DEBUG_TEXT_SECONDARY))
 
         lines.append(("", None))
         lines.append(("── KONTROL ────────────────────────────", config.DEBUG_TEXT_SECONDARY))
         lines.append(("  [WASD / Panah]  : Gerakkan Player", config.DEBUG_TEXT_PRIMARY))
+        lines.append(("  [Ctrl]          : Tampilkan animasi path", config.DEBUG_TEXT_HIGHLIGHT))
         lines.append(("  [Spasi]         : Toggle Kejar NPC", config.DEBUG_TEXT_HIGHLIGHT))
         lines.append(("  [Esc]           : Keluar Game", config.DEBUG_TEXT_SECONDARY))
 
         line_h = self.fonts["sm"].get_linesize() + 3
         pad_x, pad_y = 12, 6
+        max_text_w = self.panel_w - 24 - (pad_x * 2)
+        wrapped_lines = []
+        for text, color in lines:
+            if not text:
+                wrapped_lines.append((text, color))
+                continue
+            words = text.split(" ")
+            current = ""
+            for word in words:
+                candidate = word if not current else f"{current} {word}"
+                if self.fonts["sm"].size(candidate)[0] <= max_text_w:
+                    current = candidate
+                else:
+                    if current:
+                        wrapped_lines.append((current, color))
+                    current = word
+            if current:
+                wrapped_lines.append((current, color))
+
         total_h = pad_y * 2
 
-        for text, color in lines:
+        for text, color in wrapped_lines:
             if text == "":
                 total_h += line_h // 2
             else:
                 total_h += line_h
 
         inner_w = self.panel_w - 24
-        surface = pygame.Surface((inner_w, total_h), pygame.SRCALPHA)
+        surface = pygame.Surface((inner_w, total_h), SRCALPHA)
 
         y = pad_y
-        for text, color in lines:
+        for text, color in wrapped_lines:
             if text == "":
                 y += line_h // 2
                 continue
@@ -285,13 +359,18 @@ class DebugOverlay:
     # ------------------------------------------------------------------ #
     # Drawing World (Hanya aktif saat Mode Eksplorasi)
     # ------------------------------------------------------------------ #
-    def draw_world(self, surface, camera, map_data, npc, player):
-        if self.mode != "EXPLORATION":
+    def draw_world(self, surface, camera, map_data, _npc, _player):
+        if self.mode != "EXPLORATION" or not self.visualization_active:
             return
 
         tile_size = map_data.cell_size
-        exp_surf = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-        for node_pos in self.expanded_nodes:
+        exp_surf = pygame.Surface(surface.get_size(), SRCALPHA)
+        expanded_position = len(self.expanded_nodes) * self.expanded_reveal
+        pulse_alpha = int(75 + 35 * (0.5 + 0.5 * math.sin(self.animation_time * 2.0)))
+        for index, node_pos in enumerate(self.expanded_nodes):
+            node_reveal = max(0.0, min(1.0, expanded_position - index))
+            if node_reveal <= 0.0:
+                continue
             if not (0 <= node_pos[0] < map_data.width and 0 <= node_pos[1] < map_data.height):
                 continue
             center = map_data.world_to_px(node_pos)
@@ -300,29 +379,41 @@ class DebugOverlay:
             screen_pos = camera.world_to_screen(topleft[0], topleft[1])
             sz = tile_size * camera.zoom
             rect = (screen_pos[0], screen_pos[1], sz, sz)
-            pygame.draw.rect(exp_surf, config.COLOR_EXPANDED_FILL, rect)
-            pygame.draw.rect(exp_surf, config.COLOR_EXPANDED_BORDER, rect, 1)
+            expanded_alpha = int(pulse_alpha * node_reveal)
+            expanded_fill = (*config.COLOR_EXPANDED_FILL[:3], expanded_alpha)
+            expanded_border = (*config.COLOR_EXPANDED_BORDER[:3], min(255, expanded_alpha + 70))
+            pygame.draw.rect(exp_surf, expanded_fill, rect)
+            pygame.draw.rect(exp_surf, expanded_border, rect, 1)
+            if self.show_costs:
+                cost = map_data.get_step_cost(node_pos)
+                cost_text = self.fonts["sm"].render(f"{cost:.1f}", True, (255, 255, 255))
+                cost_text.set_alpha(int(255 * node_reveal))
+                cost_bg = cost_text.get_rect(center=(int(screen_pos[0] + sz / 2), int(screen_pos[1] + sz / 2)))
+                pygame.draw.rect(exp_surf, (80, 0, 0, int(190 * node_reveal)), cost_bg.inflate(4, 2), border_radius=2)
+                exp_surf.blit(cost_text, cost_bg)
         surface.blit(exp_surf, (0, 0))
 
         if self.path_nodes:
-            points = []
-            points.append((npc.px, npc.py))
-            if len(self.path_nodes) > 2:
-                for p in self.path_nodes[1:-1]:
-                    points.append(map_data.world_to_px(p))
-            points.append((player.px, player.py))
-
-            if len(points) > 1:
-                screen_points = [camera.world_to_screen(x, y) for x, y in points]
-                for i in range(len(screen_points) - 1):
-                    pygame.draw.line(surface, config.COLOR_PATH, screen_points[i], screen_points[i + 1], 2)
-                    pygame.draw.circle(surface, config.COLOR_PATH_NODE, (int(screen_points[i][0]), int(screen_points[i][1])), 3)
-                pygame.draw.circle(
-                    surface,
-                    config.COLOR_PATH_NODE,
-                    (int(screen_points[-1][0]), int(screen_points[-1][1])),
-                    3,
-                )
+            path_surf = pygame.Surface(surface.get_size(), SRCALPHA)
+            path_position = len(self.path_nodes) * self.path_reveal
+            for index, node_pos in enumerate(self.path_nodes):
+                node_reveal = max(0.0, min(1.0, path_position - index))
+                if node_reveal <= 0.0:
+                    continue
+                if not (0 <= node_pos[0] < map_data.width and 0 <= node_pos[1] < map_data.height):
+                    continue
+                center = map_data.world_to_px(node_pos)
+                half = tile_size / 2.0
+                topleft = (center[0] - half, center[1] - half)
+                screen_pos = camera.world_to_screen(topleft[0], topleft[1])
+                sz = tile_size * camera.zoom
+                rect = (screen_pos[0], screen_pos[1], sz, sz)
+                path_alpha = int((55 + 80 * self.path_reveal) * node_reveal)
+                path_fill = (*config.COLOR_PATH[:3], path_alpha)
+                path_border = (*config.COLOR_PATH_BORDER[:3], min(255, path_alpha + 55))
+                pygame.draw.rect(path_surf, path_fill, rect)
+                pygame.draw.rect(path_surf, path_border, rect, 1)
+            surface.blit(path_surf, (0, 0))
 
     # ------------------------------------------------------------------ #
     # Drawing UI (Router: Mode Eksplorasi atau Duel)
@@ -333,7 +424,7 @@ class DebugOverlay:
         sidebar_h = screen_h - self.panel_y * 2
 
         # 1. Background Sidebar Kiri
-        sidebar_surf = pygame.Surface((self.panel_w, sidebar_h), pygame.SRCALPHA)
+        sidebar_surf = pygame.Surface((self.panel_w, sidebar_h), SRCALPHA)
         sidebar_surf.fill(config.DEBUG_PANEL_BG)
         pygame.draw.rect(sidebar_surf, config.DEBUG_PANEL_BORDER, (0, 0, self.panel_w, sidebar_h), 1, border_radius=8)
         surface.blit(sidebar_surf, (self.panel_x, sidebar_y))
@@ -342,6 +433,19 @@ class DebugOverlay:
             self._draw_exploration_ui(surface)
         else:
             self._draw_battle_ui(surface)
+
+        self._draw_cost_toggle(surface)
+
+    def _draw_cost_toggle(self, surface):
+        fill = (70, 175, 95, 210) if self.show_costs else (210, 214, 218, 210)
+        toggle_surf = pygame.Surface(self.cost_toggle_rect.size, SRCALPHA)
+        pygame.draw.rect(toggle_surf, fill, toggle_surf.get_rect(), border_radius=4)
+        pygame.draw.rect(toggle_surf, config.DEBUG_PANEL_BORDER, toggle_surf.get_rect(), 1, border_radius=4)
+        surface.blit(toggle_surf, self.cost_toggle_rect.topleft)
+        label = "Cost: ON" if self.show_costs else "Cost: OFF"
+        text_color = (255, 255, 255) if self.show_costs else config.DEBUG_TEXT_PRIMARY
+        text = self.fonts["sm"].render(label, True, text_color)
+        surface.blit(text, (self.cost_toggle_rect.centerx - text.get_width() // 2, self.cost_toggle_rect.centery - text.get_height() // 2))
 
     def _draw_exploration_ui(self, surface):
         title_surf = self.fonts.get("title", self.fonts["sm"]).render("AI PATHFINDING", True, config.DEBUG_TEXT_HIGHLIGHT)
@@ -356,6 +460,10 @@ class DebugOverlay:
         self.dropdown_algo.draw(surface, self.fonts)
 
     def _draw_battle_ui(self, surface):
+        battle_system = self.battle_system
+        if battle_system is None:
+            return
+
         px = self.panel_x + 14
         pw = self.panel_w - 28
 
@@ -371,20 +479,27 @@ class DebugOverlay:
 
         # Kontrol Kedalaman (Depth)
         depth_y = self.panel_y + 154
-        cur_depth = self.battle_system.depth if self.battle_system else 4
-        depth_label = self.fonts["sm"].render(f"Kedalaman (Depth): {cur_depth}", True, config.DEBUG_TEXT_PRIMARY)
+        depth_label = self.fonts["sm"].render(f"Kedalaman (Depth): {battle_system.depth}", True, config.DEBUG_TEXT_PRIMARY)
         surface.blit(depth_label, (px, depth_y + 4))
 
         # Tombol - & +
-        for btn, text in [(self.btn_depth_minus, "-"), (self.btn_depth_plus, "+")]:
-            pygame.draw.rect(surface, (45, 60, 90), btn, border_radius=4)
+        for btn, text, fill in [
+            (self.btn_depth_minus, "-", (190, 70, 70)),
+            (self.btn_depth_plus, "+", (55, 155, 80)),
+        ]:
+            pygame.draw.rect(surface, fill, btn, border_radius=4)
             pygame.draw.rect(surface, config.DEBUG_PANEL_BORDER, btn, 1, border_radius=4)
             ts = self.fonts.get("bubble", self.fonts["sm"]).render(text, True, config.DEBUG_TEXT_PRIMARY)
             surface.blit(ts, (btn.centerx - ts.get_width() // 2, btn.centery - ts.get_height() // 2))
 
+        pygame.draw.rect(surface, (70, 105, 155), self.btn_depth_help, border_radius=4)
+        pygame.draw.rect(surface, config.DEBUG_PANEL_BORDER, self.btn_depth_help, 1, border_radius=4)
+        help_text = self.fonts.get("bubble", self.fonts["sm"]).render("?", True, (255, 255, 255))
+        surface.blit(help_text, (self.btn_depth_help.centerx - help_text.get_width() // 2, self.btn_depth_help.centery - help_text.get_height() // 2))
+
         # Move Ordering Toggle
         mo_y = self.panel_y + 184
-        mo_on = self.battle_system.use_move_ordering if self.battle_system else True
+        mo_on = battle_system.use_move_ordering
         mo_label = self.fonts["sm"].render("Move Ordering:", True, config.DEBUG_TEXT_PRIMARY)
         surface.blit(mo_label, (px, mo_y + 4))
 
@@ -400,19 +515,20 @@ class DebugOverlay:
         pygame.draw.line(surface, (60, 70, 95), (px, sep_y), (px + pw, sep_y), 1)
 
         # Status Giliran
-        state = self.battle_system.state if self.battle_system else None
+        state = battle_system.state
         if state:
             turn_text = "Giliran NPC (AI Berpikir...)" if state.is_npc_turn else "Giliran Anda (Pilih Aksi)"
-            turn_color = (255, 180, 80) if state.is_npc_turn else (100, 220, 255)
-            if self.battle_system.is_finished:
-                turn_text = f"Pertarungan Selesai: {self.battle_system.winner} MENANG!"
-                turn_color = (120, 255, 120) if self.battle_system.winner == "PLAYER" else (255, 100, 100)
+            turn_color = (255, 180, 80) if state.is_npc_turn else config.DEBUG_TEXT_HIGHLIGHT
+            if battle_system.is_finished:
+                turn_text = f"Pertarungan Selesai: {battle_system.winner} MENANG!"
+                turn_color = (18, 112, 48)
 
-            ts_turn = self.fonts.get("bubble", self.fonts["sm"]).render(turn_text, True, turn_color)
+            turn_font = self.fonts.get("bubble", self.fonts["sm"])
+            ts_turn = turn_font.render(turn_text, True, turn_color)
             surface.blit(ts_turn, (px, sep_y + 8))
 
             # Tombol-tombol Aksi Pemain
-            can_act = (not state.is_npc_turn) and (not self.battle_system.is_finished)
+            can_act = (not state.is_npc_turn) and (not battle_system.is_finished)
             heavy_ready = state.player_heavy_cd <= 0
             heavy_label = "Heavy (30)" if heavy_ready else f"Heavy (CD:{state.player_heavy_cd})"
             actions_info = [
@@ -434,7 +550,7 @@ class DebugOverlay:
         metrics_y = self.panel_y + 340
         pygame.draw.line(surface, (60, 70, 95), (px, metrics_y), (px + pw, metrics_y), 1)
 
-        stats = self.battle_system.last_ai_stats if self.battle_system else {}
+        stats = battle_system.last_ai_stats
         ts_mtitle = self.fonts["sm"].render("── EVALUASI AKSI & NODE COUNT ──", True, config.DEBUG_TEXT_SECONDARY)
         surface.blit(ts_mtitle, (px, metrics_y + 6))
 
@@ -448,12 +564,17 @@ class DebugOverlay:
 
             surface.blit(self.fonts["sm"].render(f"Nodes Diekspansi : {nc}", True, config.DEBUG_TEXT_PRIMARY), (px, cur_y))
             cur_y += 18
-            surface.blit(self.fonts["sm"].render(f"Cabang Dipangkas : {pc}", True, (120, 255, 140)), (px, cur_y))
+            pruned_font = self.fonts.get("bubble", self.fonts["sm"])
+            surface.blit(pruned_font.render(f"Cabang Dipangkas : {pc}", True, (18, 112, 48)), (px, cur_y))
             cur_y += 18
             surface.blit(self.fonts["sm"].render(f"Waktu Berpikir   : {t_ms:.2f} ms", True, config.DEBUG_TEXT_PRIMARY), (px, cur_y))
             cur_y += 18
-            surface.blit(self.fonts["sm"].render(f"Pilihan Terbaik  : {best_a} (Skor: {best_s})", True, config.DEBUG_TEXT_HIGHLIGHT), (px, cur_y))
-            cur_y += 24
+            best_text = f"Pilihan Terbaik  : {best_a} (Skor: {best_s})"
+            best_lines = self._wrap_overlay_text(best_text, self.fonts["sm"], pw)
+            for best_line in best_lines:
+                surface.blit(self.fonts["sm"].render(best_line, True, config.DEBUG_TEXT_HIGHLIGHT), (px, cur_y))
+                cur_y += 16
+            cur_y += 8
 
             # Tabel Skor Pertimbangan Tiap Aksi di Root
             surface.blit(self.fonts["sm"].render("Pertimbangan Nilai Aksi (Root):", True, config.DEBUG_TEXT_SECONDARY), (px, cur_y))
@@ -470,20 +591,71 @@ class DebugOverlay:
             cur_y += 40
 
         # Shortcut / Petunjuk di bagian bawah
-        bottom_y = surface.get_height() - 65
+        bottom_y = surface.get_height() - 90
         pygame.draw.line(surface, (60, 70, 95), (px, bottom_y), (px + pw, bottom_y), 1)
-        surface.blit(self.fonts["sm"].render("[R] Reset Duel  │  [Tab] Kembali ke Peta", True, config.DEBUG_TEXT_SECONDARY), (px, bottom_y + 8))
-        surface.blit(self.fonts["sm"].render("[1..4] Shortcut Aksi Pemain", True, config.DEBUG_TEXT_HIGHLIGHT), (px, bottom_y + 28))
+        surface.blit(self.fonts["sm"].render("[R] Reset Duel", True, config.DEBUG_TEXT_SECONDARY), (px, bottom_y + 8))
+        surface.blit(self.fonts["sm"].render("[Tab] Kembali ke Peta", True, config.DEBUG_TEXT_SECONDARY), (px, bottom_y + 25))
+        surface.blit(self.fonts["sm"].render("[1..4] Shortcut Aksi", True, config.DEBUG_TEXT_HIGHLIGHT), (px, bottom_y + 42))
 
         # Gambar Dropdowns paling atas agar popup melayang
         self.dropdown_battle_eval.draw(surface, self.fonts)
         self.dropdown_battle_algo.draw(surface, self.fonts)
+        if self.depth_help_open:
+            self._draw_depth_help(surface)
+
+    def _draw_depth_help(self, surface):
+        help_font = self.fonts["sm"]
+        help_lines = self._depth_help_lines(help_font, 250)
+        popup = self._depth_help_popup_rect(len(help_lines))
+        popup_surface = pygame.Surface(popup.size, SRCALPHA)
+        popup_surface.fill((250, 250, 247, 242))
+        pygame.draw.rect(popup_surface, config.DEBUG_PANEL_BORDER, popup_surface.get_rect(), 1, border_radius=6)
+        title = self.fonts.get("bubble", self.fonts["sm"]).render("Tentang Kedalaman AI", True, config.DEBUG_TEXT_HIGHLIGHT)
+        popup_surface.blit(title, (10, 8))
+        y = 31
+        for line in help_lines:
+            text = help_font.render(line, True, config.DEBUG_TEXT_PRIMARY)
+            popup_surface.blit(text, (10, y))
+            y += 17
+        surface.blit(popup_surface, popup.topleft)
+
+    def _depth_help_lines(self, font, max_width):
+        help_text = (
+            "Depth adalah jumlah langkah ke depan yang dianalisis AI sebelum memilih aksi. "
+            "Depth + membuat analisis lebih jauh dan detail, tetapi waktu berpikir bisa lebih lama. "
+            "Depth - membuat analisis lebih cepat dan ringan."
+        )
+        return self._wrap_overlay_text(help_text, font, max_width)
+
+    def _depth_help_popup_rect(self, line_count):
+        height = 31 + line_count * 17 + 10
+        return pygame.Rect(self.panel_x + self.panel_w + 10, self.panel_y + 145, 270, height)
+
+    @staticmethod
+    def _wrap_overlay_text(text, font, max_width):
+        words = text.split(" ")
+        lines = []
+        current = ""
+        for word in words:
+            candidate = word if not current else f"{current} {word}"
+            if font.size(candidate)[0] <= max_width:
+                current = candidate
+            else:
+                if current:
+                    lines.append(current)
+                current = word
+        if current:
+            lines.append(current)
+        return lines
 
     # ------------------------------------------------------------------ #
     # Event Handling Router
     # ------------------------------------------------------------------ #
     def handle_event(self, event):
         if self.mode == "EXPLORATION":
+            if event.type == MOUSEBUTTONDOWN and event.button == 1 and self.cost_toggle_rect.collidepoint(event.pos):
+                self.show_costs = not self.show_costs
+                return True
             return self.dropdown_algo.handle_event(event)
 
         # Mode BATTLE
@@ -494,6 +666,15 @@ class DebugOverlay:
 
         if event.type == MOUSEBUTTONDOWN and event.button == 1:
             pos = event.pos
+
+            if self.btn_depth_help.collidepoint(pos):
+                self.depth_help_open = not self.depth_help_open
+                return True
+            if self.depth_help_open:
+                popup = self._depth_help_popup_rect(len(self._depth_help_lines(self.fonts["sm"], 250)))
+                if not popup.collidepoint(pos):
+                    self.depth_help_open = False
+                    return True
 
             # Tombol Depth
             if self.btn_depth_minus.collidepoint(pos):

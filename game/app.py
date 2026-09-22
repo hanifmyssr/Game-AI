@@ -24,9 +24,12 @@ class Camera:
         self.offset_y = 0.0
         self.reset(win_w, win_h, map_w, map_h, margin)
 
-    def reset(self, win_w, win_h, map_w, map_h, margin=0.02):
-        self.zoom = min(win_w / map_w, win_h / map_h) * (1.0 - margin)
-        self.offset_x = (win_w - map_w * self.zoom) / 2.0
+    def reset(self, win_w, win_h, map_w, map_h, margin=0.02, left_panel_w=340):
+        # Sisihkan area left_panel_w untuk sidebar debug overlay di sebelah kiri
+        usable_w = max(100.0, win_w - left_panel_w)
+        self.zoom = min(usable_w / map_w, win_h / map_h) * (1.0 - margin)
+        # Tempatkan peta di tengah area kerja kanan yang tersedia
+        self.offset_x = left_panel_w + (usable_w - map_w * self.zoom) / 2.0
         self.offset_y = (win_h - map_h * self.zoom) / 2.0
 
     def world_to_screen(self, wx, wy):

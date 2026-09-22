@@ -101,17 +101,25 @@ class DebugOverlay:
         # Data perbandingan UCS vs algoritma terpilih
         self.comparison_data = None
 
-        left = 15
-        top = 15
-        # Dropdown di kiri atas
+        # Sidebar kiri berdimensi rapi
+        self.panel_x = 12
+        self.panel_y = 12
+        self.panel_w = 326
+
+        # Dropdown diletakkan di dalam sidebar dengan posisi yang pas
+        dropdown_y = self.panel_y + 60
         self.dropdown = Dropdown(
-            (left, top, 310, 34),
+            (self.panel_x + 12, dropdown_y, self.panel_w - 24, 34),
             [label for _, label in config.ALGORITHMS],
             self._on_algorithm_selected,
         )
-        # Position panel debug overlay lebih ke bawah (top = 175) agar tidak tertutup dropdown saat terbuka
-        self.stats_rect = pygame.Rect(left, 175, 310, 200)
+
+        # Posisi area konten statistik tepat di bawah dropdown tertutup
+        # Ketika dropdown tertutup, tinggi dropdown adalah 34. Berikan margin agar pas
+        stats_top = dropdown_y + 44
+        self.stats_rect = pygame.Rect(self.panel_x, stats_top, self.panel_w, 200)
         self.stats_surface = None
+        self.total_panel_h = 700
 
         events.register_overlay(self)
         self.update_stats(0, 0.0)
@@ -141,19 +149,14 @@ class DebugOverlay:
         # --- Bangun baris-baris teks dengan warna ---
         lines = []  # list of (text, color)
 
-        # Header: Algoritma aktif
-        lines.append(("▶ ALGORITMA AKTIF", config.DEBUG_TEXT_HIGHLIGHT))
-        lines.append((f"  {selected_label}", config.DEBUG_TEXT_PRIMARY))
-        lines.append(("", None))  # spacer
-
         # Bobot Terrain
-        lines.append(("── BOBOT MEDAN (TERRAIN COST) ─────────", config.DEBUG_TEXT_SECONDARY))
+        lines.append(("── BOBOT MEDAN (COST) ────────────────", config.DEBUG_TEXT_SECONDARY))
         lines.append(("  • Jalan Tanah  : Cost 1.0 (Normal)", config.DEBUG_TEXT_PRIMARY))
-        lines.append(("  • Area Rumput  : Cost 2.0 (2x Lebih Berat)", config.DEBUG_TEXT_WARN))
+        lines.append(("  • Area Rumput  : Cost 2.0 (Berat)", config.DEBUG_TEXT_WARN))
         lines.append(("", None))  # spacer
 
         # Statistik utama
-        lines.append(("── STATISTIK ──────────────────────────", config.DEBUG_TEXT_SECONDARY))
+        lines.append(("── STATISTIK JALUR ────────────────────", config.DEBUG_TEXT_SECONDARY))
         lines.append((f"  Node Diekspansi : {count}", config.DEBUG_TEXT_PRIMARY))
         lines.append((f"  Panjang Jalur   : {steps} langkah", config.DEBUG_TEXT_PRIMARY))
         lines.append((f"  Total Cost Rute : {cur_cost:.1f}", config.DEBUG_TEXT_PRIMARY))
@@ -163,7 +166,7 @@ class DebugOverlay:
         # Perbandingan UCS vs A*
         if self.comparison_data:
             cd = self.comparison_data
-            lines.append(("── PERBANDINGAN ───────────────────────", config.DEBUG_TEXT_SECONDARY))
+            lines.append(("── PERBANDINGAN RUTE ──────────────────", config.DEBUG_TEXT_SECONDARY))
 
             ucs_expanded = cd.get("ucs_expanded", 0)
             ucs_time = cd.get("ucs_time_ms", 0.0)
@@ -189,55 +192,46 @@ class DebugOverlay:
             if ucs_expanded > 0 and cur_expanded > 0:
                 ratio = ucs_expanded / cur_expanded
                 if ratio > 1.0:
-                    eff_text = f"  ⚡ A* {ratio:.1f}x lebih efisien dari UCS"
+                    eff_text = f"  ⚡ A* {ratio:.1f}x lebih hemat ekspansi"
                     lines.append((eff_text, (100, 255, 120)))
                 elif ratio < 1.0:
-                    eff_text = f"  ⚠ UCS {1/ratio:.1f}x lebih efisien"
+                    eff_text = f"  ⚠ UCS {1/ratio:.1f}x lebih hemat"
                     lines.append((eff_text, config.DEBUG_TEXT_WARN))
                 else:
-                    lines.append(("  ≈ Efisiensi sama", config.DEBUG_TEXT_SECONDARY))
+                    eff_text = f"  ≈ Efisiensi node sama"
+                    lines.append((eff_text, config.DEBUG_TEXT_SECONDARY))
 
         lines.append(("", None))  # spacer
-        lines.append(("(Tekan [Spasi] Toggle Kejar NPC)", config.DEBUG_TEXT_SECONDARY))
+        lines.append(("── KONTROL ────────────────────────────", config.DEBUG_TEXT_SECONDARY))
+        lines.append(("  [WASD / Panah]  : Gerakkan Player", config.DEBUG_TEXT_PRIMARY))
+        lines.append(("  [Spasi]         : Toggle Kejar NPC", config.DEBUG_TEXT_HIGHLIGHT))
+        lines.append(("  [Esc]           : Keluar Game", config.DEBUG_TEXT_SECONDARY))
 
-        # --- Render ke surface dengan kalkulasi lebar dinamis ---
-        line_h = self.fonts["sm"].get_linesize() + 4
-        pad_x, pad_y = 12, 10
+        # --- Render ke surface teks ---
+        line_h = self.fonts["sm"].get_linesize() + 3
+        pad_x, pad_y = 12, 6
         total_h = pad_y * 2
 
-        # Hitung lebar maksimum yang dibutuhkan teks agar tidak terpotong
-        max_line_w = 280
         for text, color in lines:
-            if text:
-                ts = self.fonts["sm"].render(text, True, color or config.DEBUG_TEXT_PRIMARY)
-                max_line_w = max(max_line_w, ts.get_width())
             if text == "":
-                total_h += line_h // 3
+                total_h += line_h // 2
             else:
                 total_h += line_h
 
-        w = max(320, max_line_w + pad_x * 2)
-        self.stats_rect.width = w
-        self.stats_rect.height = total_h
-
-        surface = pygame.Surface((w, total_h), pygame.SRCALPHA)
-
-        # Background gelap transparan
-        surface.fill(config.DEBUG_PANEL_BG)
-
-        # Border halus
-        pygame.draw.rect(surface, config.DEBUG_PANEL_BORDER, (0, 0, w, total_h), 1, border_radius=6)
+        inner_w = self.panel_w - 24
+        surface = pygame.Surface((inner_w, total_h), pygame.SRCALPHA)
 
         y = pad_y
         for text, color in lines:
             if text == "":
-                y += line_h // 3
+                y += line_h // 2
                 continue
             ts = self.fonts["sm"].render(text, True, color)
             surface.blit(ts, (pad_x, y))
             y += line_h
 
         self.stats_surface = surface
+        self.stats_rect.height = total_h
 
     # ------------------------------------------------------------------ #
     def draw_world(self, surface, camera, map_data, npc, player):
@@ -282,10 +276,30 @@ class DebugOverlay:
 
     # ------------------------------------------------------------------ #
     def draw_ui(self, surface):
-        # 1. Gambar panel statistik terlebih dahulu
+        screen_h = surface.get_height()
+
+        # 1. Gambar latar belakang Sidebar Kiri (dari atas ke bawah dengan margin rapi)
+        sidebar_y = self.panel_y
+        sidebar_h = screen_h - self.panel_y * 2
+        sidebar_rect = pygame.Rect(self.panel_x, sidebar_y, self.panel_w, sidebar_h)
+
+        sidebar_surf = pygame.Surface((self.panel_w, sidebar_h), pygame.SRCALPHA)
+        sidebar_surf.fill(config.DEBUG_PANEL_BG)
+        pygame.draw.rect(sidebar_surf, config.DEBUG_PANEL_BORDER, (0, 0, self.panel_w, sidebar_h), 1, border_radius=8)
+        surface.blit(sidebar_surf, (self.panel_x, sidebar_y))
+
+        # 2. Header Sidebar
+        title_surf = self.fonts.get("title", self.fonts["sm"]).render("AI PATHFINDING", True, config.DEBUG_TEXT_HIGHLIGHT)
+        surface.blit(title_surf, (self.panel_x + 14, self.panel_y + 12))
+
+        sub_surf = self.fonts["sm"].render("Pilih Algoritma AI:", True, config.DEBUG_TEXT_SECONDARY)
+        surface.blit(sub_surf, (self.panel_x + 14, self.panel_y + 38))
+
+        # 3. Konten statistik & perbandingan (teks di bawah dropdown)
         if self.stats_surface:
-            surface.blit(self.stats_surface, (self.stats_rect.x, self.stats_rect.y))
-        # 2. Gambar dropdown SETELAHNYA agar menu dropdown yang terbuka selalu tampil DI ATAS panel statistik
+            surface.blit(self.stats_surface, (self.stats_rect.x + 12, self.stats_rect.y))
+
+        # 4. Gambar dropdown TERAKHIR agar daftar item melayang di atas konten saat terbuka
         self.dropdown.draw(surface, self.fonts)
 
     def handle_event(self, event):

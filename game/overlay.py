@@ -1,21 +1,21 @@
-"""DebugOverlay: port dari Scripts/UI/DebugOverlay.gd.
-
-Menampilkan dropdown pemilihan algoritma, panel statistik, dan visualisasi
-world-space (node yang diekspansi + jalur terpendek).
+"""DebugOverlay: Mendukung 2 mode UI:
+1. Mode Eksplorasi (Pathfinding: A* vs UCS, visualisasi node, bobot terrain)
+2. Mode Battle (Turn-Based Duel: Minimax vs Alpha-Beta vs Expectimax, evaluation functions, depth limit, node counts, skor aksi)
 """
 
 import pygame
 from pygame.locals import MOUSEBUTTONDOWN
 
 from . import config
+from .battle_ai import ACTION_ATTACK, ACTION_HEAVY, ACTION_DEFEND, ACTION_POTION
 
 
 class Dropdown:
-    def __init__(self, rect, labels, on_select):
+    def __init__(self, rect, labels, on_select, initial_idx=0):
         self.rect = pygame.Rect(rect)
         self.labels = labels
         self.on_select = on_select
-        self.selected = 0
+        self.selected = initial_idx
         self.open = False
 
     @property
@@ -51,7 +51,6 @@ class Dropdown:
         return False
 
     def draw(self, surface, fonts):
-        # --- Dark background dropdown ---
         bg_surf = pygame.Surface((self.rect.width, self.rect.height), pygame.SRCALPHA)
         bg_surf.fill(config.DEBUG_DROPDOWN_BG)
         surface.blit(bg_surf, (self.rect.x, self.rect.y))
@@ -62,10 +61,10 @@ class Dropdown:
         label = self.labels[self.selected] if self.selected < len(self.labels) else ""
         if label:
             surf = fonts["sm"].render(label, True, config.DEBUG_TEXT_PRIMARY)
-            surface.blit(surf, (self.rect.x + 10, self.rect.y + (self.rect.height - surf.get_height()) // 2))
+            surface.blit(surf, (self.rect.x + 8, self.rect.y + (self.rect.height - surf.get_height()) // 2))
 
         # Panah dropdown
-        cx = self.rect.right - 16
+        cx = self.rect.right - 14
         cy = self.rect.centery
         arrow_color = config.DEBUG_TEXT_HIGHLIGHT if self.open else config.DEBUG_TEXT_SECONDARY
         if self.open:
@@ -73,7 +72,7 @@ class Dropdown:
         else:
             pygame.draw.polygon(surface, arrow_color, [(cx - 5, cy + 2), (cx + 5, cy + 2), (cx, cy - 4)])
 
-        # Menu pilihan saat dropdown terbuka
+        # Menu pilihan saat terbuka
         if self.open:
             menu = self.menu_rect()
             for i, lbl in enumerate(self.labels):
@@ -86,7 +85,7 @@ class Dropdown:
                 surface.blit(item_surf, (r.x, r.y))
                 pygame.draw.rect(surface, (60, 90, 140, 160), r, 1)
                 ts = fonts["sm"].render(lbl, True, config.DEBUG_TEXT_PRIMARY)
-                surface.blit(ts, (r.x + 10, r.y + (r.height - ts.get_height()) // 2))
+                surface.blit(ts, (r.x + 8, r.y + (r.height - ts.get_height()) // 2))
 
 
 class DebugOverlay:
@@ -94,44 +93,103 @@ class DebugOverlay:
         self.events = events
         self.fonts = fonts
 
+        self.mode = "EXPLORATION"  # "EXPLORATION" atau "BATTLE"
+
+        # State Pathfinding (Exploration)
         self.expanded_nodes = []
         self.path_nodes = []
         self.last_time_ms = 0.0
-
-        # Data perbandingan UCS vs algoritma terpilih
         self.comparison_data = None
 
-        # Sidebar kiri berdimensi rapi
+        # Posisi Sidebar Kiri
         self.panel_x = 12
         self.panel_y = 12
         self.panel_w = 326
 
-        # Dropdown diletakkan di dalam sidebar dengan posisi yang pas
+        # --- Dropdown Mode Eksplorasi ---
         dropdown_y = self.panel_y + 60
-        self.dropdown = Dropdown(
-            (self.panel_x + 12, dropdown_y, self.panel_w - 24, 34),
+        self.dropdown_algo = Dropdown(
+            (self.panel_x + 12, dropdown_y, self.panel_w - 24, 32),
             [label for _, label in config.ALGORITHMS],
             self._on_algorithm_selected,
         )
 
-        # Posisi area konten statistik tepat di bawah dropdown tertutup
-        # Ketika dropdown tertutup, tinggi dropdown adalah 34. Berikan margin agar pas
-        stats_top = dropdown_y + 44
+        stats_top = dropdown_y + 42
         self.stats_rect = pygame.Rect(self.panel_x, stats_top, self.panel_w, 200)
         self.stats_surface = None
-        self.total_panel_h = 700
+
+        # --- UI Duel Mode ---
+        self.battle_system = None
+        self._init_battle_ui()
 
         events.register_overlay(self)
         self.update_stats(0, 0.0)
 
+    def _init_battle_ui(self):
+        px = self.panel_x + 12
+        pw = self.panel_w - 24
+
+        # Dropdown AI Battle: Algoritma
+        self.dropdown_battle_algo = Dropdown(
+            (px, self.panel_y + 60, pw, 30),
+            ["Alpha-Beta Pruning", "Pure Minimax", "Expectimax (Stokastik)"],
+            self._on_battle_algo_selected,
+            initial_idx=0,
+        )
+
+        # Dropdown AI Battle: Fungsi Evaluasi
+        self.dropdown_battle_eval = Dropdown(
+            (px, self.panel_y + 116, pw, 30),
+            ["Balanced (Standar)", "Aggressive (Offensif)", "Defensive (Taktis)"],
+            self._on_battle_eval_selected,
+            initial_idx=0,
+        )
+
+        # Tombol Aksi Player (4 Aksi: Attack, Heavy Attack, Defend, Potion)
+        bw = (pw - 8) // 2
+        btn_y = self.panel_y + 260
+        self.btn_attack = pygame.Rect(px, btn_y, bw, 32)
+        self.btn_heavy = pygame.Rect(px + bw + 8, btn_y, bw, 32)
+        self.btn_defend = pygame.Rect(px, btn_y + 38, bw, 32)
+        self.btn_potion = pygame.Rect(px + bw + 8, btn_y + 38, bw, 32)
+
+        # Tombol Kedalaman AI (Depth - dan +)
+        self.btn_depth_minus = pygame.Rect(px + pw - 75, self.panel_y + 152, 32, 26)
+        self.btn_depth_plus = pygame.Rect(px + pw - 38, self.panel_y + 152, 32, 26)
+
+        # Tombol Move Ordering Toggle
+        self.btn_move_ordering = pygame.Rect(px + pw - 60, self.panel_y + 182, 54, 24)
+
+    def set_battle_system(self, battle_system):
+        self.battle_system = battle_system
+
+    def set_mode(self, mode: str):
+        self.mode = mode
+
+    # ------------------------------------------------------------------ #
+    # Event Handlers Dropdown
+    # ------------------------------------------------------------------ #
     def _on_algorithm_selected(self, index):
         algo_name = config.ALGORITHMS[index][0]
         self.events.emit_algorithm_changed(algo_name)
         self.update_stats(len(self.expanded_nodes), self.last_time_ms)
 
+    def _on_battle_algo_selected(self, index):
+        if not self.battle_system:
+            return
+        algos = ["ALPHA_BETA", "MINIMAX", "EXPECTIMAX"]
+        self.battle_system.algorithm = algos[index]
+
+    def _on_battle_eval_selected(self, index):
+        if not self.battle_system:
+            return
+        evals = ["BALANCED", "AGGRESSIVE", "DEFENSIVE"]
+        self.battle_system.eval_mode = evals[index]
+
+    # ------------------------------------------------------------------ #
+    # Data Update Eksplorasi
     # ------------------------------------------------------------------ #
     def set_comparison_data(self, data):
-        """Menerima data perbandingan dari NPC untuk ditampilkan di panel."""
         self.comparison_data = data
 
     def update_debug_data(self, new_expanded, new_path, time_ms):
@@ -142,32 +200,26 @@ class DebugOverlay:
 
     def update_stats(self, count, time_ms):
         self.last_time_ms = time_ms
-        selected_label = config.ALGORITHMS[self.dropdown.selected][1]
+        selected_label = config.ALGORITHMS[self.dropdown_algo.selected][1]
         steps = max(0, len(self.path_nodes) - 1)
         cur_cost = self.comparison_data.get("cur_cost", 0.0) if self.comparison_data else 0.0
 
-        # --- Bangun baris-baris teks dengan warna ---
-        lines = []  # list of (text, color)
-
-        # Bobot Terrain
+        lines = []
         lines.append(("── BOBOT MEDAN (COST) ────────────────", config.DEBUG_TEXT_SECONDARY))
         lines.append(("  • Jalan Tanah  : Cost 1.0 (Normal)", config.DEBUG_TEXT_PRIMARY))
         lines.append(("  • Area Rumput  : Cost 2.0 (Berat)", config.DEBUG_TEXT_WARN))
-        lines.append(("", None))  # spacer
+        lines.append(("", None))
 
-        # Statistik utama
         lines.append(("── STATISTIK JALUR ────────────────────", config.DEBUG_TEXT_SECONDARY))
         lines.append((f"  Node Diekspansi : {count}", config.DEBUG_TEXT_PRIMARY))
         lines.append((f"  Panjang Jalur   : {steps} langkah", config.DEBUG_TEXT_PRIMARY))
         lines.append((f"  Total Cost Rute : {cur_cost:.1f}", config.DEBUG_TEXT_PRIMARY))
         lines.append((f"  Waktu Eksekusi  : {time_ms:.3f} ms", config.DEBUG_TEXT_PRIMARY))
-        lines.append(("", None))  # spacer
+        lines.append(("", None))
 
-        # Perbandingan UCS vs A*
         if self.comparison_data:
             cd = self.comparison_data
             lines.append(("── PERBANDINGAN RUTE ──────────────────", config.DEBUG_TEXT_SECONDARY))
-
             ucs_expanded = cd.get("ucs_expanded", 0)
             ucs_time = cd.get("ucs_time_ms", 0.0)
             ucs_steps = cd.get("ucs_path_len", 0)
@@ -188,7 +240,6 @@ class DebugOverlay:
             if cur_heuristic != "—":
                 lines.append((f"    Heuristik: {cur_heuristic}", config.DEBUG_TEXT_SECONDARY))
 
-            # Efisiensi
             if ucs_expanded > 0 and cur_expanded > 0:
                 ratio = ucs_expanded / cur_expanded
                 if ratio > 1.0:
@@ -198,16 +249,14 @@ class DebugOverlay:
                     eff_text = f"  ⚠ UCS {1/ratio:.1f}x lebih hemat"
                     lines.append((eff_text, config.DEBUG_TEXT_WARN))
                 else:
-                    eff_text = f"  ≈ Efisiensi node sama"
-                    lines.append((eff_text, config.DEBUG_TEXT_SECONDARY))
+                    lines.append(("  ≈ Efisiensi node sama", config.DEBUG_TEXT_SECONDARY))
 
-        lines.append(("", None))  # spacer
+        lines.append(("", None))
         lines.append(("── KONTROL ────────────────────────────", config.DEBUG_TEXT_SECONDARY))
         lines.append(("  [WASD / Panah]  : Gerakkan Player", config.DEBUG_TEXT_PRIMARY))
         lines.append(("  [Spasi]         : Toggle Kejar NPC", config.DEBUG_TEXT_HIGHLIGHT))
         lines.append(("  [Esc]           : Keluar Game", config.DEBUG_TEXT_SECONDARY))
 
-        # --- Render ke surface teks ---
         line_h = self.fonts["sm"].get_linesize() + 3
         pad_x, pad_y = 12, 6
         total_h = pad_y * 2
@@ -234,11 +283,13 @@ class DebugOverlay:
         self.stats_rect.height = total_h
 
     # ------------------------------------------------------------------ #
+    # Drawing World (Hanya aktif saat Mode Eksplorasi)
+    # ------------------------------------------------------------------ #
     def draw_world(self, surface, camera, map_data, npc, player):
-        """Gambar visualisasi di world-space (node ekspansi + jalur)."""
-        tile_size = map_data.cell_size
+        if self.mode != "EXPLORATION":
+            return
 
-        # 1. Node yang diekspansi: kotak biru sangat transparan
+        tile_size = map_data.cell_size
         exp_surf = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
         for node_pos in self.expanded_nodes:
             if not (0 <= node_pos[0] < map_data.width and 0 <= node_pos[1] < map_data.height):
@@ -253,7 +304,6 @@ class DebugOverlay:
             pygame.draw.rect(exp_surf, config.COLOR_EXPANDED_BORDER, rect, 1)
         surface.blit(exp_surf, (0, 0))
 
-        # 2. Jalur terpendek: garis kuning + titik
         if self.path_nodes:
             points = []
             points.append((npc.px, npc.py))
@@ -275,32 +325,205 @@ class DebugOverlay:
                 )
 
     # ------------------------------------------------------------------ #
+    # Drawing UI (Router: Mode Eksplorasi atau Duel)
+    # ------------------------------------------------------------------ #
     def draw_ui(self, surface):
         screen_h = surface.get_height()
-
-        # 1. Gambar latar belakang Sidebar Kiri (dari atas ke bawah dengan margin rapi)
         sidebar_y = self.panel_y
         sidebar_h = screen_h - self.panel_y * 2
-        sidebar_rect = pygame.Rect(self.panel_x, sidebar_y, self.panel_w, sidebar_h)
 
+        # 1. Background Sidebar Kiri
         sidebar_surf = pygame.Surface((self.panel_w, sidebar_h), pygame.SRCALPHA)
         sidebar_surf.fill(config.DEBUG_PANEL_BG)
         pygame.draw.rect(sidebar_surf, config.DEBUG_PANEL_BORDER, (0, 0, self.panel_w, sidebar_h), 1, border_radius=8)
         surface.blit(sidebar_surf, (self.panel_x, sidebar_y))
 
-        # 2. Header Sidebar
+        if self.mode == "EXPLORATION":
+            self._draw_exploration_ui(surface)
+        else:
+            self._draw_battle_ui(surface)
+
+    def _draw_exploration_ui(self, surface):
         title_surf = self.fonts.get("title", self.fonts["sm"]).render("AI PATHFINDING", True, config.DEBUG_TEXT_HIGHLIGHT)
         surface.blit(title_surf, (self.panel_x + 14, self.panel_y + 12))
 
         sub_surf = self.fonts["sm"].render("Pilih Algoritma AI:", True, config.DEBUG_TEXT_SECONDARY)
         surface.blit(sub_surf, (self.panel_x + 14, self.panel_y + 38))
 
-        # 3. Konten statistik & perbandingan (teks di bawah dropdown)
         if self.stats_surface:
             surface.blit(self.stats_surface, (self.stats_rect.x + 12, self.stats_rect.y))
 
-        # 4. Gambar dropdown TERAKHIR agar daftar item melayang di atas konten saat terbuka
-        self.dropdown.draw(surface, self.fonts)
+        self.dropdown_algo.draw(surface, self.fonts)
 
+    def _draw_battle_ui(self, surface):
+        px = self.panel_x + 14
+        pw = self.panel_w - 28
+
+        # Header Duel
+        title_surf = self.fonts.get("title", self.fonts["sm"]).render("⚔ DUEL MINIMAX AI", True, (255, 120, 80))
+        surface.blit(title_surf, (px, self.panel_y + 12))
+
+        sub_algo = self.fonts["sm"].render("Algoritma AI NPC:", True, config.DEBUG_TEXT_SECONDARY)
+        surface.blit(sub_algo, (px, self.panel_y + 40))
+
+        sub_eval = self.fonts["sm"].render("Fungsi Evaluasi:", True, config.DEBUG_TEXT_SECONDARY)
+        surface.blit(sub_eval, (px, self.panel_y + 96))
+
+        # Kontrol Kedalaman (Depth)
+        depth_y = self.panel_y + 154
+        cur_depth = self.battle_system.depth if self.battle_system else 4
+        depth_label = self.fonts["sm"].render(f"Kedalaman (Depth): {cur_depth}", True, config.DEBUG_TEXT_PRIMARY)
+        surface.blit(depth_label, (px, depth_y + 4))
+
+        # Tombol - & +
+        for btn, text in [(self.btn_depth_minus, "-"), (self.btn_depth_plus, "+")]:
+            pygame.draw.rect(surface, (45, 60, 90), btn, border_radius=4)
+            pygame.draw.rect(surface, config.DEBUG_PANEL_BORDER, btn, 1, border_radius=4)
+            ts = self.fonts.get("bubble", self.fonts["sm"]).render(text, True, config.DEBUG_TEXT_PRIMARY)
+            surface.blit(ts, (btn.centerx - ts.get_width() // 2, btn.centery - ts.get_height() // 2))
+
+        # Move Ordering Toggle
+        mo_y = self.panel_y + 184
+        mo_on = self.battle_system.use_move_ordering if self.battle_system else True
+        mo_label = self.fonts["sm"].render("Move Ordering:", True, config.DEBUG_TEXT_PRIMARY)
+        surface.blit(mo_label, (px, mo_y + 4))
+
+        mo_color = (40, 150, 70) if mo_on else (90, 40, 40)
+        pygame.draw.rect(surface, mo_color, self.btn_move_ordering, border_radius=4)
+        pygame.draw.rect(surface, config.DEBUG_PANEL_BORDER, self.btn_move_ordering, 1, border_radius=4)
+        mo_text = "ON" if mo_on else "OFF"
+        ts_mo = self.fonts["sm"].render(mo_text, True, (255, 255, 255))
+        surface.blit(ts_mo, (self.btn_move_ordering.centerx - ts_mo.get_width() // 2, self.btn_move_ordering.centery - ts_mo.get_height() // 2))
+
+        # Pembatas Garis
+        sep_y = self.panel_y + 215
+        pygame.draw.line(surface, (60, 70, 95), (px, sep_y), (px + pw, sep_y), 1)
+
+        # Status Giliran
+        state = self.battle_system.state if self.battle_system else None
+        if state:
+            turn_text = "Giliran NPC (AI Berpikir...)" if state.is_npc_turn else "Giliran Anda (Pilih Aksi)"
+            turn_color = (255, 180, 80) if state.is_npc_turn else (100, 220, 255)
+            if self.battle_system.is_finished:
+                turn_text = f"Pertarungan Selesai: {self.battle_system.winner} MENANG!"
+                turn_color = (120, 255, 120) if self.battle_system.winner == "PLAYER" else (255, 100, 100)
+
+            ts_turn = self.fonts.get("bubble", self.fonts["sm"]).render(turn_text, True, turn_color)
+            surface.blit(ts_turn, (px, sep_y + 8))
+
+            # Tombol-tombol Aksi Pemain
+            can_act = (not state.is_npc_turn) and (not self.battle_system.is_finished)
+            heavy_ready = state.player_heavy_cd <= 0
+            heavy_label = "Heavy (30)" if heavy_ready else f"Heavy (CD:{state.player_heavy_cd})"
+            actions_info = [
+                (self.btn_attack, "Attack (18)", (180, 50, 50), True),
+                (self.btn_heavy, heavy_label, (220, 90, 30), heavy_ready),
+                (self.btn_defend, "Defend (-65%)", (50, 100, 180), True),
+                (self.btn_potion, f"Potion ({state.player_potions})", (40, 150, 90), state.player_potions > 0 and state.player_hp < 100),
+            ]
+
+            for btn_rect, btn_title, base_col, is_enabled in actions_info:
+                fill_col = base_col if (can_act and is_enabled) else (40, 44, 52)
+                text_col = (255, 255, 255) if (can_act and is_enabled) else (120, 125, 135)
+                pygame.draw.rect(surface, fill_col, btn_rect, border_radius=5)
+                pygame.draw.rect(surface, config.DEBUG_PANEL_BORDER, btn_rect, 1, border_radius=5)
+                ts = self.fonts["sm"].render(btn_title, True, text_col)
+                surface.blit(ts, (btn_rect.centerx - ts.get_width() // 2, btn_rect.centery - ts.get_height() // 2))
+
+        # Metrik Live AI (Node Count, Execution Time, Skor Tiap Aksi)
+        metrics_y = self.panel_y + 340
+        pygame.draw.line(surface, (60, 70, 95), (px, metrics_y), (px + pw, metrics_y), 1)
+
+        stats = self.battle_system.last_ai_stats if self.battle_system else {}
+        ts_mtitle = self.fonts["sm"].render("── EVALUASI AKSI & NODE COUNT ──", True, config.DEBUG_TEXT_SECONDARY)
+        surface.blit(ts_mtitle, (px, metrics_y + 6))
+
+        cur_y = metrics_y + 26
+        if stats:
+            nc = stats.get("node_count", 0)
+            pc = stats.get("pruned_count", 0)
+            t_ms = stats.get("time_ms", 0.0)
+            best_a = stats.get("best_action", "—")
+            best_s = stats.get("best_score", 0.0)
+
+            surface.blit(self.fonts["sm"].render(f"Nodes Diekspansi : {nc}", True, config.DEBUG_TEXT_PRIMARY), (px, cur_y))
+            cur_y += 18
+            surface.blit(self.fonts["sm"].render(f"Cabang Dipangkas : {pc}", True, (120, 255, 140)), (px, cur_y))
+            cur_y += 18
+            surface.blit(self.fonts["sm"].render(f"Waktu Berpikir   : {t_ms:.2f} ms", True, config.DEBUG_TEXT_PRIMARY), (px, cur_y))
+            cur_y += 18
+            surface.blit(self.fonts["sm"].render(f"Pilihan Terbaik  : {best_a} (Skor: {best_s})", True, config.DEBUG_TEXT_HIGHLIGHT), (px, cur_y))
+            cur_y += 24
+
+            # Tabel Skor Pertimbangan Tiap Aksi di Root
+            surface.blit(self.fonts["sm"].render("Pertimbangan Nilai Aksi (Root):", True, config.DEBUG_TEXT_SECONDARY), (px, cur_y))
+            cur_y += 18
+            scores = stats.get("action_scores", {})
+            for act, val in scores.items():
+                is_selected = (act == best_a)
+                prefix = "▶ " if is_selected else "  • "
+                col = config.DEBUG_TEXT_HIGHLIGHT if is_selected else config.DEBUG_TEXT_PRIMARY
+                surface.blit(self.fonts["sm"].render(f"{prefix}{act:<12}: {val:>7.1f}", True, col), (px, cur_y))
+                cur_y += 16
+        else:
+            surface.blit(self.fonts["sm"].render("Menunggu kalkulasi pertama AI...", True, config.DEBUG_TEXT_SECONDARY), (px, cur_y))
+            cur_y += 40
+
+        # Shortcut / Petunjuk di bagian bawah
+        bottom_y = surface.get_height() - 65
+        pygame.draw.line(surface, (60, 70, 95), (px, bottom_y), (px + pw, bottom_y), 1)
+        surface.blit(self.fonts["sm"].render("[R] Reset Duel  │  [Tab] Kembali ke Peta", True, config.DEBUG_TEXT_SECONDARY), (px, bottom_y + 8))
+        surface.blit(self.fonts["sm"].render("[1..4] Shortcut Aksi Pemain", True, config.DEBUG_TEXT_HIGHLIGHT), (px, bottom_y + 28))
+
+        # Gambar Dropdowns paling atas agar popup melayang
+        self.dropdown_battle_eval.draw(surface, self.fonts)
+        self.dropdown_battle_algo.draw(surface, self.fonts)
+
+    # ------------------------------------------------------------------ #
+    # Event Handling Router
+    # ------------------------------------------------------------------ #
     def handle_event(self, event):
-        return self.dropdown.handle_event(event)
+        if self.mode == "EXPLORATION":
+            return self.dropdown_algo.handle_event(event)
+
+        # Mode BATTLE
+        if self.dropdown_battle_algo.handle_event(event):
+            return True
+        if self.dropdown_battle_eval.handle_event(event):
+            return True
+
+        if event.type == MOUSEBUTTONDOWN and event.button == 1:
+            pos = event.pos
+
+            # Tombol Depth
+            if self.btn_depth_minus.collidepoint(pos):
+                if self.battle_system and self.battle_system.depth > 1:
+                    self.battle_system.depth -= 1
+                return True
+            if self.btn_depth_plus.collidepoint(pos):
+                if self.battle_system and self.battle_system.depth < 8:
+                    self.battle_system.depth += 1
+                return True
+
+            # Tombol Move Ordering Toggle
+            if self.btn_move_ordering.collidepoint(pos):
+                if self.battle_system:
+                    self.battle_system.use_move_ordering = not self.battle_system.use_move_ordering
+                return True
+
+            # Tombol Aksi Player
+            if self.battle_system and not self.battle_system.state.is_npc_turn and not self.battle_system.is_finished:
+                if self.btn_attack.collidepoint(pos):
+                    self.battle_system.execute_player_action(ACTION_ATTACK)
+                    return True
+                elif self.btn_heavy.collidepoint(pos):
+                    self.battle_system.execute_player_action(ACTION_HEAVY)
+                    return True
+                elif self.btn_defend.collidepoint(pos):
+                    self.battle_system.execute_player_action(ACTION_DEFEND)
+                    return True
+                elif self.btn_potion.collidepoint(pos):
+                    self.battle_system.execute_player_action(ACTION_POTION)
+                    return True
+
+        return False

@@ -5,7 +5,7 @@ import os
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSET_DIR = os.path.join(BASE_DIR, "assets")
 DATA_DIR = os.path.join(BASE_DIR, "data")
-MAP_FILE = os.path.join(DATA_DIR, "map.json")
+MAP_FILE = os.path.join(DATA_DIR, "map_tubes.json")
 
 WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 800
@@ -26,8 +26,18 @@ NPC_STEP_DURATION = 0.2
 NPC_CHASE_INTERVAL = 0.35
 CALL_BUBBLE_TIME = 1.5
 
-# Skala sprite karakter (di Godot 0.5x dari 64x64 -> 32x32)
-CHARACTER_SCALE = 0.5
+# 1 siklus walk (4 frame) pas 1 langkah ubin
+WALK_FRAME_DURATION = PLAYER_MOVE_DURATION / 4
+NPC_WALK_FRAME_DURATION = NPC_STEP_DURATION / 4
+
+# Sprite Bolu (player): 1 frame idle + 4 frame walk untuk tiap arah
+BOLU_DIR = os.path.join(ASSET_DIR, "bolu")
+
+# Sprite Oyen (NPC): 1 frame idle + 4 frame walk untuk tiap arah
+OYEN_DIR = os.path.join(ASSET_DIR, "oyen")
+
+# Tinggi karakter dalam piksel dunia (2 ubin x 16px)
+CHARACTER_HEIGHT = 32
 
 # daftar algoritma: (nama internal, label dropdown)
 ALGORITHMS = [

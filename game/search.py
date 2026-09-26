@@ -69,8 +69,8 @@ class GridManager:
     def get_neighbors(self, pos):
         return self.map_data.get_neighbors(pos) if self.map_data else []
 
-    def get_step_cost(self, _pos):
-        return 1.0
+    def get_step_cost(self, pos):
+        return self.map_data.get_step_cost(pos) if self.map_data else 1.0
 
     def map_to_world(self, grid_pos):
         return self.map_data.map_to_world(grid_pos) if self.map_data else (0, 0)

@@ -2,9 +2,14 @@
 
 Pergerakan per-ubin dengan animasi tween 0.12 detik. Posisi grid berubah
 seketika saat tombol ditekan (bukan setelah animasi selesai), setara Godot.
+
+Sprite dan animasinya ditangani game.animation.AnimatedSprite; mekanik
+movement di bawah tidak berubah, movement hanya "*memberi tahu* sprite
+arah dan kondisi gerak lewat update_direction() dan sprite.update()".
 """
 
 from . import config
+from .animation import AnimatedSprite
 
 
 class Player:
@@ -22,6 +27,8 @@ class Player:
 
         self.call_bubble_visible = False
         self.call_bubble_timer = 0.0
+
+        self.sprite = AnimatedSprite(config.BOLU_DIR, config.CHARACTER_HEIGHT)
 
         preferred_spawn = self.map.get_map_center()
         self.grid = self.map.get_valid_spawn_point(preferred_spawn)
@@ -52,6 +59,9 @@ class Player:
                 self.px, self.py = self.frame_to
                 self.events.emit_player_moved(self.grid)
 
+        # idle/walk + frame walk mengikuti kondisi gerak
+        self.sprite.update(dt, self.moving)
+
         if self.call_bubble_visible:
             self.call_bubble_timer -= dt
             if self.call_bubble_timer <= 0.0:
@@ -65,6 +75,7 @@ class Player:
         target = (self.grid[0] + direction[0], self.grid[1] + direction[1])
         if self.map.is_walkable(target):
             self.grid = target
+            self.sprite.update_direction(direction[0], direction[1])
             self.events.emit_player_moved(self.grid)
             self._start_move()
             return True

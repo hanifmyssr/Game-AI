@@ -1,7 +1,7 @@
 """MapData: data peta + surface render, port dari Scripts/map/map_data.gd.
 
 Data asli (grid, tiles, obstacle) di-decode dari map.tscn Godot ke
-`data/map.json` sehingga port ini berdiri sendiri (tanpa Godot).
+`data/map_tubes.json` sehingga port ini berdiri sendiri (tanpa Godot).
 """
 
 import json
@@ -30,9 +30,12 @@ class MapData:
         self.min_y = 0
         self.width = 0
         self.height = 0
+        self.ground_asset = "tubes/Ext_10a_DEMO.png"
 
-        self.ground = {}        # (nx, ny) -> (atlas_x, atlas_y)
-        self.obstacles = {}     # (nx, ny) -> (src_name, atlas_x, atlas_y)
+        self.water = {}
+        self.ground = {}        # (nx, ny) -> (src_name, atlas_x, atlas_y)
+        self.decorations = {}
+        self.obstacles = {}
         self.ground_set = set()
         self.obstacle_set = set()
         self.walkable_set = set()
@@ -53,25 +56,40 @@ class MapData:
         self.min_y = grid["min_y"]
         self.width = grid["width"]
         self.height = grid["height"]
+        self.ground_asset = doc.get("ground_asset", "tubes/Ext_10a_DEMO.png")
 
+        self.water = {}
         self.ground = {}
+        self.decorations = {}
         self.obstacles = {}
         self.ground_set = set()
         self.obstacle_set = set()
 
-        for c in doc["ground"]:
-            key = (c["x"] - self.min_x, c["y"] - self.min_y)
-            self.ground[key] = (c["atlas_x"], c["atlas_y"])
-            self.ground_set.add(key)
+        self._load_layer(doc["ground"], self.ground)
+        self._load_layer(doc.get("water", []), self.water)
+        self._load_layer(doc.get("decorations", []), self.decorations)
+        self._load_layer(doc.get("obstacles", []), self.obstacles)
 
-        for c in doc["obstacles"]:
-            key = (c["x"] - self.min_x, c["y"] - self.min_y)
-            self.obstacles[key] = (c["src"], c["atlas_x"], c["atlas_y"])
-            self.obstacle_set.add(key)
+        self.ground_set.update(self.ground)
+        self.obstacle_set.update(self.obstacles)
 
         # walkable = ground minus obstacle (logika setara map_data.gd, yang
         # hanya menambahkan 'road' jika ubin tanah adalah jalan).
-        self.walkable_set = set(self.ground_set) - self.obstacle_set
+        self.walkable_set = {
+            key
+            for key in self.ground
+            if _is_dirt_road_tile(self.ground[key][1:])
+            or key not in self.obstacle_set
+        }
+
+    def _load_layer(self, cells, target):
+        for cell in cells:
+            key = (cell["x"] - self.min_x, cell["y"] - self.min_y)
+            target[key] = (
+                cell.get("src", self.ground_asset),
+                cell["atlas_x"],
+                cell["atlas_y"],
+            )
 
     # ------------------------------------------------------------------ #
     # Query grid
@@ -109,10 +127,25 @@ class MapData:
             grid_pos[1] * self.cell_size + self.cell_size / 2.0,
         )
 
+    def map_to_world(self, grid_pos):
+        raw_x = grid_pos[0] + self.min_x
+        raw_y = grid_pos[1] + self.min_y
+        return (
+            raw_x * self.cell_size + self.cell_size / 2.0,
+            raw_y * self.cell_size + self.cell_size / 2.0,
+        )
+
+    def world_to_map(self, world_pos):
+        return (
+            int(world_pos[0] // self.cell_size) - self.min_x,
+            int(world_pos[1] // self.cell_size) - self.min_y,
+        )
+
     def px_to_world(self, world_pos):
-        nx = int((world_pos[0] - self.cell_size / 2.0) // self.cell_size)
-        ny = int((world_pos[1] - self.cell_size / 2.0) // self.cell_size)
-        return (nx, ny)
+        return (
+            int(world_pos[0] // self.cell_size),
+            int(world_pos[1] // self.cell_size),
+        )
 
     # ------------------------------------------------------------------ #
     # Spawn point terdekat (BFS, setara get_valid_spawn_point di GDScript)
@@ -149,32 +182,30 @@ class MapData:
         ground_surf = pygame.Surface(size).convert()
         obstacle_surf = pygame.Surface(size, pygame.SRCALPHA).convert_alpha()
 
-        tileset = pygame.image.load(
-            os.path.join(config.ASSET_DIR, "tileset_ground.png")
-        ).convert_alpha()
-
-        # cache sub-surface per atlas coord untuk kecepatan
-        cache_ground = {}
-        for key, (ax, ay) in self.ground.items():
-            sub = cache_ground.get((ax, ay))
-            if sub is None:
-                sub = tileset.subsurface((ax * cs, ay * cs, cs, cs))
-                cache_ground[(ax, ay)] = sub
-            ground_surf.blit(sub, (key[0] * cs, key[1] * cs))
-
-        cache_obs = {}
-        for key, (src, ax, ay) in self.obstacles.items():
-            inner = cache_obs.get(src)
-            if inner is None:
-                inner = pygame.image.load(
-                    os.path.join(config.ASSET_DIR, src)
-                ).convert_alpha()
-                cache_obs[src] = inner
-            obstacle_surf.blit(inner, (key[0] * cs, key[1] * cs), (ax * cs, ay * cs, cs, cs))
+        self._blit_layer(ground_surf, self.water)
+        self._blit_layer(ground_surf, self.ground)
+        self._blit_layer(ground_surf, self.decorations)
+        self._blit_layer(obstacle_surf, self.obstacles)
 
         self._ground_surface = ground_surf
         self._obstacle_surface = obstacle_surf
         return ground_surf, obstacle_surf
+
+    def _blit_layer(self, target, cells):
+        cs = self.cell_size
+        cache = {}
+        for key, (src, atlas_x, atlas_y) in cells.items():
+            image = cache.get(src)
+            if image is None:
+                image = pygame.image.load(
+                    os.path.join(config.ASSET_DIR, src.replace("/", os.sep))
+                ).convert_alpha()
+                cache[src] = image
+            target.blit(
+                image,
+                (key[0] * cs, key[1] * cs),
+                (atlas_x * cs, atlas_y * cs, cs, cs),
+            )
 
     @property
     def ground_surface(self):

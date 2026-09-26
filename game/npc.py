@@ -5,6 +5,7 @@ diganti, lalu mengejar player selangkah demi selangkah selama mode chase.
 """
 
 from . import config
+from .animation import AnimatedSprite
 from .search import AStarAlgorithm, UCS, GridManager, HEURISTICS
 
 ALGO_TO_SEARCH = None
@@ -52,6 +53,13 @@ class NPC:
         self.chase_timer = 0.0
         self.current_path = []
 
+        # 1 siklus walk (4 frame) pas 1 langkah ubin NPC
+        self.sprite = AnimatedSprite(
+            config.OYEN_DIR,
+            target_height=config.CHARACTER_HEIGHT,
+            frame_duration=config.NPC_WALK_FRAME_DURATION,
+        )
+
         self._spawn()
         self.find_path(self.player.grid)
 
@@ -79,6 +87,8 @@ class NPC:
             if not self.moving:
                 self.px, self.py = self.frame_to
                 self._on_movement_finished()
+
+        self.sprite.update(dt, self.moving)
 
         if self.chasing and not self.moving:
             self.chase_timer += dt
@@ -135,6 +145,11 @@ class NPC:
         target_grid = tuple(target_grid)
         self.grid = target_grid
         target_px, target_py = self.map.world_to_px(target_grid)
+        # Facing mengikuti arah langkah; delta diagonal tidak ada di game ini.
+        self.sprite.update_direction(
+            (target_px > self.px) - (target_px < self.px),
+            (target_py > self.py) - (target_py < self.py),
+        )
         self.frame_from = (self.px, self.py)
         self.frame_to = (target_px, target_py)
         self.move_t = 0.0

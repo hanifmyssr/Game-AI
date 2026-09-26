@@ -3,8 +3,6 @@
 Meniru struktur scene Godot: Map -> player, npc, DebugOverlay.
 """
 
-import os
-
 import pygame
 
 from . import config
@@ -59,9 +57,6 @@ class App:
         self.map_surface = None
         self.map_w, self.map_h = self.map.map_px_size()
 
-        self.player_sprite = self._load_character("player.png")
-        self.npc_sprite = self._load_character("npc.png")
-
         self._apply_viewport()
 
         # hitung jalur awal setelah seluruh pipeline siap
@@ -79,12 +74,6 @@ class App:
             fonts["bubble"] = pygame.font.Font(None, 26)
             fonts["title"] = pygame.font.Font(None, 28)
         return fonts
-
-    def _load_character(self, name):
-        path = os.path.join(config.ASSET_DIR, name)
-        img = pygame.image.load(path).convert_alpha()
-        size = int(64 * config.CHARACTER_SCALE)
-        return pygame.transform.smoothscale(img, (size, size))
 
     def _apply_viewport(self):
         w, h = self.screen.get_size()
@@ -149,8 +138,8 @@ class App:
 
         self.overlay.draw_world(self.screen, self.camera, self.map, self.npc, self.player)
 
-        self._draw_sprite(self.player_sprite, self.player.px, self.player.py)
-        self._draw_sprite(self.npc_sprite, self.npc.px, self.npc.py)
+        self._draw_sprite(self.player.sprite.current_image, self.player.px, self.player.py)
+        self._draw_sprite(self.npc.sprite.current_image, self.npc.px, self.npc.py)
 
         if self.player.call_bubble_visible:
             self._draw_call_bubble()

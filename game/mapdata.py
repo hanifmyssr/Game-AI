@@ -12,14 +12,17 @@ import pygame
 from . import config
 
 
-def _is_dirt_road_tile(atlas_coords):
-    """Ubin jalan cokelat pada atlas Ext_10a_DEMO (baris 2-4, kolom 0-11).
-
-    Disediakan untuk paritas dengan map_data.gd. Pada peta aktual tidak ada
-    ubin jalan, sehingga semua sel tanah yang tertutup obstacle adalah blocker.
-    """
-    ax, ay = atlas_coords
-    return 0 <= ax <= 11 and 2 <= ay <= 4
+def _is_dirt_road_cell(cell_info):
+    """Cek apakah ubin adalah jalan tanah/jembatan (cost 1.0) atau rumput/medan (cost 2.0)."""
+    if not cell_info:
+        return False
+    src, ax, ay = cell_info
+    if "Wood Bridge" in src:
+        return True
+    if "Ext_10a_DEMO" in src:
+        if (ax, ay) == (11, 12) or (0 <= ax <= 11 and 2 <= ay <= 4):
+            return True
+    return False
 
 
 class MapData:
@@ -73,13 +76,11 @@ class MapData:
         self.ground_set.update(self.ground)
         self.obstacle_set.update(self.obstacles)
 
-        # walkable = ground minus obstacle (logika setara map_data.gd, yang
-        # hanya menambahkan 'road' jika ubin tanah adalah jalan).
+        # walkable = ground minus obstacle and water
         self.walkable_set = {
             key
             for key in self.ground
-            if _is_dirt_road_tile(self.ground[key][1:])
-            or key not in self.obstacle_set
+            if key not in self.obstacle_set and key not in self.water
         }
 
     def _load_layer(self, cells, target):
@@ -103,8 +104,13 @@ class MapData:
     def is_obstacle(self, pos):
         return not self.is_walkable(pos)
 
-    def get_step_cost(self, _pos):
-        return 1.0
+    def get_step_cost(self, pos):
+        pos = tuple(pos)
+        if pos in self.decorations and _is_dirt_road_cell(self.decorations[pos]):
+            return 1.0
+        if pos in self.ground and _is_dirt_road_cell(self.ground[pos]):
+            return 1.0
+        return 2.0
 
     def get_map_center(self):
         return (self.width // 2, self.height // 2)

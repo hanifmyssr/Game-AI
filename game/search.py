@@ -127,6 +127,7 @@ class UCS:
 
         open_list = [PathNode(start, 0.0, 0.0, None)]
         closed_list = set()
+        visited_order = []
         all_nodes = {tuple(start): open_list[0]}
 
         while open_list:
@@ -137,13 +138,14 @@ class UCS:
                 continue
 
             closed_list.add(current.pos)
+            visited_order.append(current.pos)
 
             if current.pos == tuple(target):
                 final_path = reconstruct_path(current)
                 end_time = time.perf_counter()
                 return SearchContract.create_result(
                     final_path,
-                    list(closed_list),
+                    visited_order,
                     len(closed_list),
                     (end_time - start_time) * 1000.0,
                     current.g,
@@ -167,7 +169,7 @@ class UCS:
         end_time = time.perf_counter()
         return SearchContract.create_result(
             [],
-            list(closed_list),
+            visited_order,
             len(closed_list),
             (end_time - start_time) * 1000.0,
         )
@@ -192,6 +194,7 @@ class AStarAlgorithm:
 
         open_list = [PathNode(start, 0.0, h_func(start, target), None)]
         closed_list = set()
+        visited_order = []
         all_nodes = {tuple(start): open_list[0]}
 
         while open_list:
@@ -202,13 +205,14 @@ class AStarAlgorithm:
                 continue
 
             closed_list.add(current.pos)
+            visited_order.append(current.pos)
 
             if current.pos == tuple(target):
                 final_path = reconstruct_path(current)
                 end_time = time.perf_counter()
                 return SearchContract.create_result(
                     final_path,
-                    list(closed_list),
+                    visited_order,
                     len(closed_list),
                     (end_time - start_time) * 1000.0,
                     current.g,
@@ -234,7 +238,7 @@ class AStarAlgorithm:
         end_time = time.perf_counter()
         return SearchContract.create_result(
             [],
-            list(closed_list),
+            visited_order,
             len(closed_list),
             (end_time - start_time) * 1000.0,
         )

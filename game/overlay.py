@@ -287,8 +287,8 @@ class DebugOverlay:
 
         lines = []
         lines.append(("── BOBOT MEDAN (COST) ────────────────", config.DEBUG_TEXT_SECONDARY))
-        lines.append(("  • Jalan Tanah  : Cost 0.5 (Ringan)", config.DEBUG_TEXT_PRIMARY))
-        lines.append(("  • Area Rumput  : Cost 1.0 (Normal)", config.DEBUG_TEXT_WARN))
+        lines.append(("  • Jalan Tanah  : Cost 1.0 (Ringan)", config.DEBUG_TEXT_PRIMARY))
+        lines.append(("  • Area Rumput  : Cost 2.0 (Normal)", config.DEBUG_TEXT_WARN))
         lines.append(("", None))
 
         lines.append(("── STATISTIK JALUR ────────────────────", config.DEBUG_TEXT_SECONDARY))
@@ -460,10 +460,9 @@ class DebugOverlay:
 
         if self.mode == "EXPLORATION":
             self._draw_exploration_ui(surface)
+            self._draw_cost_toggle(surface)
         else:
             self._draw_battle_ui(surface)
-
-        self._draw_cost_toggle(surface)
 
     def _draw_cost_toggle(self, surface):
         fill = (70, 175, 95, 230) if self.show_costs else (225, 230, 238, 230)

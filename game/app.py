@@ -456,7 +456,7 @@ class App:
 
         # Label Teks Badge "🐱 Oyen (X ubin)"
         font = self.fonts.get("bubble", self.fonts["sm"])
-        txt_surf = font.render(f"🐱 Oyen ({dist_grid} meter)", True, (255, 255, 255))
+        txt_surf = font.render(f"🐱 Bolu ({dist_grid} meter)", True, (255, 255, 255))
 
         txt_x = int(edge_x)
         txt_y = int(edge_y + radius + 16)

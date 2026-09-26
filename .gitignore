@@ -15,3 +15,6 @@ dist/
 downloads/
 eggs/
 .eggs/
+
+.LAPORAN_TAHAP_2.md
+.check.md

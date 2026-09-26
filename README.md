@@ -24,9 +24,9 @@ Sistem dikembangkan menggunakan Python 3.10+ berbasis kerangka Pygame dengan ars
 ```
 Game-AI/
 ├── main.py                     # Entry point aplikasi utama
-├── requirements.txt            # Dependensi proyek (pygame)
+├── requirements.txt            # Dependensi proyek (pygame-ce)
 ├── data/
-│   └── map.json                # Metadata grid peta, ubin tanah, dan rintangan
+│   └── map_tubes.json          # Metadata grid peta, layer ubin, rintangan, dan dekorasi
 ├── game/
 │   ├── __init__.py
 │   ├── app.py                  # Main loop, penanganan input, kamera, dan manajer state
@@ -34,7 +34,7 @@ Game-AI/
 │   ├── battle_system.py        # Logika pertarungan turn-based dan pemilih aksi NPC
 │   ├── config.py               # Konstanta visual, warna panel, skala, dan jalur aset
 │   ├── events.py               # Event dispatcher untuk komunikasi antar-komponen
-│   ├── mapdata.py              # Parser map.json, pembangun surface, dan sistem koordinat
+│   ├── mapdata.py              # Parser map_tubes.json, pembangun surface, sistem koordinat & step cost
 │   ├── npc.py                  # Entitas NPC Kucing (pathfinding real-time & pengatur jarak duel)
 │   ├── overlay.py              # Visualisasi debug overlay (Pathfinding stats & Duel stats)
 │   ├── player.py               # Entitas Player (Bolu)
@@ -49,32 +49,43 @@ Game-AI/
 ## 3. Tahap 1: Pathfinding & Algoritma Pencarian Jalur
 
 ### 3.1 Model Grid & Weighted Terrain Cost
-Peta permainan direpresentasikan sebagai grid 2D $N \times M$ dengan ukuran ubin $16 \times 16$ piksel. Setiap sel grid $n = (x, y)$ memiliki tipe medan dengan bobot langkah (*step cost*) $c(n, n')$ yang berbeda:
+Peta permainan direpresentasikan sebagai grid 2D $N \times M$ dengan ukuran ubin $16 \times 16$ piksel. Data peta dibaca dari `data/map_tubes.json` yang memiliki empat layer: `ground`, `decorations`, `obstacles`, dan `water`.
 
-$$c(n, n') = \begin{cases} 
-0.5, & \text{jika } n' \in \text{Jalan Tanah (Dirt Road)} \\
-1.0, & \text{jika } n' \in \text{Rumput (Grass)} \\
-\infty, & \text{jika } n' \in \text{Rintangan (Obstacle / Non-walkable)}
+Setiap sel walkable memiliki biaya langkah (*step cost*) $c(n)$ yang berbeda berdasarkan tipe medannya:
+
+$$c(n) = \begin{cases} 
+1.0, & \text{jika } n \in \text{Jalan Tanah (Dirt Road / Jembatan)} \\
+2.0, & \text{jika } n \in \text{Rumput / Medan Umum (Grass)} \\
+\infty, & \text{jika } n \in \text{Rintangan (Obstacle / Non-walkable)}
 \end{cases}$$
+
+**Identifikasi tipe medan** dilakukan di `mapdata.py` dengan fungsi `_is_dirt_road_cell()` yang memeriksa nama aset tile dan koordinat atlas:
+- Tile `"Wood Bridge"` → Jalan Tanah (cost 1.0)
+- Tile `"Ext_10a_DEMO"` dengan koordinat atlas `(11,12)` atau baris atlas `2 ≤ ay ≤ 4` → Jalan Tanah (cost 1.0)
+- Semua tile lainnya → Rumput (cost 2.0)
+
+**Walkable cell** = `ground` − `obstacles` − `water`
 
 ### 3.2 Algoritma Pencarian Jalur
 
 1. **Uniform Cost Search (UCS)**:
-   Algoritma pencarian tak diinformasikan (*uninformed search*) yang mengekspansi node berdasarkan akumulasi biaya jalur riwayat terendah $g(n)$ dari titik awal tanpa memperhitungkan estimasi sisa jarak ke target ($h(n) = 0$).
+   Algoritma pencarian tak diinformasikan (*uninformed search*) yang mengekspansi node berdasarkan akumulasi biaya jalur riwayat terendah $g(n)$ dari titik awal. Tidak menggunakan heuristik ($h(n) = 0$).
    
    Fungsi evaluasi node:
-   $$f(n) = g(n), \quad h(n) = 0$$
-   di mana $g(n)$ dihitung secara akumulatif:
-   $$g(n) = g(\text{parent}(n)) + c(\text{parent}(n), n)$$
+   $$f(n) = g(n), \quad g(n) = g(\text{parent}(n)) + c(n)$$
+
+   **Properti:** Complete ✓, Optimal ✓ (cost ≥ 0)
 
 2. **A* Search**:
-   Algoritma pencarian diinformasikan (*informed search*) yang menggabungkan akumulasi biaya riwayat $g(n)$ dengan estimasi jarak heuristik $h(n)$ untuk mengarahkan pencarian ke target secara efisien.
+   Algoritma pencarian diinformasikan (*informed search*) yang menggabungkan akumulasi biaya riwayat $g(n)$ dengan estimasi jarak heuristik $h(n)$.
    
    Fungsi evaluasi node:
    $$f(n) = g(n) + h(n)$$
    
-   *Tie-breaking rule*: Jika dua node memiliki nilai $f(n)$ yang identik, node dengan nilai $h(n)$ lebih kecil diprioritaskan diekspansi terlebih dahulu:
+   *Tie-breaking rule*: Jika dua node memiliki nilai $f(n)$ identik, node dengan $h(n)$ lebih kecil diprioritaskan:
    $$\text{Priority}(n) = (f(n), h(n))$$
+
+   **Properti:** Complete ✓, Optimal ✓ (jika h admissible), umumnya lebih cepat dari UCS.
 
 ### 3.3 Formulasi Matematika Fungsi Heuristik $h(n)$
 Fungsi heuristik $h(n)$ memperkirakan jarak terpendek dari posisi saat ini $a = (x_a, y_a)$ ke target $b = (x_b, y_b)$:
@@ -87,6 +98,8 @@ Fungsi heuristik $h(n)$ memperkirakan jarak terpendek dari posisi saat ini $a = 
 
 3. **Chebyshev Distance**:
    $$h_{\text{Chebyshev}}(a, b) = \max(|x_a - x_b|, |y_a - y_b|)$$
+
+Semua heuristik bersifat **admissible** sehingga A\* dijamin optimal. Pada peta yang sama, UCS dan semua varian A\* menghasilkan jalur yang **identik dan optimal** — perbedaan hanya pada jumlah node yang diekspansi (A\* lebih efisien).
 
 ---
 

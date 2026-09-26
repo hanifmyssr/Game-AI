@@ -25,6 +25,14 @@ def _is_dirt_road_cell(cell_info):
     return False
 
 
+def _is_bridge_cell(cell_info):
+    """Cek apakah ubin adalah jembatan."""
+    if not cell_info:
+        return False
+    src, ax, ay = cell_info
+    return "Wood Bridge" in src
+
+
 class MapData:
     def __init__(self, map_file=None):
         self.map_file = map_file or config.MAP_FILE
@@ -73,15 +81,27 @@ class MapData:
         self._load_layer(doc.get("decorations", []), self.decorations)
         self._load_layer(doc.get("obstacles", []), self.obstacles)
 
-        self.ground_set.update(self.ground)
-        self.obstacle_set.update(self.obstacles)
+        # Identifikasi sel jembatan dari seluruh layer
+        bridge_set = set()
+        for layer_dict in (self.ground, self.decorations, self.water, self.obstacles):
+            for key, cell_info in layer_dict.items():
+                if _is_bridge_cell(cell_info):
+                    bridge_set.add(key)
 
-        # walkable = ground minus obstacle and water
-        self.walkable_set = {
-            key
-            for key in self.ground
-            if key not in self.obstacle_set and key not in self.water
-        }
+        self.ground_set.update(self.ground)
+        self.ground_set.update(bridge_set)
+        self.obstacle_set.update(self.obstacles)
+        # Sel jembatan dapat dilalui (bukan obstacle)
+        self.obstacle_set.difference_update(bridge_set)
+
+        # walkable = (ground atau jembatan) minus obstacle dan water (kecuali jembatan)
+        self.walkable_set = set()
+        for key in self.ground_set:
+            if key in self.obstacle_set:
+                continue
+            if key in self.water and key not in bridge_set:
+                continue
+            self.walkable_set.add(key)
 
     def _load_layer(self, cells, target):
         for cell in cells:
@@ -106,10 +126,9 @@ class MapData:
 
     def get_step_cost(self, pos):
         pos = tuple(pos)
-        if pos in self.decorations and _is_dirt_road_cell(self.decorations[pos]):
-            return 1.0
-        if pos in self.ground and _is_dirt_road_cell(self.ground[pos]):
-            return 1.0
+        for layer in (self.decorations, self.ground, self.water, self.obstacles):
+            if pos in layer and _is_dirt_road_cell(layer[pos]):
+                return 1.0
         return 2.0
 
     def get_map_center(self):

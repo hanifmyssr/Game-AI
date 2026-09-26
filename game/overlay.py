@@ -13,12 +13,22 @@ MOUSEBUTTONDOWN = getattr(pygame, "MOUSEBUTTONDOWN", 1025)
 SRCALPHA = getattr(pygame, "SRCALPHA", 0x00010000)
 
 
+def draw_card(surface, rect, bg_color, border_color=None, border_radius=8, border_width=1):
+    """Fungsi pembantu untuk menggambar kartu/kontainer dengan pinggiran mulus."""
+    card_surf = pygame.Surface((rect.width, rect.height), SRCALPHA)
+    pygame.draw.rect(card_surf, bg_color, card_surf.get_rect(), border_radius=border_radius)
+    surface.blit(card_surf, (rect.x, rect.y))
+    if border_color:
+        pygame.draw.rect(surface, border_color, rect, border_width, border_radius=border_radius)
+
+
 class Dropdown:
-    def __init__(self, rect, labels, on_select, initial_idx=0):
+    def __init__(self, rect, labels, on_select, initial_idx=0, placeholder="-- Pilih Algoritma --"):
         self.rect = pygame.Rect(rect)
         self.labels = labels
         self.on_select = on_select
         self.selected = initial_idx
+        self.placeholder = placeholder
         self.open = False
 
     @property
@@ -28,7 +38,7 @@ class Dropdown:
     def menu_rect(self):
         w = self.rect.width
         h = self.option_height * len(self.labels)
-        return pygame.Rect(self.rect.x, self.rect.bottom + 2, w, h)
+        return pygame.Rect(self.rect.x, self.rect.bottom + 4, w, h)
 
     def handle_event(self, event):
         if event.type == MOUSEBUTTONDOWN and event.button == 1:
@@ -54,40 +64,42 @@ class Dropdown:
         return False
 
     def draw(self, surface, fonts):
-        bg_surf = pygame.Surface((self.rect.width, self.rect.height), SRCALPHA)
-        bg_surf.fill(config.DEBUG_DROPDOWN_BG)
-        surface.blit(bg_surf, (self.rect.x, self.rect.y))
+        # Button background & border
+        bg_color = (242, 246, 252, 245) if self.open else (238, 242, 248, 235)
+        draw_card(surface, self.rect, bg_color, border_color=config.DEBUG_TEXT_HIGHLIGHT if self.open else (140, 155, 180, 200), border_radius=6)
 
-        border_color = config.DEBUG_PANEL_BORDER if self.open else (70, 80, 100, 180)
-        pygame.draw.rect(surface, border_color, self.rect, 2, border_radius=4)
+        if self.selected is not None and 0 <= self.selected < len(self.labels):
+            label = self.labels[self.selected]
+            text_color = config.DEBUG_TEXT_PRIMARY
+        else:
+            label = self.placeholder
+            text_color = config.DEBUG_TEXT_SECONDARY
 
-        label = self.labels[self.selected] if self.selected < len(self.labels) else ""
         if label:
-            surf = fonts["sm"].render(label, True, config.DEBUG_TEXT_PRIMARY)
-            surface.blit(surf, (self.rect.x + 8, self.rect.y + (self.rect.height - surf.get_height()) // 2))
+            surf = fonts["sm"].render(label, True, text_color)
+            surface.blit(surf, (self.rect.x + 10, self.rect.y + (self.rect.height - surf.get_height()) // 2))
 
-        # Panah dropdown
+        # Panah indikator dropdown
         cx = self.rect.right - 14
         cy = self.rect.centery
         arrow_color = config.DEBUG_TEXT_HIGHLIGHT if self.open else config.DEBUG_TEXT_SECONDARY
         if self.open:
-            pygame.draw.polygon(surface, arrow_color, [(cx - 5, cy - 2), (cx + 5, cy - 2), (cx, cy + 4)])
+            pygame.draw.polygon(surface, arrow_color, [(cx - 4, cy + 1), (cx + 4, cy + 1), (cx, cy - 4)])
         else:
-            pygame.draw.polygon(surface, arrow_color, [(cx - 5, cy + 2), (cx + 5, cy + 2), (cx, cy - 4)])
+            pygame.draw.polygon(surface, arrow_color, [(cx - 4, cy - 2), (cx + 4, cy - 2), (cx, cy + 3)])
 
         # Menu pilihan saat terbuka
         if self.open:
             menu = self.menu_rect()
+            draw_card(surface, menu, (248, 251, 255, 252), border_color=config.DEBUG_TEXT_HIGHLIGHT, border_radius=8, border_width=1)
+
             for i, lbl in enumerate(self.labels):
-                r = pygame.Rect(menu.x, menu.y + i * self.option_height, menu.w, self.option_height)
-                item_surf = pygame.Surface((r.width, r.height), pygame.SRCALPHA)
-                if i == self.selected:
-                    item_surf.fill(config.DEBUG_DROPDOWN_SELECTED)
+                r = pygame.Rect(menu.x + 4, menu.y + i * self.option_height + 2, menu.w - 8, self.option_height - 4)
+                if self.selected is not None and i == self.selected:
+                    draw_card(surface, r, (210, 228, 250, 240), border_color=(120, 170, 230, 200), border_radius=5)
+                    ts = fonts["sm"].render(lbl, True, config.DEBUG_TEXT_HIGHLIGHT)
                 else:
-                    item_surf.fill(config.DEBUG_DROPDOWN_BG)
-                surface.blit(item_surf, (r.x, r.y))
-                pygame.draw.rect(surface, (60, 90, 140, 160), r, 1)
-                ts = fonts["sm"].render(lbl, True, config.DEBUG_TEXT_PRIMARY)
+                    ts = fonts["sm"].render(lbl, True, config.DEBUG_TEXT_PRIMARY)
                 surface.blit(ts, (r.x + 8, r.y + (r.height - ts.get_height()) // 2))
 
 
@@ -124,6 +136,8 @@ class DebugOverlay:
             (self.panel_x + 12, dropdown_y, self.panel_w - 24, 32),
             [label for _, label in config.ALGORITHMS],
             self._on_algorithm_selected,
+            initial_idx=None,
+            placeholder="-- Pilih Algoritma --",
         )
 
         stats_top = dropdown_y + 42
@@ -143,7 +157,7 @@ class DebugOverlay:
 
         # Dropdown AI Battle: Algoritma
         self.dropdown_battle_algo = Dropdown(
-            (px, self.panel_y + 60, pw, 30),
+            (px + 6, self.panel_y + 70, pw - 12, 28),
             ["Alpha-Beta Pruning", "Pure Minimax", "Expectimax (Stokastik)"],
             self._on_battle_algo_selected,
             initial_idx=0,
@@ -151,28 +165,28 @@ class DebugOverlay:
 
         # Dropdown AI Battle: Fungsi Evaluasi
         self.dropdown_battle_eval = Dropdown(
-            (px, self.panel_y + 116, pw, 30),
+            (px + 6, self.panel_y + 124, pw - 12, 28),
             ["Balanced (Standar)", "Aggressive (Offensif)", "Defensive (Taktis)"],
             self._on_battle_eval_selected,
             initial_idx=0,
         )
 
-        # Tombol Aksi Player (4 Aksi: Attack, Heavy Attack, Defend, Potion)
-        bw = (pw - 8) // 2
-        btn_y = self.panel_y + 260
-        self.btn_attack = pygame.Rect(px, btn_y, bw, 32)
-        self.btn_heavy = pygame.Rect(px + bw + 8, btn_y, bw, 32)
-        self.btn_defend = pygame.Rect(px, btn_y + 38, bw, 32)
-        self.btn_potion = pygame.Rect(px + bw + 8, btn_y + 38, bw, 32)
-
         # Tombol Kedalaman AI (Depth - dan +)
-        self.btn_depth_minus = pygame.Rect(px + pw - 75, self.panel_y + 152, 32, 26)
-        self.btn_depth_plus = pygame.Rect(px + pw - 38, self.panel_y + 152, 32, 26)
-        self.btn_depth_help = pygame.Rect(px + 184, self.panel_y + 152, 26, 26)
+        self.btn_depth_minus = pygame.Rect(px + pw - 78, self.panel_y + 162, 30, 24)
+        self.btn_depth_plus = pygame.Rect(px + pw - 42, self.panel_y + 162, 30, 24)
+        self.btn_depth_help = pygame.Rect(px + 180, self.panel_y + 162, 24, 24)
 
         # Tombol Move Ordering Toggle
-        self.btn_move_ordering = pygame.Rect(px + pw - 60, self.panel_y + 182, 54, 24)
-        self.btn_move_ordering_help = pygame.Rect(px + 132, self.panel_y + 182, 26, 24)
+        self.btn_move_ordering = pygame.Rect(px + pw - 62, self.panel_y + 192, 54, 24)
+        self.btn_move_ordering_help = pygame.Rect(px + 134, self.panel_y + 192, 24, 24)
+
+        # Tombol Aksi Player (4 Aksi: Attack, Heavy Attack, Defend, Potion)
+        bw = (pw - 18) // 2
+        btn_y = self.panel_y + 264
+        self.btn_attack = pygame.Rect(px + 6, btn_y, bw, 32)
+        self.btn_heavy = pygame.Rect(px + 12 + bw, btn_y, bw, 32)
+        self.btn_defend = pygame.Rect(px + 6, btn_y + 38, bw, 32)
+        self.btn_potion = pygame.Rect(px + 12 + bw, btn_y + 38, bw, 32)
 
     def set_battle_system(self, battle_system):
         self.battle_system = battle_system
@@ -184,6 +198,8 @@ class DebugOverlay:
     # Event Handlers Dropdown
     # ------------------------------------------------------------------ #
     def _on_algorithm_selected(self, index):
+        if index is None or index < 0 or index >= len(config.ALGORITHMS):
+            return
         algo_name = config.ALGORITHMS[index][0]
         self.events.emit_algorithm_changed(algo_name)
         self.update_stats(len(self.expanded_nodes), self.last_time_ms)
@@ -262,7 +278,10 @@ class DebugOverlay:
 
     def update_stats(self, count, time_ms):
         self.last_time_ms = time_ms
-        selected_label = config.ALGORITHMS[self.dropdown_algo.selected][1]
+        if self.dropdown_algo.selected is not None and 0 <= self.dropdown_algo.selected < len(config.ALGORITHMS):
+            selected_label = config.ALGORITHMS[self.dropdown_algo.selected][1]
+        else:
+            selected_label = "-- Pilih Algoritma --"
         steps = max(0, len(self.path_nodes) - 1)
         cur_cost = self.comparison_data.get("cur_cost", 0.0) if self.comparison_data else 0.0
 
@@ -429,11 +448,15 @@ class DebugOverlay:
         sidebar_y = self.panel_y
         sidebar_h = screen_h - self.panel_y * 2
 
-        # 1. Background Sidebar Kiri
-        sidebar_surf = pygame.Surface((self.panel_w, sidebar_h), SRCALPHA)
-        sidebar_surf.fill(config.DEBUG_PANEL_BG)
-        pygame.draw.rect(sidebar_surf, config.DEBUG_PANEL_BORDER, (0, 0, self.panel_w, sidebar_h), 1, border_radius=8)
-        surface.blit(sidebar_surf, (self.panel_x, sidebar_y))
+        # 1. Background Sidebar Utama (Pinggiran Mulus dengan Smooth Rounded Corners & Outer Glow Border)
+        draw_card(
+            surface,
+            pygame.Rect(self.panel_x, sidebar_y, self.panel_w, sidebar_h),
+            config.DEBUG_PANEL_BG,
+            border_color=config.DEBUG_PANEL_BORDER,
+            border_radius=12,
+            border_width=2,
+        )
 
         if self.mode == "EXPLORATION":
             self._draw_exploration_ui(surface)
@@ -443,25 +466,30 @@ class DebugOverlay:
         self._draw_cost_toggle(surface)
 
     def _draw_cost_toggle(self, surface):
-        fill = (70, 175, 95, 210) if self.show_costs else (210, 214, 218, 210)
-        toggle_surf = pygame.Surface(self.cost_toggle_rect.size, SRCALPHA)
-        pygame.draw.rect(toggle_surf, fill, toggle_surf.get_rect(), border_radius=4)
-        pygame.draw.rect(toggle_surf, config.DEBUG_PANEL_BORDER, toggle_surf.get_rect(), 1, border_radius=4)
-        surface.blit(toggle_surf, self.cost_toggle_rect.topleft)
+        fill = (70, 175, 95, 230) if self.show_costs else (225, 230, 238, 230)
+        draw_card(surface, self.cost_toggle_rect, fill, border_color=(100, 120, 150, 200), border_radius=6)
         label = "Cost: ON" if self.show_costs else "Cost: OFF"
         text_color = (255, 255, 255) if self.show_costs else config.DEBUG_TEXT_PRIMARY
         text = self.fonts["sm"].render(label, True, text_color)
         surface.blit(text, (self.cost_toggle_rect.centerx - text.get_width() // 2, self.cost_toggle_rect.centery - text.get_height() // 2))
 
     def _draw_exploration_ui(self, surface):
-        title_surf = self.fonts.get("title", self.fonts["sm"]).render("AI PATHFINDING", True, config.DEBUG_TEXT_HIGHLIGHT)
-        surface.blit(title_surf, (self.panel_x + 14, self.panel_y + 12))
+        px = self.panel_x + 12
+        pw = self.panel_w - 24
+
+        # Header Card
+        header_rect = pygame.Rect(px, self.panel_y + 8, pw, 38)
+        draw_card(surface, header_rect, (235, 242, 252, 230), border_color=(180, 200, 230, 180), border_radius=8)
+        title_surf = self.fonts.get("title", self.fonts["sm"]).render("📍 AI PATHFINDING", True, config.DEBUG_TEXT_HIGHLIGHT)
+        surface.blit(title_surf, (header_rect.x + 10, header_rect.y + (header_rect.height - title_surf.get_height()) // 2))
 
         sub_surf = self.fonts["sm"].render("Pilih Algoritma AI:", True, config.DEBUG_TEXT_SECONDARY)
-        surface.blit(sub_surf, (self.panel_x + 14, self.panel_y + 38))
+        surface.blit(sub_surf, (px + 4, self.panel_y + 48))
 
         if self.stats_surface:
-            surface.blit(self.stats_surface, (self.stats_rect.x + 12, self.stats_rect.y))
+            stats_card = pygame.Rect(px, self.stats_rect.y, pw, self.stats_rect.height)
+            draw_card(surface, stats_card, (244, 247, 252, 220), border_color=(205, 215, 230, 180), border_radius=8)
+            surface.blit(self.stats_surface, (px, self.stats_rect.y))
 
         self.dropdown_algo.draw(surface, self.fonts)
 
@@ -470,101 +498,129 @@ class DebugOverlay:
         if battle_system is None:
             return
 
-        px = self.panel_x + 14
-        pw = self.panel_w - 28
+        px = self.panel_x + 12
+        pw = self.panel_w - 24
 
-        # Header Duel
-        title_surf = self.fonts.get("title", self.fonts["sm"]).render("⚔ DUEL MINIMAX AI", True, (255, 120, 80))
-        surface.blit(title_surf, (px, self.panel_y + 12))
+        # ---------------------------------------------------------------- #
+        # Kartu 1: Header Duel
+        # ---------------------------------------------------------------- #
+        header_rect = pygame.Rect(px, self.panel_y + 8, pw, 38)
+        draw_card(surface, header_rect, (255, 242, 235, 240), border_color=(255, 175, 140, 200), border_radius=8)
+        title_surf = self.fonts.get("title", self.fonts["sm"]).render("⚔ DUEL MINIMAX AI", True, (215, 65, 30))
+        surface.blit(title_surf, (header_rect.x + 10, header_rect.y + (header_rect.height - title_surf.get_height()) // 2))
 
+        # ---------------------------------------------------------------- #
+        # Kartu 2: Konfigurasi AI & Parameter Search
+        # ---------------------------------------------------------------- #
+        cfg_rect = pygame.Rect(px, self.panel_y + 50, pw, 172)
+        draw_card(surface, cfg_rect, (244, 247, 253, 235), border_color=(200, 212, 230, 200), border_radius=8)
+
+        # Labels & Dropdowns
         sub_algo = self.fonts["sm"].render("Algoritma AI NPC:", True, config.DEBUG_TEXT_SECONDARY)
-        surface.blit(sub_algo, (px, self.panel_y + 40))
+        surface.blit(sub_algo, (px + 8, self.panel_y + 54))
 
         sub_eval = self.fonts["sm"].render("Fungsi Evaluasi:", True, config.DEBUG_TEXT_SECONDARY)
-        surface.blit(sub_eval, (px, self.panel_y + 96))
+        surface.blit(sub_eval, (px + 8, self.panel_y + 108))
 
-        # Kontrol Kedalaman (Depth)
-        depth_y = self.panel_y + 154
+        # Baris Depth Control
+        depth_y = self.panel_y + 162
         depth_label = self.fonts["sm"].render(f"Kedalaman (Depth): {battle_system.depth}", True, config.DEBUG_TEXT_PRIMARY)
-        surface.blit(depth_label, (px, depth_y + 4))
+        surface.blit(depth_label, (px + 8, depth_y + 3))
 
-        # Tombol - & +
         for btn, text, fill in [
-            (self.btn_depth_minus, "-", (190, 70, 70)),
-            (self.btn_depth_plus, "+", (55, 155, 80)),
+            (self.btn_depth_minus, "-", (210, 75, 75)),
+            (self.btn_depth_plus, "+", (50, 160, 85)),
         ]:
-            pygame.draw.rect(surface, fill, btn, border_radius=4)
-            pygame.draw.rect(surface, config.DEBUG_PANEL_BORDER, btn, 1, border_radius=4)
-            ts = self.fonts.get("bubble", self.fonts["sm"]).render(text, True, config.DEBUG_TEXT_PRIMARY)
+            draw_card(surface, btn, fill, border_color=(100, 110, 125, 200), border_radius=5)
+            ts = self.fonts.get("bubble", self.fonts["sm"]).render(text, True, (255, 255, 255))
             surface.blit(ts, (btn.centerx - ts.get_width() // 2, btn.centery - ts.get_height() // 2))
 
-        pygame.draw.rect(surface, (70, 105, 155), self.btn_depth_help, border_radius=4)
-        pygame.draw.rect(surface, config.DEBUG_PANEL_BORDER, self.btn_depth_help, 1, border_radius=4)
+        draw_card(surface, self.btn_depth_help, (60, 100, 160), border_color=(100, 110, 125, 200), border_radius=5)
         help_text = self.fonts.get("bubble", self.fonts["sm"]).render("?", True, (255, 255, 255))
         surface.blit(help_text, (self.btn_depth_help.centerx - help_text.get_width() // 2, self.btn_depth_help.centery - help_text.get_height() // 2))
 
-        # Move Ordering Toggle
-        mo_y = self.panel_y + 184
+        # Baris Move Ordering Toggle
+        mo_y = self.panel_y + 192
         mo_on = battle_system.use_move_ordering
         mo_label = self.fonts["sm"].render("Move Ordering:", True, config.DEBUG_TEXT_PRIMARY)
-        surface.blit(mo_label, (px, mo_y + 4))
-        pygame.draw.rect(surface, (70, 105, 155), self.btn_move_ordering_help, border_radius=4)
-        pygame.draw.rect(surface, config.DEBUG_PANEL_BORDER, self.btn_move_ordering_help, 1, border_radius=4)
+        surface.blit(mo_label, (px + 8, mo_y + 3))
+
+        draw_card(surface, self.btn_move_ordering_help, (60, 100, 160), border_color=(100, 110, 125, 200), border_radius=5)
         help_text = self.fonts.get("bubble", self.fonts["sm"]).render("?", True, (255, 255, 255))
         surface.blit(help_text, (self.btn_move_ordering_help.centerx - help_text.get_width() // 2, self.btn_move_ordering_help.centery - help_text.get_height() // 2))
 
-        mo_color = (40, 150, 70) if mo_on else (90, 40, 40)
-        pygame.draw.rect(surface, mo_color, self.btn_move_ordering, border_radius=4)
-        pygame.draw.rect(surface, config.DEBUG_PANEL_BORDER, self.btn_move_ordering, 1, border_radius=4)
+        mo_fill = (45, 160, 85) if mo_on else (190, 60, 60)
+        draw_card(surface, self.btn_move_ordering, mo_fill, border_color=(100, 110, 125, 200), border_radius=10)
         mo_text = "ON" if mo_on else "OFF"
         ts_mo = self.fonts["sm"].render(mo_text, True, (255, 255, 255))
         surface.blit(ts_mo, (self.btn_move_ordering.centerx - ts_mo.get_width() // 2, self.btn_move_ordering.centery - ts_mo.get_height() // 2))
 
-        # Pembatas Garis
-        sep_y = self.panel_y + 215
-        pygame.draw.line(surface, (60, 70, 95), (px, sep_y), (px + pw, sep_y), 1)
-
-        # Status Giliran
+        # ---------------------------------------------------------------- #
+        # Kartu 3: Status Giliran & Tombol Aksi Pemain
+        # ---------------------------------------------------------------- #
         state = battle_system.state
+        act_card_y = self.panel_y + 226
+        act_card_h = 114
+        draw_card(surface, pygame.Rect(px, act_card_y, pw, act_card_h), (244, 247, 253, 235), border_color=(200, 212, 230, 200), border_radius=8)
+
         if state:
-            turn_text = "Giliran NPC (AI Berpikir...)" if state.is_npc_turn else "Giliran Anda (Pilih Aksi)"
-            turn_color = (255, 180, 80) if state.is_npc_turn else config.DEBUG_TEXT_HIGHLIGHT
+            turn_rect = pygame.Rect(px + 6, act_card_y + 6, pw - 12, 24)
             if battle_system.is_finished:
                 turn_text = f"Pertarungan Selesai: {battle_system.winner} MENANG!"
-                turn_color = (18, 112, 48)
+                turn_bg = (215, 245, 225, 240)
+                turn_color = (15, 110, 45)
+            elif state.is_npc_turn:
+                turn_text = "Giliran NPC (AI Berpikir...)"
+                turn_bg = (255, 238, 210, 240)
+                turn_color = (195, 90, 10)
+            else:
+                turn_text = "Giliran Anda (Pilih Aksi)"
+                turn_bg = (220, 238, 255, 240)
+                turn_color = (15, 95, 185)
 
-            turn_font = self.fonts.get("bubble", self.fonts["sm"])
-            ts_turn = turn_font.render(turn_text, True, turn_color)
-            surface.blit(ts_turn, (px, sep_y + 8))
+            draw_card(surface, turn_rect, turn_bg, border_color=None, border_radius=5)
+            ts_turn = self.fonts.get("bubble", self.fonts["sm"]).render(turn_text, True, turn_color)
+            surface.blit(ts_turn, (turn_rect.centerx - ts_turn.get_width() // 2, turn_rect.centery - ts_turn.get_height() // 2))
 
-            # Tombol-tombol Aksi Pemain
+            # Tombol-tombol Aksi Pemain (Attack, Heavy, Defend, Potion)
             can_act = (not state.is_npc_turn) and (not battle_system.is_finished)
             heavy_ready = state.player_heavy_cd <= 0
             heavy_label = "Heavy (30)" if heavy_ready else f"Heavy (CD:{state.player_heavy_cd})"
             actions_info = [
-                (self.btn_attack, "Attack (18)", (180, 50, 50), True),
-                (self.btn_heavy, heavy_label, (220, 90, 30), heavy_ready),
-                (self.btn_defend, "Defend (-65%)", (50, 100, 180), True),
-                (self.btn_potion, f"Potion ({state.player_potions})", (40, 150, 90), state.player_potions > 0 and state.player_hp < 100),
+                (self.btn_attack, "Attack (18)", (205, 55, 55), True),
+                (self.btn_heavy, heavy_label, (225, 105, 30), heavy_ready),
+                (self.btn_defend, "Defend (-65%)", (45, 115, 205), True),
+                (self.btn_potion, f"Potion ({state.player_potions})", (40, 160, 85), state.player_potions > 0 and state.player_hp < config.MAX_HP if hasattr(config, 'MAX_HP') else True),
             ]
 
             for btn_rect, btn_title, base_col, is_enabled in actions_info:
-                fill_col = base_col if (can_act and is_enabled) else (40, 44, 52)
-                text_col = (255, 255, 255) if (can_act and is_enabled) else (120, 125, 135)
-                pygame.draw.rect(surface, fill_col, btn_rect, border_radius=5)
-                pygame.draw.rect(surface, config.DEBUG_PANEL_BORDER, btn_rect, 1, border_radius=5)
+                if can_act and is_enabled:
+                    fill_col = base_col
+                    text_col = (255, 255, 255)
+                    border_col = (110, 120, 135, 180)
+                else:
+                    fill_col = (210, 215, 222, 220)
+                    text_col = (130, 135, 145)
+                    border_col = (180, 185, 195, 160)
+
+                draw_card(surface, btn_rect, fill_col, border_color=border_col, border_radius=6)
                 ts = self.fonts["sm"].render(btn_title, True, text_col)
                 surface.blit(ts, (btn_rect.centerx - ts.get_width() // 2, btn_rect.centery - ts.get_height() // 2))
 
-        # Metrik Live AI (Node Count, Execution Time, Skor Tiap Aksi)
-        metrics_y = self.panel_y + 340
-        pygame.draw.line(surface, (60, 70, 95), (px, metrics_y), (px + pw, metrics_y), 1)
+        # ---------------------------------------------------------------- #
+        # Kartu 4: Evaluasi AI, Node Counts & Pertimbangan Aksi
+        # ---------------------------------------------------------------- #
+        eval_card_y = self.panel_y + 346
+        eval_card_h = 280
+        draw_card(surface, pygame.Rect(px, eval_card_y, pw, eval_card_h), (244, 247, 253, 235), border_color=(200, 212, 230, 200), border_radius=8)
+
+        # Header Sub-panel Evaluasi AI
+        ts_mtitle = self.fonts["sm"].render("── EVALUASI AKSI & NODE COUNT ──", True, config.DEBUG_TEXT_SECONDARY)
+        surface.blit(ts_mtitle, (px + (pw - ts_mtitle.get_width()) // 2, eval_card_y + 8))
 
         stats = battle_system.last_ai_stats
-        ts_mtitle = self.fonts["sm"].render("── EVALUASI AKSI & NODE COUNT ──", True, config.DEBUG_TEXT_SECONDARY)
-        surface.blit(ts_mtitle, (px, metrics_y + 6))
+        cur_y = eval_card_y + 30
 
-        cur_y = metrics_y + 26
         if stats:
             nc = stats.get("node_count", 0)
             pc = stats.get("pruned_count", 0)
@@ -572,42 +628,59 @@ class DebugOverlay:
             best_a = stats.get("best_action", "—")
             best_s = stats.get("best_score", 0.0)
 
-            surface.blit(self.fonts["sm"].render(f"Nodes Diekspansi : {nc}", True, config.DEBUG_TEXT_PRIMARY), (px, cur_y))
+            # Node Count, Pruning, Timing
+            surface.blit(self.fonts["sm"].render(f"Nodes Diekspansi : {nc}", True, config.DEBUG_TEXT_PRIMARY), (px + 10, cur_y))
             cur_y += 18
             pruned_font = self.fonts.get("bubble", self.fonts["sm"])
-            surface.blit(pruned_font.render(f"Cabang Dipangkas : {pc}", True, (18, 112, 48)), (px, cur_y))
+            surface.blit(pruned_font.render(f"Cabang Dipangkas : {pc}", True, (15, 120, 50)), (px + 10, cur_y))
             cur_y += 18
-            surface.blit(self.fonts["sm"].render(f"Waktu Berpikir   : {t_ms:.2f} ms", True, config.DEBUG_TEXT_PRIMARY), (px, cur_y))
+            surface.blit(self.fonts["sm"].render(f"Waktu Berpikir   : {t_ms:.2f} ms", True, config.DEBUG_TEXT_PRIMARY), (px + 10, cur_y))
             cur_y += 18
+
+            # Best Action Card Highlight
+            best_card = pygame.Rect(px + 8, cur_y, pw - 16, 26)
+            draw_card(surface, best_card, (215, 235, 255, 230), border_color=(100, 160, 230, 200), border_radius=5)
             best_text = f"Pilihan Terbaik  : {best_a} (Skor: {best_s})"
-            best_lines = self._wrap_overlay_text(best_text, self.fonts["sm"], pw)
-            for best_line in best_lines:
-                surface.blit(self.fonts["sm"].render(best_line, True, config.DEBUG_TEXT_HIGHLIGHT), (px, cur_y))
-                cur_y += 16
-            cur_y += 8
+            ts_best = self.fonts["sm"].render(best_text, True, config.DEBUG_TEXT_HIGHLIGHT)
+            surface.blit(ts_best, (best_card.x + 8, best_card.centery - ts_best.get_height() // 2))
+            cur_y += 32
 
             # Tabel Skor Pertimbangan Tiap Aksi di Root
-            surface.blit(self.fonts["sm"].render("Pertimbangan Nilai Aksi (Root):", True, config.DEBUG_TEXT_SECONDARY), (px, cur_y))
+            surface.blit(self.fonts["sm"].render("Pertimbangan Nilai Aksi (Root):", True, config.DEBUG_TEXT_SECONDARY), (px + 10, cur_y))
             cur_y += 18
+
             scores = stats.get("action_scores", {})
             for act, val in scores.items():
                 is_selected = (act == best_a)
-                prefix = "▶ " if is_selected else "  • "
-                col = config.DEBUG_TEXT_HIGHLIGHT if is_selected else config.DEBUG_TEXT_PRIMARY
-                surface.blit(self.fonts["sm"].render(f"{prefix}{act:<12}: {val:>7.1f}", True, col), (px, cur_y))
-                cur_y += 16
+                row_rect = pygame.Rect(px + 8, cur_y, pw - 16, 20)
+
+                if is_selected:
+                    draw_card(surface, row_rect, (205, 232, 255, 220), border_color=(120, 175, 240, 180), border_radius=4)
+                    prefix = "▶ "
+                    col = config.DEBUG_TEXT_HIGHLIGHT
+                else:
+                    draw_card(surface, row_rect, (236, 240, 248, 160), border_radius=4)
+                    prefix = "  • "
+                    col = config.DEBUG_TEXT_PRIMARY
+
+                surface.blit(self.fonts["sm"].render(f"{prefix}{act:<12}: {val:>7.1f}", True, col), (row_rect.x + 4, row_rect.centery - 7))
+                cur_y += 22
         else:
-            surface.blit(self.fonts["sm"].render("Menunggu kalkulasi pertama AI...", True, config.DEBUG_TEXT_SECONDARY), (px, cur_y))
+            surface.blit(self.fonts["sm"].render("Menunggu kalkulasi pertama AI...", True, config.DEBUG_TEXT_SECONDARY), (px + 10, cur_y))
             cur_y += 40
 
-        # Shortcut / Petunjuk di bagian bawah
-        bottom_y = surface.get_height() - 90
-        pygame.draw.line(surface, (60, 70, 95), (px, bottom_y), (px + pw, bottom_y), 1)
-        surface.blit(self.fonts["sm"].render("[R] Reset Duel", True, config.DEBUG_TEXT_SECONDARY), (px, bottom_y + 8))
-        surface.blit(self.fonts["sm"].render("[Tab] Kembali ke Peta", True, config.DEBUG_TEXT_SECONDARY), (px, bottom_y + 25))
-        surface.blit(self.fonts["sm"].render("[1..4] Shortcut Aksi", True, config.DEBUG_TEXT_HIGHLIGHT), (px, bottom_y + 42))
+        # ---------------------------------------------------------------- #
+        # Kartu 5: Petunjuk Shortcut / Footer
+        # ---------------------------------------------------------------- #
+        footer_y = surface.get_height() - 76
+        footer_h = 64
+        draw_card(surface, pygame.Rect(px, footer_y, pw, footer_h), (244, 247, 253, 235), border_color=(200, 212, 230, 200), border_radius=8)
 
-        # Gambar Dropdowns paling atas agar popup melayang
+        surface.blit(self.fonts["sm"].render("[R] Reset Duel", True, config.DEBUG_TEXT_SECONDARY), (px + 12, footer_y + 8))
+        surface.blit(self.fonts["sm"].render("[Tab] Kembali ke Peta", True, config.DEBUG_TEXT_SECONDARY), (px + 12, footer_y + 26))
+        surface.blit(self.fonts["sm"].render("[1..4] Shortcut Aksi", True, config.DEBUG_TEXT_HIGHLIGHT), (px + 12, footer_y + 44))
+
+        # Gambar Dropdowns paling atas agar popup melayang tanpa tertutup
         self.dropdown_battle_eval.draw(surface, self.fonts)
         self.dropdown_battle_algo.draw(surface, self.fonts)
         if self.depth_help_open:
@@ -619,17 +692,14 @@ class DebugOverlay:
         help_font = self.fonts["sm"]
         help_lines = self._depth_help_lines(help_font, 250)
         popup = self._depth_help_popup_rect(len(help_lines))
-        popup_surface = pygame.Surface(popup.size, SRCALPHA)
-        popup_surface.fill((250, 250, 247, 242))
-        pygame.draw.rect(popup_surface, config.DEBUG_PANEL_BORDER, popup_surface.get_rect(), 1, border_radius=6)
+        draw_card(surface, popup, (252, 253, 255, 250), border_color=config.DEBUG_TEXT_HIGHLIGHT, border_radius=10, border_width=1)
         title = self.fonts.get("bubble", self.fonts["sm"]).render("Tentang Kedalaman AI", True, config.DEBUG_TEXT_HIGHLIGHT)
-        popup_surface.blit(title, (10, 8))
-        y = 31
+        surface.blit(title, (popup.x + 12, popup.y + 10))
+        y = popup.y + 32
         for line in help_lines:
             text = help_font.render(line, True, config.DEBUG_TEXT_PRIMARY)
-            popup_surface.blit(text, (10, y))
-            y += 17
-        surface.blit(popup_surface, popup.topleft)
+            surface.blit(text, (popup.x + 12, y))
+            y += 18
 
     def _depth_help_lines(self, font, max_width):
         help_text = (
@@ -640,23 +710,20 @@ class DebugOverlay:
         return self._wrap_overlay_text(help_text, font, max_width)
 
     def _depth_help_popup_rect(self, line_count):
-        height = 31 + line_count * 17 + 10
-        return pygame.Rect(self.panel_x + self.panel_w + 10, self.panel_y + 145, 270, height)
+        height = 34 + line_count * 18 + 12
+        return pygame.Rect(self.panel_x + self.panel_w + 10, self.panel_y + 145, 274, height)
 
     def _draw_move_ordering_help(self, surface):
         help_font = self.fonts["sm"]
         help_lines = self._move_ordering_help_lines(help_font, 250)
         popup = self._move_ordering_help_popup_rect(len(help_lines))
-        popup_surface = pygame.Surface(popup.size, SRCALPHA)
-        popup_surface.fill((250, 250, 247, 242))
-        pygame.draw.rect(popup_surface, config.DEBUG_PANEL_BORDER, popup_surface.get_rect(), 1, border_radius=6)
+        draw_card(surface, popup, (252, 253, 255, 250), border_color=config.DEBUG_TEXT_HIGHLIGHT, border_radius=10, border_width=1)
         title = self.fonts.get("bubble", self.fonts["sm"]).render("Tentang Move Ordering", True, config.DEBUG_TEXT_HIGHLIGHT)
-        popup_surface.blit(title, (10, 8))
-        y = 31
+        surface.blit(title, (popup.x + 12, popup.y + 10))
+        y = popup.y + 32
         for line in help_lines:
-            popup_surface.blit(help_font.render(line, True, config.DEBUG_TEXT_PRIMARY), (10, y))
-            y += 17
-        surface.blit(popup_surface, popup.topleft)
+            surface.blit(help_font.render(line, True, config.DEBUG_TEXT_PRIMARY), (popup.x + 12, y))
+            y += 18
 
     def _move_ordering_help_lines(self, font, max_width):
         help_text = (
@@ -667,8 +734,8 @@ class DebugOverlay:
         return self._wrap_overlay_text(help_text, font, max_width)
 
     def _move_ordering_help_popup_rect(self, line_count):
-        height = 31 + line_count * 17 + 10
-        return pygame.Rect(self.panel_x + self.panel_w + 10, self.panel_y + 175, 270, height)
+        height = 34 + line_count * 18 + 12
+        return pygame.Rect(self.panel_x + self.panel_w + 10, self.panel_y + 175, 274, height)
 
     @staticmethod
     def _wrap_overlay_text(text, font, max_width):

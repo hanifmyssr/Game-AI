@@ -1,4 +1,4 @@
-# LAPORAN TAHAP-2: DUEL TURN-BASED MENGGUNAKAN MINIMAX & ALPHA-BETA PRUNING
+# LAPORAN TAHAP-2: DUEL TURN-BASED AI MENGGUNAKAN MINIMAX, ALPHA-BETA PRUNING, DAN EXPECTIMAX ON GAME "BAKEKOK"
 
 **Mata Kuliah:** Kecerdasan Buatan  
 **Kelompok 7:**
@@ -10,63 +10,102 @@
 ---
 
 ## 1. Pendahuluan & Formulasi Masalah AI
-Pada Tugas Besar Tahap-2 ini, sistem permainan diperluas dari fase pencarian jalur (*Pathfinding A\* & UCS*) menjadi fase **Duel Turn-Based (Pertarungan Bergilir)** antara Bolu (Player) dan Kucing Hitam (NPC) saat keduanya berada dalam jarak kedekatan (jarak Manhattan $\le 1$).
 
-Pencarian keputusan NPC dimodelkan menggunakan kerangka kerja **Adversarial Search (Game Theory)** dengan formulasi formal:
+Pada Tugas Besar Tahap-2 ini, sistem permainan **Bakekok** diperluas dari fase pencarian jalur (*Pathfinding A\* & UCS*) menjadi fase **Duel Turn-Based (Pertarungan Bergilir)** antara Bolu (Player) dan Kucing Hitam (NPC) saat keduanya berada dalam jarak kedekatan (jarak Manhattan $\le 1$).
 
-### 1.1 State Representation ($S$)
-Suatu *state* $s$ merepresentasikan snapshot kondisi duel lengkap:
-$$s = \langle HP_{\text{player}}, HP_{\text{npc}}, Pot_{\text{player}}, Pot_{\text{npc}}, Def_{\text{player}}, Def_{\text{npc}}, Turn \rangle$$
+Pencarian keputusan NPC dimodelkan menggunakan kerangka kerja **Adversarial Search (Game Theory)** dengan formulasi formal sebagai berikut:
+
+### 1.1 State Representation ($S$) & State Vector
+Suatu *state* $s$ merepresentasikan snapshot kondisi duel lengkap dalam bentuk vektor keadaan:
+$$s = \langle HP_{\text{player}}, HP_{\text{npc}}, Pot_{\text{player}}, Pot_{\text{npc}}, Def_{\text{player}}, Def_{\text{npc}}, Turn, CD_{\text{player}}, CD_{\text{npc}} \rangle$$
+
 - $HP_{\text{player}}, HP_{\text{npc}} \in [0, 100]$: Status kesehatan masing-masing petarung.
-- $Pot_{\text{player}}, Pot_{\text{npc}} \in [0, 3]$: Jumlah cadangan potion pemulih (+25 HP).
+- $Pot_{\text{player}}, Pot_{\text{npc}} \in [0, 3]$: Jumlah cadangan potion pemulih (+25 HP, stok awal 2).
 - $Def_{\text{player}}, Def_{\text{npc}} \in \{\text{True}, \text{False}\}$: Status bertahan (mengurangi damage yang masuk berikutnya sebesar 65%).
 - $Turn \in \{\text{MAX (NPC)}, \text{MIN (Player)}\}$: Petarung yang memegang hak giliran.
+- $CD_{\text{player}}, CD_{\text{npc}} \in [0, 2]$: Sisa giliran *cooldown* serangan `HEAVY_ATTACK` (bernilai 0 jika siap digunakan, dan tereset ke 2 setelah digunakan).
 
 ### 1.2 Actions ($A(s)$) — Branching Factor $b \le 4$
 Setiap giliran, petarung dapat memilih maksimal salah satu dari 4 aksi legal:
-1. `ATTACK`: Serangan reguler dengan damage dasar 18 (tereduksi menjadi 6 jika musuh bertahan).
-2. `HEAVY_ATTACK`: Serangan telak dengan damage dasar 30 (tereduksi menjadi 10 jika musuh bertahan).
+1. `ATTACK`: Serangan reguler dengan damage dasar 18 (tereduksi menjadi 6 jika musuh dalam status `DEFEND`).
+2. `HEAVY_ATTACK`: Serangan telak dengan damage dasar 30 (tereduksi menjadi 10 jika musuh dalam status `DEFEND`, hanya legal jika $CD = 0$).
 3. `DEFEND`: Memasang posisi bertahan, mereduksi kerusakan yang diterima giliran berikutnya sebesar ~65%.
 4. `POTION`: Memulihkan +25 HP (hanya legal jika sisa potion > 0 dan HP < 100).
+
+Perhitungan damage efektif ($D_{\text{effective}}$):
+$$D_{\text{effective}} = \begin{cases} 
+D_{\text{base}} \times (1 - 0.65) = \lfloor D_{\text{base}} \times 0.35 \rceil, & \text{jika target } Def = \text{True} \\
+D_{\text{base}}, & \text{jika target } Def = \text{False}
+\end{cases}$$
 
 ### 1.3 Terminal Test ($Terminal(s)$)
 Permainan mencapai kondisi akhir jika salah satu atau kedua petarung memiliki $HP \le 0$:
 $$Terminal(s) = (HP_{\text{player}} \le 0) \lor (HP_{\text{npc}} \le 0)$$
 
 ### 1.4 Utility Function ($U(s)$)
-Diberikan pada terminal state:
+Nilai utilitas mutlak yang diberikan pada terminal state bagi agen MAX (NPC):
 $$U(s) = \begin{cases} 
 +1000 + HP_{\text{npc}}, & \text{jika } HP_{\text{player}} \le 0 \land HP_{\text{npc}} > 0 \quad (\text{NPC/MAX Menang}) \\
 -1000 - HP_{\text{player}}, & \text{jika } HP_{\text{npc}} \le 0 \land HP_{\text{player}} > 0 \quad (\text{Player/MIN Menang}) \\
-0, & \text{jika keduanya } \le 0 \quad (\text{Seri})
+0, & \text{jika } HP_{\text{player}} \le 0 \land HP_{\text{npc}} \le 0 \quad (\text{Seri})
 \end{cases}$$
 
 ### 1.5 Evaluation Functions ($Eval(s)$)
-Ketika pohon pencarian mencapai batas kedalaman (*depth limit*), fungsi evaluasi memperkirakan seberapa menguntungkan state tersebut bagi MAX:
-1. **Balanced (Standar):**
-   $$Eval_{\text{bal}}(s) = 2.0 \times (HP_{\text{npc}} - HP_{\text{player}}) + 12.0 \times (Pot_{\text{npc}} - Pot_{\text{player}}) + (5.0 \text{ jika } Def_{\text{npc}})$$
-2. **Aggressive (Offensif):**
-   $$Eval_{\text{agg}}(s) = 4.0 \times (100 - HP_{\text{player}}) - 1.2 \times (100 - HP_{\text{npc}}) + 4.0 \times Pot_{\text{npc}} + (35.0 \text{ jika } HP_{\text{player}} \le 30)$$
-3. **Defensive (Taktis/Kelangsungan Hidup):**
-   $$Eval_{\text{def}}(s) = 3.0 \times HP_{\text{npc}} - 1.5 \times HP_{\text{player}} + 20.0 \times Pot_{\text{npc}} + (15.0 \text{ jika } Def_{\text{npc}}) - (25.0 \text{ jika sekarat & punya potion})$$
+Ketika pencarian mencapai batas kedalaman (*depth limit*), fungsi evaluasi heuristik memperkirakan keuntungan state bagi MAX:
+
+1. **Balanced Evaluation (Seimbang / Standar):**
+   $$Eval_{\text{bal}}(s) = 2.0 \times (HP_{\text{npc}} - HP_{\text{player}}) + 12.0 \times (Pot_{\text{npc}} - Pot_{\text{player}}) + I(Def_{\text{npc}} \land HP_{\text{player}} > 20) \times 5.0$$
+   di mana $I(\cdot)$ adalah fungsi indikator.
+
+2. **Aggressive Evaluation (Penyerang / Offensif):**
+   $$Eval_{\text{agg}}(s) = 4.0 \times (100 - HP_{\text{player}}) - 1.2 \times (100 - HP_{\text{npc}}) + 4.0 \times Pot_{\text{npc}} + I(HP_{\text{player}} \le 30) \times 35.0$$
+
+3. **Defensive Evaluation (Bertahan / Taktis):**
+   $$Eval_{\text{def}}(s) = 3.0 \times HP_{\text{npc}} - 1.5 \times HP_{\text{player}} + 20.0 \times Pot_{\text{npc}} + I(Def_{\text{npc}}) \times 15.0 - I(HP_{\text{npc}} < 40 \land Pot_{\text{npc}} > 0) \times 25.0$$
 
 ---
 
-## 2. Hasil Pengujian & Eksperimen AI
+## 2. Formulasi Algoritma AI Adversarial
 
-Semua eksperimen dieksekusi secara otomatis dan diverifikasi menggunakan modul evaluasi pada `scratch/run_experiments.py`.
+### 2.1 Pure Minimax
+Formulasi rekursif Minimax murni:
+$$V(s) = \begin{cases} 
+U(s), & \text{jika } Terminal(s) \\
+Eval(s), & \text{jika depth} = 0 \\
+\max_{a \in A(s)} V(\delta(s, a)), & \text{jika } Turn = \text{MAX (NPC)} \\
+\min_{a \in A(s)} V(\delta(s, a)), & \text{jika } Turn = \text{MIN (Player)}
+\end{cases}$$
 
-### 2.1 Eksperimen 1: Perbandingan Pure Minimax vs Alpha-Beta Pruning
+### 2.2 Alpha-Beta Pruning & Move Ordering
+Kondisi pemangkasan (*cutoff*):
+- Pada node MIN, jika $V(s') \le \alpha$, pencarian dihentikan ($\beta$-cutoff).
+- Pada node MAX, jika $V(s') \ge \beta$, pencarian dihentikan ($\alpha$-cutoff).
+
+Prioritas Heuristic Move Ordering:
+- Node MAX (NPC): `HEAVY_ATTACK` $\succ$ `ATTACK` $\succ$ `POTION` $\succ$ `DEFEND`.
+- Node MIN (Player): `HEAVY_ATTACK` $\succ$ `ATTACK` $\succ$ `DEFEND` $\succ$ `POTION`.
+
+### 2.3 Expectimax Search (Stokastik)
+Node MIN digantikan oleh *Chance Node* untuk menghitung nilai ekspektasi pada aksi `HEAVY_ATTACK` ($P_{\text{hit}} = 0.75, P_{\text{miss}} = 0.25$):
+$$V_{\text{Expectimax}}(s, \text{HEAVY}) = 0.75 \times V(\delta(s, \text{HEAVY}_{\text{hit}})) + 0.25 \times V(\delta(s, \text{HEAVY}_{\text{miss}}))$$
+
+---
+
+## 3. Hasil Pengujian & Eksperimen AI
+
+Seluruh eksperimen dieksekusi secara otomatis dan diverifikasi menggunakan modul evaluasi pada `scratch/run_experiments.py`.
+
+### 3.1 Eksperimen 1: Perbandingan Pure Minimax vs Alpha-Beta Pruning
 Eksperimen ini menguji efisiensi pemangkasan cabang (*pruning*) pada variasi batas kedalaman (Depth 1 hingga 6).
 
 | Depth | Node Minimax | Node Alpha-Beta | Pemangkasan Cabang (%) | Waktu Minimax (ms) | Waktu Alpha-Beta (ms) | Keputusan Identik? |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| 1 | 4 | 4 | 0.0 % | 0.07 ms | 0.04 ms | **True** |
-| 2 | 20 | 20 | 0.0 % | 0.07 ms | 0.09 ms | **True** |
-| 3 | 82 | 51 | 37.8 % | 0.20 ms | 0.09 ms | **True** |
-| 4 | 327 | 142 | 56.6 % | 0.38 ms | 0.21 ms | **True** |
-| 5 | 1,277 | 302 | 76.4 % | 1.52 ms | 0.51 ms | **True** |
-| 6 | 4,983 | 712 | **85.7 %** | 6.23 ms | 1.03 ms | **True** |
+| 1 | 4 | 4 | 0.0 % | 0.07 ms | 0.04 ms | True |
+| 2 | 20 | 20 | 0.0 % | 0.07 ms | 0.09 ms | True |
+| 3 | 82 | 51 | 37.8 % | 0.20 ms | 0.09 ms | True |
+| 4 | 327 | 142 | 56.6 % | 0.38 ms | 0.21 ms | True |
+| 5 | 1,277 | 302 | 76.4 % | 1.52 ms | 0.51 ms | True |
+| 6 | 4,983 | 712 | 85.7 % | 6.23 ms | 1.03 ms | True |
 
 > **Analisis:**
 > - Pada kedalaman 6, Alpha-Beta Pruning berhasil memangkas **85.7% node** dari pohon pencarian tanpa mengubah nilai keputusan ataupun aksi terbaik sama sekali (*admissible & optimal*).
@@ -74,7 +113,7 @@ Eksperimen ini menguji efisiensi pemangkasan cabang (*pruning*) pada variasi bat
 
 ---
 
-### 2.2 Eksperimen 2: Dampak Move Ordering (Urutan Aksi)
+### 3.2 Eksperimen 2: Dampak Move Ordering (Urutan Aksi)
 Eksperimen ini membandingkan kinerja Alpha-Beta Pruning saat cabang dievaluasi secara acak/natural vs saat cabang diurutkan (*heuristic move ordering*):
 
 | Depth | Tanpa Move Ordering (Nodes) | Dengan Move Ordering (Nodes) | Peningkatan Reduksi Node (%) |
@@ -82,7 +121,7 @@ Eksperimen ini membandingkan kinerja Alpha-Beta Pruning saat cabang dievaluasi s
 | 3 | 66 | 51 | 22.7 % |
 | 4 | 211 | 142 | 32.7 % |
 | 5 | 592 | 302 | 49.0 % |
-| 6 | 1,611 | 712 | **55.8 %** |
+| 6 | 1,611 | 712 | 55.8 % |
 
 > **Analisis:**
 > - Menempatkan aksi-aksi ofensif/kritis terlebih dahulu di pohon pencarian memungkinkan nilai $\alpha$ dan $\beta$ terdorong ke nilai ekstrem lebih awal.
@@ -90,7 +129,7 @@ Eksperimen ini membandingkan kinerja Alpha-Beta Pruning saat cabang dievaluasi s
 
 ---
 
-### 2.3 Eksperimen 3: Tingkah Laku NPC Berdasarkan Fungsi Evaluasi
+### 3.3 Eksperimen 3: Tingkah Laku NPC Berdasarkan Fungsi Evaluasi
 
 Dilakukan pengujian pada 3 skenario kondisi duel berbeda:
 
@@ -107,23 +146,23 @@ Dilakukan pengujian pada 3 skenario kondisi duel berbeda:
 
 ---
 
-### 2.4 Eksperimen 4: Analisis Expectimax (Stokastik & Probabilitas)
+### 3.4 Eksperimen 4: Analisis Expectimax (Stokastik & Probabilitas)
 Pada varian ini, aksi `HEAVY_ATTACK` memiliki elemen peluang (*chance node*): $75\%$ akurasi mendarat (30 damage) dan $25\%$ meleset (0 damage).
 
 | Aksi | Skor Deterministik (Alpha-Beta) | Skor Probabilistik (Expectimax) |
 |:---|:---:|:---:|
 | `ATTACK` (Pasti) | -46.0 | -14.25 |
-| `HEAVY_ATTACK` (75% Chance) | **22.0** | **3.94** |
+| `HEAVY_ATTACK` (75% Chance) | 22.0 | 3.94 |
 | `DEFEND` | -38.0 | -38.0 |
 | `POTION` | -22.0 | -7.0 |
 
 > **Analisis:**
 > - Pada Expectimax, skor ekspektasi `HEAVY_ATTACK` terkoreksi turun dari $+22.0$ menjadi $+3.94$ akibat penalti 25% kemungkinan serangan meleset.
-> - Meskipun terkoreksi, nilai ekspektasi mathematically still positive dan tetap menjadi aksi rasional terbaik bagi NPC pada kondisi tersebut.
+> - Meskipun terkoreksi, nilai ekspektasi secara matematis tetap positif dan tetap menjadi aksi rasional terbaik bagi NPC pada kondisi tersebut.
 
 ---
 
-## 3. Fitur Debug Overlay Duel
+## 4. Fitur Debug Overlay Duel
 Antarmuka debug overlay di sebelah kiri diperluas dengan fitur interaktif:
 1. **Dropdown Algoritma:** Memilih langsung antara *Alpha-Beta Pruning*, *Pure Minimax*, dan *Expectimax*.
 2. **Dropdown Evaluasi:** Memilih gaya bermain NPC (*Balanced*, *Aggressive*, *Defensive*).

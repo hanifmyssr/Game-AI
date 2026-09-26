@@ -229,6 +229,10 @@ class App:
         if self.game_mode == "EXPLORATION":
             self.player.update(dt)
             self.npc.update(dt)
+
+            if not self.player.moving:
+                self._process_continuous_player_movement()
+
             camera_target = (self.player.px, self.player.py)
             if camera_target != self._last_camera_target:
                 self.camera.follow(camera_target)
@@ -257,6 +261,21 @@ class App:
                 if self.npc_battle_turn_timer >= 0.5:
                     self.npc_battle_turn_timer = 0.0
                     self.battle_system.execute_npc_turn()
+
+    def _process_continuous_player_movement(self):
+        keys = pygame.key.get_pressed()
+        if keys[K_UP] or keys[K_w]:
+            if self.player.try_move((0, -1)):
+                return
+        if keys[K_DOWN] or keys[K_s]:
+            if self.player.try_move((0, 1)):
+                return
+        if keys[K_LEFT] or keys[K_a]:
+            if self.player.try_move((-1, 0)):
+                return
+        if keys[K_RIGHT] or keys[K_d]:
+            if self.player.try_move((1, 0)):
+                return
 
     def enter_battle(self):
         self.game_mode = "BATTLE"

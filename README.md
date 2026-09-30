@@ -1,4 +1,4 @@
-# Bakekok - Dokumentasi Teknis & Game AI (Tahap 1 & Tahap 2)
+# Bakekok - Dokumentasi Teknis & Game AI Tahap 2
 
 Proyek Tugas Besar Mata Kuliah Kecerdasan Buatan — Kelompok 7  
 Program Studi Ilmu Komputer, Universitas Pendidikan Indonesia.

@@ -1,6 +1,6 @@
 # Bakekok - Dokumentasi Teknis & Game AI (Tahap 1 & Tahap 2)
 
-Proyek Tugas Besar Mata Kuliah Kecerdasan Buatan - Kelompok 7 (Universitas Pendidikan Indonesia)  
+Proyek Tugas Besar Mata Kuliah Kecerdasan Buatan — Kelompok 7  
 Program Studi Ilmu Komputer, Universitas Pendidikan Indonesia.
 
 ---
@@ -11,38 +11,62 @@ Program Studi Ilmu Komputer, Universitas Pendidikan Indonesia.
 - **Mata Kuliah**: Kecerdasan Buatan
 - **Kelompok**: 7 (Tubes AI)
 - **Anggota Kelompok**:
-  - Hanif Muyassar
-  - Moch Fadillah Pratama
-  - Muhammad Zidan Mirza Fedrieka
+  1. **Hanif Muyassar**
+  2. **Moch Fadillah Pratama**
+  3. **Muhammad Zidan Mirza Fedrieka**
 
 ---
 
 ## 2. Arsitektur Sistem & Struktur Kode
 
-Sistem dikembangkan menggunakan Python 3.10+ berbasis kerangka Pygame dengan arsitektur modular yang memisahkan komponen *rendering*, *game loop*, *pathfinding engine*, *adversarial battle engine*, dan *interactive debug overlay*.
+Sistem dikembangkan menggunakan Python 3.10+ berbasis kerangka `pygame-ce` dengan arsitektur modular yang memisahkan komponen *rendering*, *game loop*, *pathfinding engine*, *adversarial battle engine*, dan *interactive debug overlay*.
 
 ```
 Game-AI/
-├── main.py                     # Entry point aplikasi utama
-├── requirements.txt            # Dependensi proyek (pygame-ce)
+├── main.py                     # Titik masuk utama aplikasi (Entry Point)
+├── requirements.txt            # Daftar dependensi pustaka (pygame-ce)
+├── LAPORAN_TAHAP_2.md          # Dokumen laporan akademik komprehensif Tahap 2
+├── check.md                    # Rubrik evaluasi dan checklist verifikasi tugas
+├── assets/                     # Spritesheet dan aset grafis karakter/ubin
 ├── data/
-│   └── map_tubes.json          # Metadata grid peta, layer ubin, rintangan, dan dekorasi
+│   └── map_tubes.json          # Metadata grid peta, layer ubin, atlas tile, dan rintangan
 ├── game/
-│   ├── __init__.py
-│   ├── app.py                  # Main loop, penanganan input, kamera, dan manajer state
-│   ├── battle_ai.py            # Engine AI Duel (State, Utility, Minimax, Alpha-Beta, Expectimax)
-│   ├── battle_system.py        # Logika pertarungan turn-based dan pemilih aksi NPC
-│   ├── config.py               # Konstanta visual, warna panel, skala, dan jalur aset
-│   ├── events.py               # Event dispatcher untuk komunikasi antar-komponen
-│   ├── mapdata.py              # Parser map_tubes.json, pembangun surface, sistem koordinat & step cost
-│   ├── npc.py                  # Entitas NPC Kucing (pathfinding real-time & pengatur jarak duel)
-│   ├── overlay.py              # Visualisasi debug overlay (Pathfinding stats & Duel stats)
-│   ├── player.py               # Entitas Player (Bolu)
-│   ├── search.py               # Engine Pencarian Jalur (UCS, A* Search, dan Heuristik)
-│   └── tree_overlay.py         # Visualisasi Decision Tree AI (Anti-Overlap, Panning 2D, Scroll)
+│   ├── __init__.py             # Inisialisasi package game
+│   ├── app.py                  # Main loop, penanganan event, kamera, state manager, dan arena render
+│   ├── battle_ai.py            # Engine AI duel: BattleState, TreeNode, Minimax, Alpha-Beta, Expectimax
+│   ├── battle_system.py        # Manajer giliran duel, kalkulasi damage, cooldown, dan logging aksi
+│   ├── config.py               # Konstanta visual, palet warna, ukuran window, batas nilai, dan path aset
+│   ├── events.py               # Event dispatcher untuk komunikasi antar-komponen (GameManager)
+│   ├── mapdata.py              # Parser map_tubes.json, surface builder, koordinat grid, dan step cost
+│   ├── npc.py                  # Entitas NPC: pergerakan halus, pemicu duel, path tracking
+│   ├── overlay.py              # Debug overlay panel kiri (statistik pathfinding dan parameter duel)
+│   ├── player.py               # Entitas Player (Bolu): pergerakan grid 4 arah, sprite renderer
+│   ├── search.py               # Engine pathfinding: UCS, A*, PathNode, PriorityQueue, GridManager
+│   └── tree_overlay.py         # Visualisasi Decision Tree AI (Smooth Bezier, Anti-Overlap, Pan 2D)
 └── scratch/
-    ├── analyze_map.py          # Script analisis karakteristik peta
-    └── run_experiments.py      # Script otomatisasi eksperimen benchmark AI
+    ├── analyze_map.py          # Utilitas inspeksi karakteristik peta
+    ├── run_experiments.py      # Skrip eksekusi benchmark otomatis & pencatatan data performa AI
+    └── test_depth.py           # Skrip pengujian skenario taktis AI pada variasi kedalaman
+```
+
+### Alur Eksekusi Permainan
+
+```mermaid
+graph TD
+    A[main.py] --> B[game.app.App]
+    B --> C{State Permainan}
+    C -->|EXPLORATION| D[Mode Peta Grid 2D]
+    D --> E[Player Movement]
+    D --> F[NPC Pathfinding: UCS / A* Search]
+    F -->|Jarak Manhattan <= 1| G[Pemicu Duel]
+    D -->|Tekan B| G
+    C -->|BATTLE| H[Mode Duel Turn-Based]
+    H --> I[Giliran Player: Input Aksi 1-4]
+    H --> J[Giliran NPC: Adversarial Search]
+    J --> K[Minimax / Alpha-Beta / Expectimax]
+    K --> L[Decision Tree Construction]
+    L --> M[Debug Overlay & Tree Modal 'T']
+    H -->|Game Over / Tekan Tab| D
 ```
 
 ---
@@ -75,9 +99,9 @@ $$c(n) = \begin{cases}
    Fungsi evaluasi node:
    $$f(n) = g(n), \quad g(n) = g(\text{parent}(n)) + c(n)$$
 
-   **Properti:** Complete ✓, Optimal ✓ (cost ≥ 0)
+   **Properti:** Complete ✓, Optimal ✓ (karena cost ≥ 0).
 
-2. **A* Search**:
+2. **A\* Search**:
    Algoritma pencarian diinformasikan (*informed search*) yang menggabungkan akumulasi biaya riwayat $g(n)$ dengan estimasi jarak heuristik $h(n)$.
    
    Fungsi evaluasi node:
@@ -86,7 +110,7 @@ $$c(n) = \begin{cases}
    *Tie-breaking rule*: Jika dua node memiliki nilai $f(n)$ identik, node dengan $h(n)$ lebih kecil diprioritaskan:
    $$\text{Priority}(n) = (f(n), h(n))$$
 
-   **Properti:** Complete ✓, Optimal ✓ (jika h admissible), umumnya lebih cepat dari UCS.
+   **Properti:** Complete ✓, Optimal ✓ (jika $h$ admissible).
 
 ### 3.3 Formulasi Matematika Fungsi Heuristik $h(n)$
 Fungsi heuristik $h(n)$ memperkirakan jarak terpendek dari posisi saat ini $a = (x_a, y_a)$ ke target $b = (x_b, y_b)$:
@@ -100,14 +124,14 @@ Fungsi heuristik $h(n)$ memperkirakan jarak terpendek dari posisi saat ini $a = 
 3. **Chebyshev Distance**:
    $$h_{\text{Chebyshev}}(a, b) = \max(|x_a - x_b|, |y_a - y_b|)$$
 
-Semua heuristik bersifat **admissible** sehingga A\* dijamin optimal. Pada peta yang sama, UCS dan semua varian A\* menghasilkan jalur yang **identik dan optimal** — perbedaan hanya pada jumlah node yang diekspansi (A\* lebih efisien).
+Semua heuristik bersifat **admissible** sehingga A\* dijamin optimal. Pada peta yang sama, UCS dan semua varian A\* menghasilkan jalur yang **identik dan optimal** — perbedaan hanya pada jumlah node yang diekspansi (A\* jauh lebih efisien).
 
 ---
 
 ## 4. Tahap 2: Duel Turn-Based NPC vs Player (Adversarial Search)
 
 ### 4.1 Pemicu Transisi Duel
-Pertarungan otomatis dipemicu ketika jarak Manhattan antara Player dan NPC bernilai $\le 1$:
+Pertarungan otomatis dipicu ketika jarak Manhattan antara Player dan NPC bernilai $\le 1$, atau melalui tombol pintas `[B]`:
 
 $$d_{\text{Manhattan}}(\text{Player}, \text{NPC}) = |x_{\text{player}} - x_{\text{npc}}| + |y_{\text{player}} - y_{\text{npc}}| \le 1$$
 
@@ -155,7 +179,7 @@ Ketika pencarian mencapai batas kedalaman (*Depth Limit*), pencarian dihentikan 
 1. **Balanced Evaluation (Seimbang / Standar)**:
    $$Eval_{\text{bal}}(s) = 2.0 \times (HP_{\text{npc}} - HP_{\text{player}}) + 12.0 \times (Pot_{\text{npc}} - Pot_{\text{player}}) + I(Def_{\text{npc}} \land HP_{\text{player}} > 20) \times 5.0$$
 
-2. **Aggressive Evaluation (Penyerang / Offensif)**:
+2. **Aggressive Evaluation (Penyerang / Ofensif)**:
    $$Eval_{\text{agg}}(s) = 4.0 \times (100 - HP_{\text{player}}) - 1.2 \times (100 - HP_{\text{npc}}) + 4.0 \times Pot_{\text{npc}} + I(HP_{\text{player}} \le 30) \times 35.0$$
 
 3. **Defensive Evaluation (Bertahan / Taktis)**:
@@ -164,7 +188,7 @@ Ketika pencarian mencapai batas kedalaman (*Depth Limit*), pencarian dihentikan 
 ### 4.6 Algoritma Pencarian Adversarial
 
 #### 4.6.1 Pure Minimax (Minimax Murni)
-Algoritma pencarian adversarial berbasis penelusuran mendalam (*Depth-First Search*) yang mengeksplorasi seluruh kemungkinan cabang permainan dua pemain *zero-sum* dengan kompleksitas waktu $O(b^d)$ dan kompleksitas ruang $O(b \cdot d)$.
+Algoritma pencarian adversarial berbasis penelusuran mendalam (*Depth-First Search*) yang mengeksplorasi seluruh kemungkinan cabang permainan dua pemain *zero-sum* dengan kompleksitas waktu $O(b^d)$ dan ruang $O(b \cdot d)$.
 
 Formula rekursif Minimax:
 $$V(s) = \begin{cases} 
@@ -184,12 +208,15 @@ Kondisi pemangkasan (*Cutoff Condition*):
 #### 4.6.3 Heuristic Move Ordering (Pengurutan Aksi)
 Teknik mengurutkan cabang aksi paling menjanjikan terlebih dahulu di root/intermediate node agar batas $\alpha$ dan $\beta$ terdorong ke nilai ekstrem lebih cepat, sehingga memicu kondisi *cutoff* lebih awal.
 
-Prioritas pengurutan aksi:
-- Node MAX (NPC): `HEAVY_ATTACK` $\succ$ `ATTACK` $\succ$ `POTION` $\succ$ `DEFEND`.
-- Node MIN (Player): `HEAVY_ATTACK` $\succ$ `ATTACK` $\succ$ `DEFEND` $\succ$ `POTION`.
+Varian pengurutan aksi:
+- **`OFF`**: Urutan deklaratif alami `[ATTACK, HEAVY_ATTACK, DEFEND, POTION]`.
+- **`HEURISTIC` (Ofensif)**:
+  - Node MAX (NPC): `HEAVY_ATTACK` $\succ$ `ATTACK` $\succ$ `POTION` $\succ$ `DEFEND`.
+  - Node MIN (Player): `HEAVY_ATTACK` $\succ$ `ATTACK` $\succ$ `DEFEND` $\succ$ `POTION`.
+- **`REVERSED` (Defensif / Terbalik)**: Urutan berlawanan dari heuristik ofensif untuk pengujian batas terburuk pemangkasan.
 
 #### 4.6.4 Expectimax Search (Pencarian Stokastik)
-Variasi pencarian adversarial untuk lingkungan tidak pasti/probabilistik. Node MIN digantikan oleh *Chance Node* yang menghitung *Expected Value* (rata-rata tertimbang probabilitas).
+Variasi pencarian adversarial untuk lingkungan tidak pasti/probabilistik. Cabang aksi stokastik digantikan oleh *Chance Node* yang menghitung *Expected Value* (rata-rata tertimbang probabilitas).
 
 Pada Bakekok, `HEAVY_ATTACK` memiliki akurasi mendarat $75\%$ ($P_{\text{hit}} = 0.75$) dan meleset $25\%$ ($P_{\text{miss}} = 0.25$):
 $$V_{\text{Expectimax}}(s, \text{HEAVY}) = 0.75 \times V(\delta(s, \text{HEAVY}_{\text{hit}})) + 0.25 \times V(\delta(s, \text{HEAVY}_{\text{miss}}))$$
@@ -210,7 +237,7 @@ Hasil benchmark pada berbagai batas kedalaman (*depth limit 1 s/d 6*):
 | 5 | 1,277 | 302 | 76.4 % | 1.52 ms | 0.51 ms | True |
 | 6 | 4,983 | 712 | 85.7 % | 6.23 ms | 1.03 ms | True |
 
-Analisis: Alpha-Beta Pruning mampu mengurangi node yang dikunjungi hingga **85.7%** pada Depth 6 dengan peningkatan kecepatan eksekusi hingga **6x lipat**, tanpa mengubah nilai utilitas dan keputusan terbaik (*admissible & optimal*).
+> **Analisis:** Alpha-Beta Pruning mampu memangkas simpul yang dikunjungi hingga **85.7%** pada Depth 6 dengan percepatan waktu eksekusi hingga **6x lipat**, tanpa mengubah nilai utilitas dan keputusan terbaik (*admissible & optimal*).
 
 ### 5.2 Dampak 3 Varian Move Ordering pada Alpha-Beta Pruning
 
@@ -221,57 +248,94 @@ Analisis: Alpha-Beta Pruning mampu mengurangi node yang dikunjungi hingga **85.7
 | 5 | 537 | 379 | 546 | 29.4 % |
 | 6 | 1,351 | 897 | 1,599 | 33.6 % |
 
-Analisis: Pengurutan aksi ofensif (Heuristic) memangkas node **33.6% lebih sedikit** dibanding tanpa urutan (OFF) dan **43.9% lebih sedikit** dibanding urutan terbalik (Reversed) pada Depth 6.
+> **Analisis:** Pengurutan aksi ofensif (`HEURISTIC`) memangkas simpul **33.6% lebih banyak** dibanding tanpa pengurutan (`OFF`) dan **43.9% lebih banyak** dibanding urutan terbalik (`REVERSED`) pada Depth 6.
 
-### 5.3 Perbandingan Deterministik vs Expectimax (Skor Aksi Root Node)
+### 5.3 Perbandingan Perilaku NPC pada 3 Profil Fungsi Evaluasi
 
-| Aksi Legal | Skor Deterministik (Alpha-Beta) | Skor Probabilistik (Expectimax) |
-|:---|:---:|:---:|
-| `ATTACK` | -46.0 | -14.25 |
-| `HEAVY_ATTACK` | 22.0 | 3.94 |
-| `DEFEND` | -38.0 | -38.0 |
-| `POTION` | -22.0 | -7.0 |
+| Skenario Pertarungan | Balanced Evaluation | Aggressive Evaluation | Defensive Evaluation |
+|:---|:---:|:---:|:---:|
+| **Netral (HP 100 vs 100)** | `ATTACK` (Skor: 0.0) | `ATTACK` (Skor: 0.0) | `ATTACK` (Skor: 0.0) |
+| **NPC Sekarat (HP 25 vs 75, Pot: 2)** | `POTION` (Skor: -66.0) | `ATTACK` (Skor: -26.0) | `POTION` (Skor: -12.5) |
+| **Player Sekarat (HP 70 vs 20)** | `ATTACK` (Skor: 120.0) | `HEAVY_ATTACK` (Skor: 275.0) | `ATTACK` (Skor: 145.0) |
 
-Analisis: Expectimax memperhitungkan risiko 25% meleset pada `HEAVY_ATTACK`, menyesuaikan skor ekspektasi dari 22.0 menjadi 3.94.
+> **Analisis:** Profil *Aggressive* mengabaikan pemulihan saat HP kritis untuk mengejar eliminasi lawan, sedangkan profil *Defensive* memprioritaskan konservasi HP melalui `POTION` dan `DEFEND`.
+
+### 5.4 Perbandingan Deterministik vs Expectimax (Skor Aksi Root Node)
+
+| Aksi Legal | Skor Deterministik (Alpha-Beta) | Skor Probabilistik (Expectimax) | Keterangan Risiko |
+|:---|:---:|:---:|:---|
+| `ATTACK` | -46.0 | -14.25 | Serangan pasti (100% hit) |
+| `HEAVY_ATTACK` | 22.0 | 3.94 | Risiko 25% meleset diperhitungkan |
+| `DEFEND` | -38.0 | -38.0 | Reduksi 65% deterministik |
+| `POTION` | -22.0 | -7.0 | Pemulihan pasti +25 HP |
 
 ---
 
-## 6. Kontrol Permainan
+## 6. Antarmuka Pengguna & Kontrol Permainan
 
 ### 6.1 Mode Eksplorasi (Peta Grid)
-- **[W, A, S, D] / [Tombol Panah]**: Menggerakkan Player (Bolu).
-- **[Spasi]**: Memanggil NPC agar mengejar Player.
-- **[B]**: Pintas langsung masuk ke Mode Duel.
-- **[Esc]**: Keluar dari permainan.
+- **`[W, A, S, D]` / `[Tombol Panah]`**: Menggerakkan Player (Bolu) pada grid.
+- **`[Spasi]`**: Memanggil NPC Kucing agar mengejar posisi Player via pathfinding.
+- **`[B]`**: Masuk instan ke Mode Duel.
+- **`[Esc]`**: Keluar dari permainan.
 
 ### 6.2 Mode Duel (Pertarungan Turn-Based)
-- **[1 / A]**: Eksekusi aksi `ATTACK` (18 damage).
-- **[2 / S]**: Eksekusi aksi `HEAVY_ATTACK` (30 damage).
-- **[3 / D]**: Eksekusi aksi `DEFEND` (mereduksi damage 65%).
-- **[4 / W]**: Eksekusi aksi `POTION` (+25 HP heal).
-- **[R]**: Reset / mulai ulang duel.
-- **[T] / Tombol di Panel Debug**: Tampilkan / sembunyikan **Decision Tree Overlay** (visualisasi pohon keputusan di arena).
-- **[Scroll Mouse / Drag / ▲ ▼]**: Panning & scroll diagram Decision Tree (2D) atau scroll riwayat Battle Log.
-- **[Tab]**: Kembali ke Mode Eksplorasi Peta.
+- **`[1 / A]`**: Eksekusi aksi `ATTACK` (18 damage).
+- **`[2 / S]`**: Eksekusi aksi `HEAVY_ATTACK` (30 damage, cooldown 2 giliran).
+- **`[3 / D]`**: Eksekusi aksi `DEFEND` (mereduksi damage masuk 65%).
+- **`[4 / W]`**: Eksekusi aksi `POTION` (+25 HP heal, batas 3 potion).
+- **`[R]`**: Reset / mulai ulang duel.
+- **`[T]` / Klik Tombol Panel**: Tampilkan / sembunyikan **Decision Tree Overlay**.
+- **`[Tab]`**: Kembali ke Mode Eksplorasi Peta.
+
+### 6.3 Interaksi Decision Tree Overlay & Debug Panel
+- **Tampilan Pohon Keputusan (`[T]`)**:
+  - Garis penghubung antialiased kurva Bezier kubik mulus.
+  - Kartu simpul rapi berujung membulat (*rounded rect*) dengan bayangan lembut (*ambient shadow*).
+  - Teks skor dipadatkan secara adaptif (`+1070`, `-1057`, `0`) untuk mencegah teks keluar dari kotak.
+  - **Navigasi Panning 2D**: Tahan klik kiri dan geser mouse (*mouse drag*), atau gunakan tombol panah `[▲ ▼ ◀ ▶]`.
+  - **Scroll Vertikal**: Gunakan *scroll wheel* mouse.
+  - **Tutup Modal**: Tekan `[T]`, `[Esc]`, atau klik tombol `[X TUTUP]`.
+- **Panel Debug Sidebar**:
+  - Tombol interaktif untuk mengganti Algoritma AI (`MINIMAX`, `ALPHA_BETA`, `EXPECTIMAX`).
+  - Tombol untuk mengganti Fungsi Evaluasi (`BALANCED`, `AGGRESSIVE`, `DEFENSIVE`).
+  - Tombol untuk mengganti Move Ordering (`OFF`, `HEURISTIC`, `REVERSED`).
+  - Slider/tombol pengaturan kedalaman pencarian (*Depth Limit 1 s/d 6*).
+  - Komparasi simpul langsung (*side-by-side node count & % savings*).
+  - Indikator status giliran: `"Menunggu Input Aksi..."` saat giliran pemain.
 
 ---
 
-## 7. Cara Menjalankan
+## 7. Panduan Instalasi & Eksekusi
 
-1. **Instalasi Dependensi**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+### 7.1 Persyaratan Sistem
+- Python 3.10 atau versi yang lebih baru.
+- Sistem Operasi: Windows, macOS, atau Linux.
 
-2. **Jalankan Permainan Utama**:
-   ```bash
-   python main.py
-   ```
+### 7.2 Instalasi Dependensi
+Buka terminal pada direktori proyek, kemudian pasang pustaka yang dibutuhkan:
 
-3. **Jalankan Benchmarking Eksperimen AI**:
-   ```bash
-   python scratch/run_experiments.py
-   ```
+```bash
+pip install -r requirements.txt
+```
 
-Dokumen hasil pengujian dan analisis akademis terperinci dapat diakses pada [`LAPORAN_TAHAP_2.md`](file:///c:/Users/Pavilion/Documents/DOKUMEN%20TUGAS/Kuliah/Tubes_ai_kel7/Fix_nya/Game-AI/LAPORAN_TAHAP_2.md).
+### 7.3 Menjalankan Game
+Untuk menjalankan game Bakekok secara interaktif:
 
+```bash
+python main.py
+```
+
+### 7.4 Menjalankan Skrip Benchmark AI
+Untuk menjalankan pengujian benchmark otomatis (Eksperimen 1 s/d 4):
+
+```bash
+python scratch/run_experiments.py
+```
+
+---
+
+## 8. Dokumen Terkait
+
+- **[LAPORAN_TAHAP_2.md](file:///c:/Users/Pavilion/Documents/DOKUMEN%20TUGAS/Kuliah/Tubes_ai_kel7/Fix_nya/Game-AI/LAPORAN_TAHAP_2.md)**: Dokumen laporan akademik lengkap mencakup landasan teori, formulasi matematis, analisis kompleksitas waktu & ruang, serta interpretasi eksperimen.
+- **[check.md](file:///c:/Users/Pavilion/Documents/DOKUMEN%20TUGAS/Kuliah/Tubes_ai_kel7/Fix_nya/Game-AI/check.md)**: Lembar verifikasi 15 kriteria teknis dan rubrik pemenuhan tugas Tubes AI.

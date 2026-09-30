@@ -57,9 +57,9 @@ def run_experiment_1_depth_and_pruning():
 
 def run_experiment_2_move_ordering():
     print("\n" + "=" * 80)
-    print("EKSPERIMEN 2: DAMPAK MOVE ORDERING PADA ALPHA-BETA PRUNING")
+    print("EKSPERIMEN 2: DAMPAK 3 VARIAN MOVE ORDERING PADA ALPHA-BETA PRUNING")
     print("=" * 80)
-    print(f"{'Depth':<7} | {'Tanpa Move Ordering':<22} | {'Dengan Move Ordering':<22} | {'Peningkatan Reduksi %'}")
+    print(f"{'Depth':<7} | {'Tanpa Urutan (OFF)':<20} | {'Heuristik (Ofensif)':<20} | {'Reversed (Defensif)':<20} | {'Reduksi Heuristik vs OFF'}")
     print("-" * 80)
 
     solver = BattleAISolver()
@@ -68,15 +68,17 @@ def run_experiment_2_move_ordering():
     for depth in range(3, 7):
         state = BattleState(player_hp=80, npc_hp=80, player_potions=2, npc_potions=2, is_npc_turn=True)
 
-        _, _, stats_no_order = solver.select_best_action(state, algorithm="ALPHA_BETA", depth=depth, use_move_ordering=False)
-        _, _, stats_ordered = solver.select_best_action(state, algorithm="ALPHA_BETA", depth=depth, use_move_ordering=True)
+        _, _, stats_off = solver.select_best_action(state, algorithm="ALPHA_BETA", depth=depth, move_ordering_mode="OFF")
+        _, _, stats_heu = solver.select_best_action(state, algorithm="ALPHA_BETA", depth=depth, move_ordering_mode="HEURISTIC")
+        _, _, stats_rev = solver.select_best_action(state, algorithm="ALPHA_BETA", depth=depth, move_ordering_mode="REVERSED")
 
-        n_no = stats_no_order["node_count"]
-        n_ord = stats_ordered["node_count"]
-        diff_pct = ((n_no - n_ord) / n_no) * 100.0 if n_no > 0 else 0.0
+        n_off = stats_off["node_count"]
+        n_heu = stats_heu["node_count"]
+        n_rev = stats_rev["node_count"]
+        diff_pct = ((n_off - n_heu) / n_off) * 100.0 if n_off > 0 else 0.0
 
-        print(f"{depth:<7} | {n_no:<22} | {n_ord:<22} | {diff_pct:>18.1f} %")
-        results.append((depth, n_no, n_ord, diff_pct))
+        print(f"{depth:<7} | {n_off:<20} | {n_heu:<20} | {n_rev:<20} | {diff_pct:>20.1f} %")
+        results.append((depth, n_off, n_heu, n_rev, diff_pct))
 
     return results
 

@@ -1,4 +1,4 @@
-"""Entry point port Python game BoluKesepian (Godot -> Python).
+"""Entry point port Python game Bakekok (Godot -> Python).
 
 Jalankan:  python main.py
 """

@@ -38,7 +38,8 @@ Game-AI/
 │   ├── npc.py                  # Entitas NPC Kucing (pathfinding real-time & pengatur jarak duel)
 │   ├── overlay.py              # Visualisasi debug overlay (Pathfinding stats & Duel stats)
 │   ├── player.py               # Entitas Player (Bolu)
-│   └── search.py               # Engine Pencarian Jalur (UCS, A* Search, dan Heuristik)
+│   ├── search.py               # Engine Pencarian Jalur (UCS, A* Search, dan Heuristik)
+│   └── tree_overlay.py         # Visualisasi Decision Tree AI (Anti-Overlap, Panning 2D, Scroll)
 └── scratch/
     ├── analyze_map.py          # Script analisis karakteristik peta
     └── run_experiments.py      # Script otomatisasi eksperimen benchmark AI
@@ -211,16 +212,16 @@ Hasil benchmark pada berbagai batas kedalaman (*depth limit 1 s/d 6*):
 
 Analisis: Alpha-Beta Pruning mampu mengurangi node yang dikunjungi hingga **85.7%** pada Depth 6 dengan peningkatan kecepatan eksekusi hingga **6x lipat**, tanpa mengubah nilai utilitas dan keputusan terbaik (*admissible & optimal*).
 
-### 5.2 Dampak Move Ordering pada Alpha-Beta Pruning
+### 5.2 Dampak 3 Varian Move Ordering pada Alpha-Beta Pruning
 
-| Depth | Nodes Tanpa Move Ordering | Nodes Dengan Move Ordering | Reduksi Node Tambahan (%) |
-|:---:|:---:|:---:|:---:|
-| 3 | 66 | 51 | 22.7 % |
-| 4 | 211 | 142 | 32.7 % |
-| 5 | 592 | 302 | 49.0 % |
-| 6 | 1,611 | 712 | 55.8 % |
+| Depth | Tanpa Urutan (OFF) | Heuristik (Ofensif) | Reversed (Defensif) | Reduksi Heuristik vs OFF (%) |
+|:---:|:---:|:---:|:---:|:---:|
+| 3 | 63 | 50 | 73 | 20.6 % |
+| 4 | 221 | 165 | 221 | 25.3 % |
+| 5 | 537 | 379 | 546 | 29.4 % |
+| 6 | 1,351 | 897 | 1,599 | 33.6 % |
 
-Analisis: Pengurutan aksi menjanjikan lebih awal meningkatkan efisiensi pemangkasan cabang tambahan sebesar **55.8%** pada Depth 6.
+Analisis: Pengurutan aksi ofensif (Heuristic) memangkas node **33.6% lebih sedikit** dibanding tanpa urutan (OFF) dan **43.9% lebih sedikit** dibanding urutan terbalik (Reversed) pada Depth 6.
 
 ### 5.3 Perbandingan Deterministik vs Expectimax (Skor Aksi Root Node)
 
@@ -249,6 +250,8 @@ Analisis: Expectimax memperhitungkan risiko 25% meleset pada `HEAVY_ATTACK`, men
 - **[3 / D]**: Eksekusi aksi `DEFEND` (mereduksi damage 65%).
 - **[4 / W]**: Eksekusi aksi `POTION` (+25 HP heal).
 - **[R]**: Reset / mulai ulang duel.
+- **[T] / Tombol di Panel Debug**: Tampilkan / sembunyikan **Decision Tree Overlay** (visualisasi pohon keputusan di arena).
+- **[Scroll Mouse / Drag / ▲ ▼]**: Panning & scroll diagram Decision Tree (2D) atau scroll riwayat Battle Log.
 - **[Tab]**: Kembali ke Mode Eksplorasi Peta.
 
 ---

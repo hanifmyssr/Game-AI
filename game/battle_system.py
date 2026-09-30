@@ -34,7 +34,8 @@ class BattleSystem:
         self.algorithm = "ALPHA_BETA"  # MINIMAX, ALPHA_BETA, EXPECTIMAX
         self.eval_mode = "BALANCED"    # BALANCED, AGGRESSIVE, DEFENSIVE
         self.depth = 4
-        self.use_move_ordering = True
+        self.move_ordering_mode = "HEURISTIC"  # OFF, HEURISTIC, REVERSED
+        self.record_tree = True  # Apakah merekam pohon keputusan untuk visualisasi
 
         # Riwayat pertempuran (log)
         self.battle_logs: List[str] = []
@@ -64,10 +65,28 @@ class BattleSystem:
         )
         self.battle_logs = ["Duel dimulai! Player berhadapan dengan Kucing Bolu (NPC)!"]
         self.last_ai_stats = {}
+        if hasattr(self.ai_solver, "last_tree"):
+            self.ai_solver.last_tree = None
         self.is_finished = False
         self.winner = None
         self.player_action_text = None
         self.npc_action_text = None
+
+    def update_ai_preview(self):
+        """Kalkulasi ulang preview AI stats untuk tampilan debug overlay saat pengaturan diubah."""
+        if self.is_finished or not self.last_ai_stats:
+            return
+        calc_state = self.state.clone()
+        calc_state.is_npc_turn = True
+        _, _, stats = self.ai_solver.select_best_action(
+            calc_state,
+            algorithm=self.algorithm,
+            eval_mode=self.eval_mode,
+            depth=self.depth,
+            move_ordering_mode=self.move_ordering_mode,
+            record_tree=self.record_tree,
+        )
+        self.last_ai_stats = stats
 
     def log(self, msg: str):
         self.battle_logs.append(msg)
@@ -150,7 +169,8 @@ class BattleSystem:
             algorithm=self.algorithm,
             eval_mode=self.eval_mode,
             depth=self.depth,
-            use_move_ordering=self.use_move_ordering,
+            move_ordering_mode=self.move_ordering_mode,
+            record_tree=self.record_tree,
         )
 
         self.last_ai_stats = stats

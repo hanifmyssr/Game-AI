@@ -24,6 +24,8 @@ RESIZABLE = getattr(pygame, "RESIZABLE", 16)
 QUIT = getattr(pygame, "QUIT", 256)
 VIDEORESIZE = getattr(pygame, "VIDEORESIZE", 32769)
 MOUSEBUTTONDOWN = getattr(pygame, "MOUSEBUTTONDOWN", 1025)
+MOUSEBUTTONUP = getattr(pygame, "MOUSEBUTTONUP", 1026)
+MOUSEMOTION = getattr(pygame, "MOUSEMOTION", 1024)
 KEYDOWN = getattr(pygame, "KEYDOWN", 768)
 SRCALPHA = getattr(pygame, "SRCALPHA", 0x00010000)
 K_ESCAPE = getattr(pygame, "K_ESCAPE", 27)
@@ -43,6 +45,7 @@ K_LEFT = getattr(pygame, "K_LEFT", 1073741904)
 K_RIGHT = getattr(pygame, "K_RIGHT", 1073741903)
 K_SPACE = getattr(pygame, "K_SPACE", 32)
 K_b = getattr(pygame, "K_b", 98)
+K_t = getattr(pygame, "K_t", 116)
 
 
 class Camera:
@@ -147,6 +150,12 @@ class App:
         self.overlay = DebugOverlay(self.events, self.fonts)
         self.overlay.set_battle_system(self.battle_system)
         self.overlay.set_mode(self.game_mode)
+
+        # Variabel Scroll & Tombol untuk Battle Log (2 aksi terakhir)
+        self.battle_log_scroll_offset = 0
+        self.battle_log_rect = pygame.Rect(0, 0, 0, 0)
+        self.btn_log_up = pygame.Rect(0, 0, 0, 0)
+        self.btn_log_down = pygame.Rect(0, 0, 0, 0)
 
         self.player = Player(self.map, self.events)
         self.npc = NPC(self.map, self.events, self.player)
@@ -276,6 +285,7 @@ class App:
         self.overlay.stop_path_animation()
         self.npc.chasing = False
         self.npc_battle_turn_timer = 0.0
+        self.battle_log_scroll_offset = 0
         self.battle_system.reset()
 
     def exit_battle(self):
@@ -294,9 +304,41 @@ class App:
                 self.screen = pygame.display.set_mode(event.size, RESIZABLE)
                 self._apply_viewport()
             elif event.type == MOUSEWHEEL:
-                self._zoom_camera(1.1 if event.y > 0 else 1 / 1.1, pygame.mouse.get_pos())
+                m_pos = pygame.mouse.get_pos()
+                if self.game_mode == "BATTLE":
+                    # Scroll mousewheel pada Battle Log
+                    if self.battle_log_rect.collidepoint(m_pos):
+                        total_logs = len(self.battle_system.battle_logs)
+                        max_scroll = max(0, total_logs - 2)
+                        # event.y > 0 = scroll ke atas (lihat log lama)
+                        # event.y < 0 = scroll ke bawah (lihat log terbaru)
+                        self.battle_log_scroll_offset = max(0, min(max_scroll, self.battle_log_scroll_offset + event.y))
+                    # Scroll mousewheel pada Decision Tree Overlay
+                    elif self.overlay.tree_overlay.panel_rect.collidepoint(m_pos):
+                        self.overlay.tree_overlay.handle_event(event)
+                    else:
+                        self.overlay.handle_event(event)
+                else:
+                    self._zoom_camera(1.1 if event.y > 0 else 1 / 1.1, m_pos)
             elif event.type == MOUSEBUTTONDOWN:
-                self.overlay.handle_event(event)
+                if self.game_mode == "BATTLE":
+                    pos = event.pos
+                    # Klik tombol panah scroll battle log
+                    if self.btn_log_up.collidepoint(pos):
+                        total_logs = len(self.battle_system.battle_logs)
+                        max_scroll = max(0, total_logs - 2)
+                        self.battle_log_scroll_offset = min(max_scroll, self.battle_log_scroll_offset + 1)
+                    elif self.btn_log_down.collidepoint(pos):
+                        self.battle_log_scroll_offset = max(0, self.battle_log_scroll_offset - 1)
+                    elif self.overlay.tree_overlay.handle_event(event):
+                        pass
+                    else:
+                        self.overlay.handle_event(event)
+                else:
+                    self.overlay.handle_event(event)
+            elif event.type in (MOUSEBUTTONUP, MOUSEMOTION):
+                if self.game_mode == "BATTLE":
+                    self.overlay.tree_overlay.handle_event(event)
             elif event.type == KEYDOWN:
                 self._handle_key(event.key)
 
@@ -328,8 +370,12 @@ class App:
             if key == K_TAB:
                 self.exit_battle()
             elif key == K_r:
+                self.battle_log_scroll_offset = 0
                 self.battle_system.reset()
+            elif key == K_t:
+                self.overlay.toggle_tree_overlay()
             elif not self.battle_system.state.is_npc_turn and not self.battle_system.is_finished:
+                self.battle_log_scroll_offset = 0  # Auto-scroll ke log aksi terbaru saat giliran jalan
                 if key in (K_1, K_a):
                     self.battle_system.execute_player_action(ACTION_ATTACK)
                 elif key in (K_2, K_s):
@@ -476,55 +522,133 @@ class App:
         # Tampilkan arena pertempuran di area kerja kanan
         w, h = self.screen.get_size()
         panel_w = config.DEBUG_LEFT_PANEL_WIDTH
-        area_x = panel_w + (w - panel_w) // 2
-        area_y = h // 2
+        arena_w = w - panel_w
+        area_x = panel_w + arena_w // 2
 
         # Gelapkan latar peta agar arena pertempuran menonjol
-        dark_surf = pygame.Surface((w - panel_w, h), SRCALPHA)
+        dark_surf = pygame.Surface((arena_w, h), SRCALPHA)
         dark_surf.fill((10, 12, 18, 180))
         self.screen.blit(dark_surf, (panel_w, 0))
 
-        # Posisi Player (Kiri) dan NPC (Kanan) di arena
-        player_arena_x = area_x - 160
-        npc_arena_x = area_x + 160
-        char_y = area_y - 50
+        # Posisi Player (Kiri) dan NPC (Kanan) di arena (posisi diturunkan)
+        char_y = max(100, int(h * 0.17))
+        player_arena_x = area_x - 140
+        npc_arena_x = area_x + 140
 
         # Gambar Karakter Berukuran Besar (Menjaga Rasio Aspek Original)
         p_img = self.player.sprite.current_image
         p_aspect = p_img.get_width() / float(p_img.get_height())
-        big_player = pygame.transform.smoothscale(p_img, (int(round(128 * p_aspect)), 128))
+        big_player = pygame.transform.smoothscale(p_img, (int(round(112 * p_aspect)), 112))
 
         n_img = self.npc.sprite.current_image
         n_aspect = n_img.get_width() / float(n_img.get_height())
-        big_npc = pygame.transform.smoothscale(n_img, (int(round(128 * n_aspect)), 128))
+        big_npc = pygame.transform.smoothscale(n_img, (int(round(112 * n_aspect)), 112))
 
         self.screen.blit(big_player, big_player.get_rect(center=(player_arena_x, char_y)))
         self.screen.blit(big_npc, big_npc.get_rect(center=(npc_arena_x, char_y)))
 
         # Floating Action Text di atas karakter
-        self._draw_action_text(self.battle_system.player_action_text, player_arena_x, char_y - 70)
-        self._draw_action_text(self.battle_system.npc_action_text, npc_arena_x, char_y - 70)
+        self._draw_action_text(self.battle_system.player_action_text, player_arena_x, char_y - 64)
+        self._draw_action_text(self.battle_system.npc_action_text, npc_arena_x, char_y - 64)
 
         # Status & Bar HP
         st = self.battle_system.state
         player_cd_text = f"  ⏳ Heavy CD: {st.player_heavy_cd}" if st.player_heavy_cd > 0 else ""
         npc_cd_text = f"  ⏳ Heavy CD: {st.npc_heavy_cd}" if st.npc_heavy_cd > 0 else ""
-        self._draw_hp_bar(player_arena_x, char_y + 80, "Bolu (Player)", st.player_hp, st.player_defending, st.player_potions, (60, 160, 255), player_cd_text)
-        self._draw_hp_bar(npc_arena_x, char_y + 80, "NPC (Minimax AI)", st.npc_hp, st.npc_defending, st.npc_potions, (255, 90, 80), npc_cd_text)
+        self._draw_hp_bar(player_arena_x, char_y + 100, "Bolu (Player)", st.player_hp, st.player_defending, st.player_potions, (60, 160, 255), player_cd_text)
+        self._draw_hp_bar(npc_arena_x, char_y + 100, "NPC (Minimax AI)", st.npc_hp, st.npc_defending, st.npc_potions, (255, 90, 80), npc_cd_text)
 
-        # Tampilkan Battle Log Narasi di bagian bawah arena
-        log_box = pygame.Rect(panel_w + 30, h - 160, (w - panel_w) - 60, 140)
-        pygame.draw.rect(self.screen, (20, 24, 34, 230), log_box, border_radius=8)
-        pygame.draw.rect(self.screen, config.DEBUG_PANEL_BORDER, log_box, 1, border_radius=8)
+        # ------------------------------------------------------------------ #
+        # 1. Battle Log Box (Tepat di Bawah HP Bar, 2 Aksi Terakhir, Scrollable)
+        # ------------------------------------------------------------------ #
+        usable_w = arena_w - 30
+        log_x = panel_w + 15
+        log_y = char_y + 200
+        log_h = 76
+        self.battle_log_rect = pygame.Rect(log_x, log_y, usable_w, log_h)
 
-        ltitle = self.fonts.get("bubble", self.fonts["sm"]).render("RIWAYAT PERTEMPURAN (BATTLE LOG)", True, (255, 255, 255))
-        self.screen.blit(ltitle, (log_box.x + 14, log_box.y + 10))
+        pygame.draw.rect(self.screen, (20, 24, 34, 235), self.battle_log_rect, border_radius=8)
+        pygame.draw.rect(self.screen, config.DEBUG_PANEL_BORDER, self.battle_log_rect, 1, border_radius=8)
 
-        ly = log_box.y + 36
-        for log_line in self.battle_system.battle_logs[-4:]:
-            ts = self.fonts["sm"].render(f"• {log_line}", True, (255, 255, 255))
-            self.screen.blit(ts, (log_box.x + 14, ly))
-            ly += 22
+        # Header bar battle log
+        font_bubble = self.fonts.get("bubble", self.fonts["sm"])
+        font_sm = self.fonts["sm"]
+
+        ltitle = font_bubble.render("📜 RIWAYAT PERTEMPURAN (BATTLE LOG)", True, (255, 255, 255))
+        self.screen.blit(ltitle, (self.battle_log_rect.x + 12, self.battle_log_rect.y + 6))
+
+        total_logs = len(self.battle_system.battle_logs)
+        max_scroll = max(0, total_logs - 2)
+        self.battle_log_scroll_offset = max(0, min(max_scroll, self.battle_log_scroll_offset))
+
+        # Potong log: hanya 2 aksi yang terlihat sesuai scroll offset
+        if total_logs > 2:
+            end_idx = total_logs - self.battle_log_scroll_offset
+            start_idx = max(0, end_idx - 2)
+            display_logs = self.battle_system.battle_logs[start_idx:end_idx]
+            pos_info = f"[Aksi {start_idx + 1}-{end_idx} dari {total_logs}] (Scroll: MouseWheel)"
+        else:
+            display_logs = self.battle_system.battle_logs
+            pos_info = f"[{total_logs} aksi]" if total_logs > 0 else "[Belum ada aksi]"
+
+        info_surf = font_sm.render(pos_info, True, (170, 185, 210))
+        self.screen.blit(info_surf, (self.battle_log_rect.right - info_surf.get_width() - 65, self.battle_log_rect.y + 6))
+
+        # Tombol panah scroll manual (▲ dan ▼)
+        btn_w, btn_h = 22, 18
+        self.btn_log_up = pygame.Rect(self.battle_log_rect.right - 54, self.battle_log_rect.y + 5, btn_w, btn_h)
+        self.btn_log_down = pygame.Rect(self.battle_log_rect.right - 28, self.battle_log_rect.y + 5, btn_w, btn_h)
+
+        up_col = (60, 100, 160) if self.battle_log_scroll_offset < max_scroll else (45, 50, 65)
+        down_col = (60, 100, 160) if self.battle_log_scroll_offset > 0 else (45, 50, 65)
+
+        pygame.draw.rect(self.screen, up_col, self.btn_log_up, border_radius=3)
+        pygame.draw.rect(self.screen, down_col, self.btn_log_down, border_radius=3)
+
+        ts_up = font_bubble.render("▲", True, (255, 255, 255) if self.battle_log_scroll_offset < max_scroll else (120, 125, 135))
+        ts_dn = font_bubble.render("▼", True, (255, 255, 255) if self.battle_log_scroll_offset > 0 else (120, 125, 135))
+        self.screen.blit(ts_up, (self.btn_log_up.centerx - ts_up.get_width() // 2, self.btn_log_up.centery - ts_up.get_height() // 2))
+        self.screen.blit(ts_dn, (self.btn_log_down.centerx - ts_dn.get_width() // 2, self.btn_log_down.centery - ts_dn.get_height() // 2))
+
+        # Tampilkan tepat 2 baris log
+        ly = self.battle_log_rect.y + 28
+        if display_logs:
+            for log_line in display_logs:
+                ts = font_sm.render(f"• {log_line}", True, (245, 245, 250))
+                self.screen.blit(ts, (self.battle_log_rect.x + 14, ly))
+                ly += 22
+        else:
+            ts = font_sm.render("• Pertarungan dimulai! Pilih aksi Player untuk bertarung melawan AI.", True, (150, 160, 180))
+            self.screen.blit(ts, (self.battle_log_rect.x + 14, ly))
+
+        # Scrollbar mini di sisi kanan log box jika total log > 2
+        if total_logs > 2 and max_scroll > 0:
+            track_y = self.battle_log_rect.y + 26
+            track_h = log_h - 32
+            thumb_h = max(10, int(track_h * (2.0 / total_logs)))
+            norm_pos = 1.0 - (self.battle_log_scroll_offset / float(max_scroll))
+            thumb_y = track_y + int(norm_pos * (track_h - thumb_h))
+            pygame.draw.rect(self.screen, (50, 58, 75), pygame.Rect(self.battle_log_rect.right - 6, track_y, 3, track_h), border_radius=1)
+            pygame.draw.rect(self.screen, (100, 180, 255), pygame.Rect(self.battle_log_rect.right - 6, thumb_y, 3, thumb_h), border_radius=1)
+
+        # ------------------------------------------------------------------ #
+        # 2. Decision Tree Overlay Box (Di Bawah Battle Log, Scrollable)
+        # ------------------------------------------------------------------ #
+        if self.overlay.tree_overlay.visible:
+            # Posisikan tree overlay turun hampir mentok ke batas bawah layar (margin 14px dari bawah)
+            tree_y = max(self.battle_log_rect.bottom + 25, int(h * 0.58))
+            tree_h = max(140, h - tree_y - 14)
+            tree_rect = pygame.Rect(log_x, tree_y, usable_w, tree_h)
+
+            # Update data pohon dari AI solver jika ada
+            if self.battle_system.last_ai_stats:
+                tree_data = self.battle_system.last_ai_stats.get("tree", None)
+                if tree_data is None and hasattr(self.battle_system.ai_solver, "last_tree"):
+                    tree_data = self.battle_system.ai_solver.last_tree
+                self.overlay.tree_overlay.set_tree(tree_data)
+
+            # Gambar Decision Tree di rect yang telah ditentukan (di bawah battle log)
+            self.overlay.tree_overlay.draw(self.screen, custom_rect=tree_rect)
 
     def _draw_action_text(self, action_data, cx, cy):
         """Gambar teks aksi melayang di atas karakter (floating + fade effect)."""

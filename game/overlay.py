@@ -1,6 +1,7 @@
 """DebugOverlay: Mendukung 2 mode UI:
 1. Mode Eksplorasi (Pathfinding: A* vs UCS, visualisasi node, bobot terrain)
 2. Mode Battle (Turn-Based Duel: Minimax vs Alpha-Beta vs Expectimax, evaluation functions, depth limit, node counts, skor aksi)
+3. Decision Tree Overlay (Visualisasi pohon keputusan AI)
 """
 
 import math
@@ -8,6 +9,8 @@ import pygame
 
 from . import config
 from .battle_ai import ACTION_ATTACK, ACTION_HEAVY, ACTION_DEFEND, ACTION_POTION
+from .battle_ai import MOVE_ORDERING_MODES, MOVE_ORDERING_OFF, MOVE_ORDERING_HEURISTIC, MOVE_ORDERING_REVERSED
+from .tree_overlay import TreeOverlay
 
 MOUSEBUTTONDOWN = getattr(pygame, "MOUSEBUTTONDOWN", 1025)
 SRCALPHA = getattr(pygame, "SRCALPHA", 0x00010000)
@@ -148,6 +151,9 @@ class DebugOverlay:
         self.battle_system = None
         self._init_battle_ui()
 
+        # --- Decision Tree Overlay ---
+        self.tree_overlay = TreeOverlay(fonts)
+
         events.register_overlay(self)
         self.update_stats(0, 0.0)
 
@@ -171,14 +177,15 @@ class DebugOverlay:
             initial_idx=0,
         )
 
-        # Tombol Kedalaman AI (Depth - dan +)
+        # Tombol Kedalaman AI / Early Stop (Help, Depth - dan +)
+        self.btn_depth_help = pygame.Rect(px + pw - 108, self.panel_y + 162, 24, 24)
         self.btn_depth_minus = pygame.Rect(px + pw - 78, self.panel_y + 162, 30, 24)
         self.btn_depth_plus = pygame.Rect(px + pw - 42, self.panel_y + 162, 30, 24)
-        self.btn_depth_help = pygame.Rect(px + 180, self.panel_y + 162, 24, 24)
 
-        # Tombol Move Ordering Toggle
-        self.btn_move_ordering = pygame.Rect(px + pw - 62, self.panel_y + 192, 54, 24)
-        self.btn_move_ordering_help = pygame.Rect(px + 134, self.panel_y + 192, 24, 24)
+        # Tombol Move Ordering Toggle & Help
+        mo_btn_w = 82
+        self.btn_move_ordering_help = pygame.Rect(px + pw - mo_btn_w - 38, self.panel_y + 192, 24, 24)
+        self.btn_move_ordering = pygame.Rect(px + pw - mo_btn_w - 8, self.panel_y + 192, mo_btn_w, 24)
 
         # Tombol Aksi Player (4 Aksi: Attack, Heavy Attack, Defend, Potion)
         bw = (pw - 18) // 2
@@ -187,6 +194,9 @@ class DebugOverlay:
         self.btn_heavy = pygame.Rect(px + 12 + bw, btn_y, bw, 32)
         self.btn_defend = pygame.Rect(px + 6, btn_y + 38, bw, 32)
         self.btn_potion = pygame.Rect(px + 12 + bw, btn_y + 38, bw, 32)
+
+        # Tombol Toggle Decision Tree Overlay
+        self.btn_toggle_tree = pygame.Rect(0, 0, 0, 0)
 
     def set_battle_system(self, battle_system):
         self.battle_system = battle_system
@@ -209,12 +219,16 @@ class DebugOverlay:
             return
         algos = ["ALPHA_BETA", "MINIMAX", "EXPECTIMAX"]
         self.battle_system.algorithm = algos[index]
+        if hasattr(self.battle_system, "update_ai_preview"):
+            self.battle_system.update_ai_preview()
 
     def _on_battle_eval_selected(self, index):
         if not self.battle_system:
             return
         evals = ["BALANCED", "AGGRESSIVE", "DEFENSIVE"]
         self.battle_system.eval_mode = evals[index]
+        if hasattr(self.battle_system, "update_ai_preview"):
+            self.battle_system.update_ai_preview()
 
     # ------------------------------------------------------------------ #
     # Data Update Eksplorasi
@@ -521,10 +535,14 @@ class DebugOverlay:
         sub_eval = self.fonts["sm"].render("Fungsi Evaluasi:", True, config.DEBUG_TEXT_SECONDARY)
         surface.blit(sub_eval, (px + 8, self.panel_y + 108))
 
-        # Baris Depth Control
+        # Baris Depth / Early Stop Control
         depth_y = self.panel_y + 162
-        depth_label = self.fonts["sm"].render(f"Kedalaman (Depth): {battle_system.depth}", True, config.DEBUG_TEXT_PRIMARY)
+        depth_label = self.fonts["sm"].render(f"Early Stop / Depth: {battle_system.depth}", True, config.DEBUG_TEXT_PRIMARY)
         surface.blit(depth_label, (px + 8, depth_y + 3))
+
+        draw_card(surface, self.btn_depth_help, (60, 100, 160), border_color=(100, 110, 125, 200), border_radius=5)
+        help_text = self.fonts.get("bubble", self.fonts["sm"]).render("?", True, (255, 255, 255))
+        surface.blit(help_text, (self.btn_depth_help.centerx - help_text.get_width() // 2, self.btn_depth_help.centery - help_text.get_height() // 2))
 
         for btn, text, fill in [
             (self.btn_depth_minus, "-", (210, 75, 75)),
@@ -534,13 +552,9 @@ class DebugOverlay:
             ts = self.fonts.get("bubble", self.fonts["sm"]).render(text, True, (255, 255, 255))
             surface.blit(ts, (btn.centerx - ts.get_width() // 2, btn.centery - ts.get_height() // 2))
 
-        draw_card(surface, self.btn_depth_help, (60, 100, 160), border_color=(100, 110, 125, 200), border_radius=5)
-        help_text = self.fonts.get("bubble", self.fonts["sm"]).render("?", True, (255, 255, 255))
-        surface.blit(help_text, (self.btn_depth_help.centerx - help_text.get_width() // 2, self.btn_depth_help.centery - help_text.get_height() // 2))
-
-        # Baris Move Ordering Toggle
+        # Baris Move Ordering Toggle (3-mode: OFF / HEURISTIC / REVERSED)
         mo_y = self.panel_y + 192
-        mo_on = battle_system.use_move_ordering
+        mo_mode = battle_system.move_ordering_mode
         mo_label = self.fonts["sm"].render("Move Ordering:", True, config.DEBUG_TEXT_PRIMARY)
         surface.blit(mo_label, (px + 8, mo_y + 3))
 
@@ -548,9 +562,21 @@ class DebugOverlay:
         help_text = self.fonts.get("bubble", self.fonts["sm"]).render("?", True, (255, 255, 255))
         surface.blit(help_text, (self.btn_move_ordering_help.centerx - help_text.get_width() // 2, self.btn_move_ordering_help.centery - help_text.get_height() // 2))
 
-        mo_fill = (45, 160, 85) if mo_on else (190, 60, 60)
+        # Warna berdasarkan mode ordering
+        if mo_mode == MOVE_ORDERING_HEURISTIC:
+            mo_fill = (45, 160, 85)    # Hijau
+            mo_text = "HEURISTIC"
+        elif mo_mode == MOVE_ORDERING_REVERSED:
+            mo_fill = (180, 120, 30)   # Oranye
+            mo_text = "REVERSED"
+        else:
+            mo_fill = (190, 60, 60)    # Merah
+            mo_text = "OFF"
+
+        # Perlebar tombol untuk teks yang lebih panjang
+        mo_btn_w = 82
+        self.btn_move_ordering = pygame.Rect(px + pw - mo_btn_w - 8, self.panel_y + 192, mo_btn_w, 24)
         draw_card(surface, self.btn_move_ordering, mo_fill, border_color=(100, 110, 125, 200), border_radius=10)
-        mo_text = "ON" if mo_on else "OFF"
         ts_mo = self.fonts["sm"].render(mo_text, True, (255, 255, 255))
         surface.blit(ts_mo, (self.btn_move_ordering.centerx - ts_mo.get_width() // 2, self.btn_move_ordering.centery - ts_mo.get_height() // 2))
 
@@ -618,7 +644,7 @@ class DebugOverlay:
         surface.blit(ts_mtitle, (px + (pw - ts_mtitle.get_width()) // 2, eval_card_y + 8))
 
         stats = battle_system.last_ai_stats
-        cur_y = eval_card_y + 30
+        cur_y = eval_card_y + 28
 
         if stats:
             nc = stats.get("node_count", 0)
@@ -626,26 +652,49 @@ class DebugOverlay:
             t_ms = stats.get("time_ms", 0.0)
             best_a = stats.get("best_action", "—")
             best_s = stats.get("best_score", 0.0)
+            cur_algo = stats.get("algorithm", battle_system.algorithm)
+            comp = stats.get("comparison", {})
+            mm_n = comp.get("minimax_nodes", nc)
+            ab_n = comp.get("alphabeta_nodes", nc)
+            ex_n = comp.get("expectimax_nodes", nc if cur_algo == "EXPECTIMAX" else "—")
+            sav = comp.get("savings_pct", 0.0)
+            d_val = comp.get("depth", stats.get("depth", 4))
+            det_scores = comp.get("deterministic_scores", stats.get("action_scores", {}))
+            exp_scores = comp.get("expectimax_scores", stats.get("action_scores", {}))
 
-            # Node Count, Pruning, Timing
-            surface.blit(self.fonts["sm"].render(f"Nodes Diekspansi : {nc}", True, config.DEBUG_TEXT_PRIMARY), (px + 10, cur_y))
-            cur_y += 18
-            pruned_font = self.fonts.get("bubble", self.fonts["sm"])
-            surface.blit(pruned_font.render(f"Cabang Dipangkas : {pc}", True, (15, 120, 50)), (px + 10, cur_y))
-            cur_y += 18
-            surface.blit(self.fonts["sm"].render(f"Waktu Berpikir   : {t_ms:.2f} ms", True, config.DEBUG_TEXT_PRIMARY), (px + 10, cur_y))
-            cur_y += 18
+            # Kotak Komparasi Node: Minimax vs Alpha-Beta vs Expectimax
+            comp_box = pygame.Rect(px + 8, cur_y, pw - 16, 74)
+            draw_card(surface, comp_box, (235, 243, 253, 230), border_color=(175, 205, 238, 200), border_radius=6)
 
-            # Best Action Card Highlight
+            ts_c_title = self.fonts["sm"].render(f"Komparasi Metode (Cutoff d={d_val}):", True, config.DEBUG_TEXT_SECONDARY)
+            surface.blit(ts_c_title, (comp_box.x + 8, comp_box.y + 4))
+
+            t_mm = f"• Pure Minimax : {mm_n} node"
+            t_ab = f"• Alpha-Beta   : {ab_n} node ({sav:.1f}% hemat)"
+            t_ex = f"• Expectimax   : {ex_n} node (stokastik)"
+            surface.blit(self.fonts["sm"].render(t_mm, True, config.DEBUG_TEXT_PRIMARY), (comp_box.x + 8, comp_box.y + 20))
+            surface.blit(self.fonts["sm"].render(t_ab, True, (15, 120, 50) if ab_n < mm_n else config.DEBUG_TEXT_PRIMARY), (comp_box.x + 8, comp_box.y + 36))
+            col_ex_text = (150, 60, 190) if cur_algo == "EXPECTIMAX" else config.DEBUG_TEXT_HIGHLIGHT
+            surface.blit(self.fonts["sm"].render(t_ex, True, col_ex_text), (comp_box.x + 8, comp_box.y + 52))
+
+            cur_y += 79
+
+            # Best Action Card Highlight (Prevent Text Overflow)
             best_card = pygame.Rect(px + 8, cur_y, pw - 16, 26)
             draw_card(surface, best_card, (215, 235, 255, 230), border_color=(100, 160, 230, 200), border_radius=5)
-            best_text = f"Pilihan Terbaik  : {best_a} (Skor: {best_s})"
+            best_text = f"Pilihan: {best_a} │ Skor: {best_s}"
             ts_best = self.fonts["sm"].render(best_text, True, config.DEBUG_TEXT_HIGHLIGHT)
             surface.blit(ts_best, (best_card.x + 8, best_card.centery - ts_best.get_height() // 2))
-            cur_y += 32
+            cur_y += 30
 
-            # Tabel Skor Pertimbangan Tiap Aksi di Root
-            surface.blit(self.fonts["sm"].render("Pertimbangan Nilai Aksi (Root):", True, config.DEBUG_TEXT_SECONDARY), (px + 10, cur_y))
+            # Sub-judul Tabel Perbandingan Skor Root Node
+            surface.blit(self.fonts["sm"].render("Perbandingan Skor: Det vs Expectimax", True, config.DEBUG_TEXT_SECONDARY), (px + 10, cur_y))
+            cur_y += 18
+
+            # Header Kolom Tabel
+            surface.blit(self.fonts["sm"].render("Aksi Legal", True, (115, 125, 140)), (px + 14, cur_y))
+            surface.blit(self.fonts["sm"].render("Det (A-B)", True, (115, 125, 140)), (px + 144, cur_y))
+            surface.blit(self.fonts["sm"].render("Expectimax", True, (115, 125, 140)), (px + 232, cur_y))
             cur_y += 18
 
             scores = stats.get("action_scores", {})
@@ -655,18 +704,81 @@ class DebugOverlay:
 
                 if is_selected:
                     draw_card(surface, row_rect, (205, 232, 255, 220), border_color=(120, 175, 240, 180), border_radius=4)
-                    prefix = "▶ "
-                    col = config.DEBUG_TEXT_HIGHLIGHT
+                    prefix = "> "
+                    col_act = config.DEBUG_TEXT_HIGHLIGHT
                 else:
                     draw_card(surface, row_rect, (236, 240, 248, 160), border_radius=4)
                     prefix = "  • "
-                    col = config.DEBUG_TEXT_PRIMARY
+                    col_act = config.DEBUG_TEXT_PRIMARY
 
-                surface.blit(self.fonts["sm"].render(f"{prefix}{act:<12}: {val:>7.1f}", True, col), (row_rect.x + 4, row_rect.centery - 7))
+                # 1. Nama Aksi
+                surface.blit(self.fonts["sm"].render(f"{prefix}{act}", True, col_act), (row_rect.x + 4, row_rect.centery - 7))
+
+                # 2. Skor Deterministik (Alpha-Beta / Minimax)
+                det_v = det_scores.get(act, val)
+                col_det = config.DEBUG_TEXT_HIGHLIGHT if (is_selected and cur_algo != "EXPECTIMAX") else config.DEBUG_TEXT_PRIMARY
+                ts_det = self.fonts["sm"].render(f"{det_v:>6.1f}", True, col_det)
+                surface.blit(ts_det, (row_rect.x + 136, row_rect.centery - 7))
+
+                # 3. Skor Expectimax (75% hit jika Heavy Attack)
+                exp_v = exp_scores.get(act, val)
+                if act == ACTION_HEAVY:
+                    exp_str = f"{exp_v:>6.1f} (75%)"
+                    col_exp = (195, 75, 25) if abs(exp_v - det_v) > 0.01 else config.DEBUG_TEXT_PRIMARY
+                else:
+                    exp_str = f"{exp_v:>6.1f}"
+                    col_exp = (195, 75, 25) if abs(exp_v - det_v) > 0.01 else config.DEBUG_TEXT_PRIMARY
+
+                if is_selected and cur_algo == "EXPECTIMAX":
+                    col_exp = (150, 50, 190)
+
+                ts_exp = self.fonts["sm"].render(exp_str, True, col_exp)
+                surface.blit(ts_exp, (row_rect.x + 224, row_rect.centery - 7))
+
                 cur_y += 22
         else:
-            surface.blit(self.fonts["sm"].render("Menunggu kalkulasi pertama AI...", True, config.DEBUG_TEXT_SECONDARY), (px + 10, cur_y))
-            cur_y += 40
+            # Tampilan saat belum ada evaluasi (menunggu aksi pemain)
+            wait_box = pygame.Rect(px + 8, cur_y + 14, pw - 16, 92)
+            draw_card(surface, wait_box, (235, 243, 253, 220), border_color=(185, 205, 235, 200), border_radius=8)
+
+            ts_wait = self.fonts.get("bubble", self.fonts["sm"]).render("Menunggu Input Aksi...", True, config.DEBUG_TEXT_HIGHLIGHT)
+            surface.blit(ts_wait, (wait_box.centerx - ts_wait.get_width() // 2, wait_box.y + 12))
+
+            ts_sub1 = self.fonts["sm"].render("Pilih aksi pada tombol di atas:", True, config.DEBUG_TEXT_SECONDARY)
+            surface.blit(ts_sub1, (wait_box.centerx - ts_sub1.get_width() // 2, wait_box.y + 38))
+
+            ts_sub2 = self.fonts["sm"].render("Attack / Heavy / Defend / Potion", True, config.DEBUG_TEXT_PRIMARY)
+            surface.blit(ts_sub2, (wait_box.centerx - ts_sub2.get_width() // 2, wait_box.y + 60))
+
+            hint_text = self.fonts["sm"].render("Data evaluasi AI akan dihitung", True, (140, 150, 165))
+            hint_text2 = self.fonts["sm"].render("saat giliran NPC melangkah.", True, (140, 150, 165))
+            surface.blit(hint_text, (px + (pw - hint_text.get_width()) // 2, wait_box.bottom + 20))
+            surface.blit(hint_text2, (px + (pw - hint_text2.get_width()) // 2, wait_box.bottom + 40))
+
+        # ---------------------------------------------------------------- #
+        # Tombol Toggle Decision Tree Overlay (Tampil / Sembunyi)
+        # ---------------------------------------------------------------- #
+        btn_tree_y = eval_card_y + eval_card_h + 8
+        btn_tree_h = 36
+        self.btn_toggle_tree = pygame.Rect(px + 4, btn_tree_y, pw - 8, btn_tree_h)
+        tree_vis = self.tree_overlay.visible
+
+        if tree_vis:
+            t_col = (40, 155, 75)
+            t_border = (30, 120, 60)
+            t_status = "TAMPIL (ON)"
+            t_hint = "Klik untuk sembunyikan [T]"
+        else:
+            t_col = (115, 125, 140)
+            t_border = (85, 95, 110)
+            t_status = "SEMBUNYI (OFF)"
+            t_hint = "Klik untuk tampilkan [T]"
+
+        draw_card(surface, self.btn_toggle_tree, t_col, border_color=t_border, border_radius=8)
+        ts_title = self.fonts.get("bubble", self.fonts["sm"]).render(f"Decision Tree: {t_status}", True, (255, 255, 255))
+        surface.blit(ts_title, (self.btn_toggle_tree.centerx - ts_title.get_width() // 2, self.btn_toggle_tree.y + 4))
+        ts_hint = self.fonts["sm"].render(t_hint, True, (225, 235, 245))
+        surface.blit(ts_hint, (self.btn_toggle_tree.centerx - ts_hint.get_width() // 2, self.btn_toggle_tree.y + 19))
 
         # ---------------------------------------------------------------- #
         # Kartu 5: Petunjuk Shortcut / Footer
@@ -676,7 +788,7 @@ class DebugOverlay:
         draw_card(surface, pygame.Rect(px, footer_y, pw, footer_h), (244, 247, 253, 235), border_color=(200, 212, 230, 200), border_radius=8)
 
         surface.blit(self.fonts["sm"].render("[R] Reset Duel", True, config.DEBUG_TEXT_SECONDARY), (px + 12, footer_y + 8))
-        surface.blit(self.fonts["sm"].render("[Tab] Kembali ke Peta", True, config.DEBUG_TEXT_SECONDARY), (px + 12, footer_y + 26))
+        surface.blit(self.fonts["sm"].render("[Tab] Kembali  [T] Tree", True, config.DEBUG_TEXT_SECONDARY), (px + 12, footer_y + 26))
         surface.blit(self.fonts["sm"].render("[1..4] Shortcut Aksi", True, config.DEBUG_TEXT_HIGHLIGHT), (px + 12, footer_y + 44))
 
         # Gambar Dropdowns paling atas agar popup melayang tanpa tertutup
@@ -687,12 +799,21 @@ class DebugOverlay:
         if self.move_ordering_help_open:
             self._draw_move_ordering_help(surface)
 
+        # Update data tree pencarian AI ke tree overlay
+        if battle_system.last_ai_stats:
+            tree_data = battle_system.last_ai_stats.get("tree", None)
+            if tree_data is None and hasattr(battle_system.ai_solver, 'last_tree'):
+                tree_data = battle_system.ai_solver.last_tree
+            self.tree_overlay.set_tree(tree_data)
+        else:
+            self.tree_overlay.set_tree(None)
+
     def _draw_depth_help(self, surface):
         help_font = self.fonts["sm"]
         help_lines = self._depth_help_lines(help_font, 250)
         popup = self._depth_help_popup_rect(len(help_lines))
         draw_card(surface, popup, (252, 253, 255, 250), border_color=config.DEBUG_TEXT_HIGHLIGHT, border_radius=10, border_width=1)
-        title = self.fonts.get("bubble", self.fonts["sm"]).render("Tentang Kedalaman AI", True, config.DEBUG_TEXT_HIGHLIGHT)
+        title = self.fonts.get("bubble", self.fonts["sm"]).render("Tentang Early Stop (Depth)", True, config.DEBUG_TEXT_HIGHLIGHT)
         surface.blit(title, (popup.x + 12, popup.y + 10))
         y = popup.y + 32
         for line in help_lines:
@@ -702,9 +823,9 @@ class DebugOverlay:
 
     def _depth_help_lines(self, font, max_width):
         help_text = (
-            "Depth adalah jumlah langkah ke depan yang dianalisis AI sebelum memilih aksi. "
-            "Depth + membuat analisis lebih jauh dan detail, tetapi waktu berpikir bisa lebih lama. "
-            "Depth - membuat analisis lebih cepat dan ringan."
+            "Early Stop (Depth Limit) adalah batas kedalaman langkah pencarian AI. "
+            "Pencarian pohon dipotong lebih awal pada batas kedalaman (d) dan memanggil fungsi heuristik evaluasi, "
+            "sehingga mencegah ledakan kombinatorial dan mempercepat waktu berpikir NPC secara drastis."
         )
         return self._wrap_overlay_text(help_text, font, max_width)
 
@@ -727,8 +848,9 @@ class DebugOverlay:
     def _move_ordering_help_lines(self, font, max_width):
         help_text = (
             "Move Ordering mengatur urutan langkah yang diperiksa AI. "
-            "ON memeriksa langkah yang dianggap lebih baik lebih dulu, sehingga AI bisa memilih lebih cepat. "
-            "OFF memeriksa langkah tanpa pengurutan khusus dan dapat membutuhkan lebih banyak waktu."
+            "HEURISTIC: memeriksa langkah yang lebih baik lebih dulu (ofensif dulu). "
+            "REVERSED: memeriksa langkah defensif terlebih dahulu (urutan terbalik). "
+            "OFF: memeriksa langkah tanpa pengurutan khusus."
         )
         return self._wrap_overlay_text(help_text, font, max_width)
 
@@ -795,16 +917,25 @@ class DebugOverlay:
             if self.btn_depth_minus.collidepoint(pos):
                 if self.battle_system and self.battle_system.depth > 1:
                     self.battle_system.depth -= 1
+                    if hasattr(self.battle_system, "update_ai_preview"):
+                        self.battle_system.update_ai_preview()
                 return True
             if self.btn_depth_plus.collidepoint(pos):
                 if self.battle_system and self.battle_system.depth < 8:
                     self.battle_system.depth += 1
+                    if hasattr(self.battle_system, "update_ai_preview"):
+                        self.battle_system.update_ai_preview()
                 return True
 
-            # Tombol Move Ordering Toggle
+            # Tombol Move Ordering Toggle (cycle 3 mode)
             if self.btn_move_ordering.collidepoint(pos):
                 if self.battle_system:
-                    self.battle_system.use_move_ordering = not self.battle_system.use_move_ordering
+                    modes = MOVE_ORDERING_MODES
+                    cur = self.battle_system.move_ordering_mode
+                    idx = modes.index(cur) if cur in modes else 0
+                    self.battle_system.move_ordering_mode = modes[(idx + 1) % len(modes)]
+                    if hasattr(self.battle_system, "update_ai_preview"):
+                        self.battle_system.update_ai_preview()
                 return True
 
             # Tombol Aksi Player
@@ -822,4 +953,20 @@ class DebugOverlay:
                     self.battle_system.execute_player_action(ACTION_POTION)
                     return True
 
+            # Tombol Toggle Decision Tree Overlay di Debug Panel
+            if self.btn_toggle_tree.collidepoint(pos):
+                self.toggle_tree_overlay()
+                return True
+
+            # Forward event ke tree overlay
+            if self.tree_overlay.handle_event(event):
+                return True
+
         return False
+
+    def toggle_tree_overlay(self):
+        """Toggle visibilitas Decision Tree Overlay (dipanggil dari app.py via tombol [T])."""
+        self.tree_overlay.toggle()
+        # Aktifkan tree recording di battle system
+        if self.battle_system:
+            self.battle_system.record_tree = self.tree_overlay.visible

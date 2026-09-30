@@ -25,8 +25,6 @@ Sistem dikembangkan menggunakan Python 3.10+ berbasis kerangka `pygame-ce` denga
 Game-AI/
 ├── main.py                     # Titik masuk utama aplikasi (Entry Point)
 ├── requirements.txt            # Daftar dependensi pustaka (pygame-ce)
-├── LAPORAN_TAHAP_2.md          # Dokumen laporan akademik komprehensif Tahap 2
-├── check.md                    # Rubrik evaluasi dan checklist verifikasi tugas
 ├── assets/                     # Spritesheet dan aset grafis karakter/ubin
 ├── data/
 │   └── map_tubes.json          # Metadata grid peta, layer ubin, atlas tile, dan rintangan
@@ -334,8 +332,3 @@ python scratch/run_experiments.py
 ```
 
 ---
-
-## 8. Dokumen Terkait
-
-- **[LAPORAN_TAHAP_2.md](file:///c:/Users/Pavilion/Documents/DOKUMEN%20TUGAS/Kuliah/Tubes_ai_kel7/Fix_nya/Game-AI/LAPORAN_TAHAP_2.md)**: Dokumen laporan akademik lengkap mencakup landasan teori, formulasi matematis, analisis kompleksitas waktu & ruang, serta interpretasi eksperimen.
-- **[check.md](file:///c:/Users/Pavilion/Documents/DOKUMEN%20TUGAS/Kuliah/Tubes_ai_kel7/Fix_nya/Game-AI/check.md)**: Lembar verifikasi 15 kriteria teknis dan rubrik pemenuhan tugas Tubes AI.

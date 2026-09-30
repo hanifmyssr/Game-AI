@@ -30,20 +30,67 @@ COLOR_PANEL_BORDER = (75, 85, 105, 230)
 COLOR_TOGGLE_ON = (45, 160, 85)
 COLOR_TOGGLE_OFF = (190, 60, 60)
 
-# Ukuran node kompak & proporsional
-NODE_W = 66
-NODE_H = 26
-NODE_PAD_X = 10      # Jarak horizontal antar node di level yang sama
-NODE_PAD_Y = 36      # Jarak vertikal antar level (depth)
+# Ukuran node proporsional & lapang (mencegah teks meluap)
+NODE_W = 82
+NODE_H = 34
+NODE_PAD_X = 14      # Jarak horizontal antar node di level yang sama
+NODE_PAD_Y = 52      # Jarak vertikal antar level (depth)
 LABEL_SHORT = {
     "ATTACK": "ATK",
     "HEAVY_ATTACK": "H.ATK",
     "DEFEND": "DEF",
     "POTION": "POT",
+    "HIT (75%)": "HIT",
+    "MISS (25%)": "MISS",
 }
 
 
-def _draw_rounded_rect(surface, rect, color, border_radius=5, border_color=None, border_width=1):
+def _format_score(val):
+    """Format nilai skor menjadi ringkas dan rapi."""
+    if val is None:
+        return "?"
+    if abs(val - round(val)) < 1e-4:
+        return f"{int(round(val)):+d}" if val != 0 else "0"
+    return f"{val:+.1f}"
+
+
+def _get_bezier_points(p0, p3, steps=16):
+    """Generate titik-titik kurva Bezier kubik (S-curve) mulus antara parent dan child."""
+    dy = p3[1] - p0[1]
+    p1 = (p0[0], p0[1] + dy * 0.5)
+    p2 = (p3[0], p0[1] + dy * 0.5)
+    pts = []
+    for i in range(steps + 1):
+        t = i / float(steps)
+        u = 1.0 - t
+        x = u**3 * p0[0] + 3 * u**2 * t * p1[0] + 3 * u * t**2 * p2[0] + t**3 * p3[0]
+        y = u**3 * p0[1] + 3 * u**2 * t * p1[1] + 3 * u * t**2 * p2[1] + t**3 * p3[1]
+        pts.append((int(round(x)), int(round(y))))
+    return pts
+
+
+def _draw_smooth_curve(surface, color, p0, p3, is_best=False, is_pruned=False):
+    """Menggambar garis koneksi kurva S halus dan anti-aliased."""
+    pts = _get_bezier_points(p0, p3, steps=18)
+    if is_pruned:
+        # Garis putus-putus mulus
+        i = 0
+        while i < len(pts) - 1:
+            end_idx = min(i + 2, len(pts) - 1)
+            sub_pts = pts[i:end_idx + 1]
+            if len(sub_pts) >= 2:
+                pygame.draw.lines(surface, color, False, sub_pts, width=2)
+            i += 3
+    elif is_best:
+        # Jalur terbaik: garis tebal + antialiased highlight
+        pygame.draw.lines(surface, (45, 195, 75), False, pts, width=3)
+        pygame.draw.aalines(surface, (120, 240, 145), False, pts)
+    else:
+        # Garis normal: antialiased halus
+        pygame.draw.aalines(surface, color, False, pts)
+
+
+def _draw_rounded_rect(surface, rect, color, border_radius=6, border_color=None, border_width=1):
     """Gambar rounded rectangle dengan opsi border."""
     pygame.draw.rect(surface, color, rect, border_radius=border_radius)
     if border_color:
@@ -73,6 +120,13 @@ class TreeOverlay:
 
     def __init__(self, fonts):
         self.fonts = fonts
+        try:
+            self.font_badge = pygame.font.SysFont(["segoeui", "arial", "sans-serif"], 9, bold=True)
+            self.font_body = pygame.font.SysFont(["consolas", "segoeui", "arial"], 11, bold=True)
+        except (OSError, RuntimeError):
+            self.font_badge = fonts.get("sm", pygame.font.Font(None, 12))
+            self.font_body = fonts.get("sm", pygame.font.Font(None, 14))
+
         self.visible = True         # Aktif secara default di mode duel
         self.tree_root = None       # TreeNode root dari pencarian terakhir
         self.scroll_x = 0           # Offset scroll horizontal (px)
@@ -279,14 +333,14 @@ class TreeOverlay:
         )
 
         # 4. Legend Kompak Horizontal
-        leg_x = self.btn_focus_root.right + 16
+        leg_x = self.btn_focus_root.right + 14
         leg_y = header_rect.centery
 
         # Best path
-        pygame.draw.line(screen, COLOR_LINE_BEST, (leg_x, leg_y), (leg_x + 14, leg_y), 3)
+        pygame.draw.line(screen, (45, 195, 75), (leg_x, leg_y), (leg_x + 14, leg_y), 3)
         bp_txt = font_sm.render("Best Path", True, config.DEBUG_TEXT_PRIMARY)
         screen.blit(bp_txt, (leg_x + 18, leg_y - bp_txt.get_height() // 2))
-        leg_x += bp_txt.get_width() + 24
+        leg_x += bp_txt.get_width() + 18
 
         # Pruned
         _draw_dashed_line(
@@ -294,29 +348,28 @@ class TreeOverlay:
         )
         pr_txt = font_sm.render("Pruned ✂", True, config.DEBUG_TEXT_PRIMARY)
         screen.blit(pr_txt, (leg_x + 18, leg_y - pr_txt.get_height() // 2))
-        leg_x += pr_txt.get_width() + 24
+        leg_x += pr_txt.get_width() + 18
 
         # MAX Node
-        pygame.draw.rect(screen, COLOR_MAX_BG, pygame.Rect(leg_x, leg_y - 5, 10, 10), border_radius=2)
+        pygame.draw.rect(screen, (245, 135, 25), pygame.Rect(leg_x, leg_y - 5, 12, 10), border_radius=3)
         max_txt = font_sm.render("MAX", True, config.DEBUG_TEXT_PRIMARY)
-        screen.blit(max_txt, (leg_x + 14, leg_y - max_txt.get_height() // 2))
-        leg_x += max_txt.get_width() + 18
+        screen.blit(max_txt, (leg_x + 16, leg_y - max_txt.get_height() // 2))
+        leg_x += max_txt.get_width() + 14
 
         # MIN Node
-        pygame.draw.rect(screen, COLOR_MIN_BG, pygame.Rect(leg_x, leg_y - 5, 10, 10), border_radius=2)
+        pygame.draw.rect(screen, (45, 130, 215), pygame.Rect(leg_x, leg_y - 5, 12, 10), border_radius=3)
         min_txt = font_sm.render("MIN", True, config.DEBUG_TEXT_PRIMARY)
-        screen.blit(min_txt, (leg_x + 14, leg_y - min_txt.get_height() // 2))
-        leg_x += min_txt.get_width() + 16
+        screen.blit(min_txt, (leg_x + 16, leg_y - min_txt.get_height() // 2))
+        leg_x += min_txt.get_width() + 14
 
         # CHANCE Node
-        pygame.draw.rect(screen, COLOR_CHANCE_BG, pygame.Rect(leg_x, leg_y - 5, 10, 10), border_radius=2)
+        pygame.draw.rect(screen, (155, 75, 210), pygame.Rect(leg_x, leg_y - 5, 12, 10), border_radius=3)
         chance_txt = font_sm.render("CHANCE", True, config.DEBUG_TEXT_PRIMARY)
-        screen.blit(chance_txt, (leg_x + 14, leg_y - chance_txt.get_height() // 2))
-        leg_x += chance_txt.get_width() + 16
+        screen.blit(chance_txt, (leg_x + 16, leg_y - chance_txt.get_height() // 2))
 
         # Hint navigasi scroll
         hint_nav = font_sm.render("(Drag / Shift+Scroll)", True, (120, 135, 155))
-        screen.blit(hint_nav, (leg_x, leg_y - hint_nav.get_height() // 2))
+        screen.blit(hint_nav, (leg_x + chance_txt.get_width() + 16, leg_y - hint_nav.get_height() // 2))
 
         # 5. Tombol Toggle ON/OFF (Kanan atas)
         toggle_w = 38
@@ -360,7 +413,7 @@ class TreeOverlay:
             # Background kanvas pohon (lembut)
             pygame.draw.rect(screen, (244, 247, 250), self._tree_area_rect, border_radius=4)
 
-            # 1. Gambar Garis Koneksi (dengan Viewport Culling)
+            # 1. Gambar Garis Koneksi Kurva Mulus (dengan Viewport Culling)
             for node, cx, cy, px, py, is_best_edge, depth in self._cached_layout:
                 if px is not None and py is not None:
                     # Skip jika garis berada jauh di luar viewport
@@ -376,18 +429,22 @@ class TreeOverlay:
                     sx1 = int(px - self.scroll_x + tree_area_x)
                     sy1 = int(py + NODE_H // 2 - self.scroll_y + tree_area_y)
                     sx2 = int(cx - self.scroll_x + tree_area_x)
-                    sy2 = int(cy - NODE_H // 2 + 1 - self.scroll_y + tree_area_y)
+                    sy2 = int(cy - NODE_H // 2 - self.scroll_y + tree_area_y)
 
                     if node.pruned:
-                        _draw_dashed_line(
-                            screen, COLOR_LINE_PRUNED, (sx1, sy1), (sx2, sy2), dash_len=4, gap_len=3, width=2
+                        _draw_smooth_curve(
+                            screen, COLOR_LINE_PRUNED, (sx1, sy1), (sx2, sy2), is_pruned=True
                         )
                     elif is_best_edge:
-                        pygame.draw.line(screen, COLOR_LINE_BEST, (sx1, sy1), (sx2, sy2), 3)
+                        _draw_smooth_curve(
+                            screen, COLOR_LINE_BEST, (sx1, sy1), (sx2, sy2), is_best=True
+                        )
                     else:
-                        pygame.draw.line(screen, COLOR_LINE, (sx1, sy1), (sx2, sy2), 1)
+                        _draw_smooth_curve(
+                            screen, COLOR_LINE, (sx1, sy1), (sx2, sy2)
+                        )
 
-            # 2. Gambar Node (dengan Viewport Culling)
+            # 2. Gambar Node Cards (dengan Viewport Culling)
             for node, cx, cy, px, py, is_best_edge, depth in self._cached_layout:
                 # Cek apakah node berada di dalam viewport
                 if (
@@ -403,68 +460,76 @@ class TreeOverlay:
                 node_rect = pygame.Rect(nx, ny, NODE_W, NODE_H)
 
                 if node.pruned:
-                    bg = COLOR_PRUNED_BG
-                    border = COLOR_PRUNED_BORDER
+                    bg = (244, 246, 249)
+                    border = (175, 182, 192)
+                    badge_bg = (175, 182, 192)
+                    text_col = (115, 122, 132)
                 elif node.node_type == "MAX":
-                    bg = COLOR_MAX_BG
-                    border = COLOR_MAX_BORDER
+                    bg = (255, 252, 246)
+                    border = (235, 130, 25)
+                    badge_bg = (245, 135, 25)
+                    text_col = (195, 80, 10)
                 elif node.node_type == "CHANCE":
-                    bg = COLOR_CHANCE_BG
-                    border = COLOR_CHANCE_BORDER
-                else:
-                    bg = COLOR_MIN_BG
-                    border = COLOR_MIN_BORDER
+                    bg = (253, 249, 255)
+                    border = (155, 75, 210)
+                    badge_bg = (155, 75, 210)
+                    text_col = (120, 45, 175)
+                else:  # MIN
+                    bg = (248, 252, 255)
+                    border = (45, 130, 215)
+                    badge_bg = (45, 130, 215)
+                    text_col = (20, 95, 180)
 
-                # Glow effect untuk best path
+                # Shadow lembut di bawah kartu
+                shadow_rect = pygame.Rect(nx, ny + 2, NODE_W, NODE_H)
+                pygame.draw.rect(screen, (214, 220, 230), shadow_rect, border_radius=6)
+
+                # Glow halo untuk jalur terbaik (best path)
                 if is_best_edge and not node.pruned:
                     glow_rect = node_rect.inflate(4, 4)
-                    pygame.draw.rect(screen, COLOR_BEST_GLOW, glow_rect, border_radius=7, width=2)
+                    pygame.draw.rect(screen, COLOR_BEST_GLOW, glow_rect, border_radius=8, width=2)
 
-                _draw_rounded_rect(screen, node_rect, bg, border_radius=5, border_color=border, border_width=1)
+                # Background kartu & border halus
+                pygame.draw.rect(screen, bg, node_rect, border_radius=6)
+                pygame.draw.rect(screen, border, node_rect, width=1, border_radius=6)
 
-                # Label atas: Tipe Node (MAX / MIN / ✂)
-                type_label = node.node_type if not node.pruned else "✂"
-                type_surf = font_bubble.render(type_label, True, (255, 255, 255))
-                type_rect = pygame.Rect(nx, ny, NODE_W, 11)
-                type_bg_color = (*border[:3], 200) if len(border) == 3 else border
-                pygame.draw.rect(screen, type_bg_color, type_rect, border_radius=0)
-                pygame.draw.rect(screen, type_bg_color, pygame.Rect(nx, ny, NODE_W, 6), border_radius=5)
+                # Badge Pill Jenis Node (MAX / MIN / CHANCE / CUT) di bagian atas kartu
+                type_label = node.node_type if not node.pruned else "CUT"
+                badge_surf = self.font_badge.render(type_label, True, (255, 255, 255))
+                pill_w = max(34, badge_surf.get_width() + 10)
+                pill_h = 12
+                pill_rect = pygame.Rect(nx + (NODE_W - pill_w) // 2, ny + 3, pill_w, pill_h)
+                pygame.draw.rect(screen, badge_bg, pill_rect, border_radius=5)
                 screen.blit(
-                    type_surf,
+                    badge_surf,
                     (
-                        type_rect.centerx - type_surf.get_width() // 2,
-                        type_rect.y,
+                        pill_rect.centerx - badge_surf.get_width() // 2,
+                        pill_rect.centery - badge_surf.get_height() // 2,
                     ),
                 )
 
-                # Label bawah: Aksi + Skor
+                # Label Aksi & Skor di bagian bawah kartu (rapi, tidak pernah keluar kotak)
                 if node.action:
                     act_short = LABEL_SHORT.get(node.action, node.action[:5])
                 else:
                     act_short = "ROOT"
 
-                score_str = f"{node.score}" if node.score is not None else "?"
-
                 if node.pruned:
-                    bottom_text = f"{act_short}"
-                    text_color = (95, 95, 100)
+                    body_str = f"{act_short} ✕"
+                    body_col = (130, 135, 145)
                 else:
-                    bottom_text = f"{act_short}:{score_str}"
-                    text_color = (255, 255, 255)
+                    score_str = _format_score(node.score)
+                    body_str = f"{act_short}:{score_str}"
+                    body_col = text_col
 
-                bottom_surf = font_bubble.render(bottom_text, True, text_color)
+                body_surf = self.font_body.render(body_str, True, body_col)
                 screen.blit(
-                    bottom_surf,
+                    body_surf,
                     (
-                        node_rect.centerx - bottom_surf.get_width() // 2,
-                        ny + 12,
+                        node_rect.centerx - body_surf.get_width() // 2,
+                        ny + 17,
                     ),
                 )
-
-                # Tanda silang merah untuk pruned
-                if node.pruned:
-                    x_surf = font_bubble.render("✕", True, (220, 50, 40))
-                    screen.blit(x_surf, (node_rect.right - 10, node_rect.top - 2))
 
             screen.set_clip(None)
 

@@ -92,6 +92,12 @@ class BattleState:
         "is_npc_turn",  # True: NPC (MAX), False: Player (MIN)
         "player_heavy_cd",  # Sisa cooldown heavy attack Player (0 = siap)
         "npc_heavy_cd",     # Sisa cooldown heavy attack NPC (0 = siap)
+        "player_atk_bonus",
+        "npc_atk_bonus",
+        "player_def_bonus",
+        "npc_def_bonus",
+        "player_max_hp",
+        "npc_max_hp",
     )
 
     def __init__(
@@ -105,9 +111,17 @@ class BattleState:
         is_npc_turn: bool = True,
         player_heavy_cd: int = 0,
         npc_heavy_cd: int = 0,
+        player_atk_bonus: int = 0,
+        npc_atk_bonus: int = 0,
+        player_def_bonus: int = 0,
+        npc_def_bonus: int = 0,
+        player_max_hp: int = 100,
+        npc_max_hp: int = 100,
     ):
-        self.player_hp = max(0, min(MAX_HP, player_hp))
-        self.npc_hp = max(0, min(MAX_HP, npc_hp))
+        self.player_max_hp = max(1, player_max_hp)
+        self.npc_max_hp = max(1, npc_max_hp)
+        self.player_hp = max(0, min(self.player_max_hp, player_hp))
+        self.npc_hp = max(0, min(self.npc_max_hp, npc_hp))
         self.player_potions = max(0, min(MAX_POTIONS, player_potions))
         self.npc_potions = max(0, min(MAX_POTIONS, npc_potions))
         self.player_defending = player_defending
@@ -115,6 +129,10 @@ class BattleState:
         self.is_npc_turn = is_npc_turn
         self.player_heavy_cd = max(0, player_heavy_cd)
         self.npc_heavy_cd = max(0, npc_heavy_cd)
+        self.player_atk_bonus = player_atk_bonus
+        self.npc_atk_bonus = npc_atk_bonus
+        self.player_def_bonus = player_def_bonus
+        self.npc_def_bonus = npc_def_bonus
 
     def is_terminal(self) -> bool:
         """Terminal Test: Duel berakhir jika salah satu atau kedua petarung HP <= 0."""
@@ -148,8 +166,9 @@ class BattleState:
 
         # Potion hanya bisa digunakan jika masih memiliki persediaan dan HP belum penuh
         current_hp = self.npc_hp if self.is_npc_turn else self.player_hp
+        current_max = self.npc_max_hp if self.is_npc_turn else self.player_max_hp
         current_pots = self.npc_potions if self.is_npc_turn else self.player_potions
-        if current_pots > 0 and current_hp < MAX_HP:
+        if current_pots > 0 and current_hp < current_max:
             legal.append(ACTION_POTION)
 
         return legal
@@ -165,6 +184,12 @@ class BattleState:
             is_npc_turn=self.is_npc_turn,
             player_heavy_cd=self.player_heavy_cd,
             npc_heavy_cd=self.npc_heavy_cd,
+            player_atk_bonus=self.player_atk_bonus,
+            npc_atk_bonus=self.npc_atk_bonus,
+            player_def_bonus=self.player_def_bonus,
+            npc_def_bonus=self.npc_def_bonus,
+            player_max_hp=self.player_max_hp,
+            npc_max_hp=self.npc_max_hp,
         )
 
     def apply_action(self, action: str, heavy_hits: bool = True) -> "BattleState":
@@ -180,11 +205,13 @@ class BattleState:
                 next_state.npc_heavy_cd -= 1
 
             if action == ACTION_ATTACK:
-                dmg = ATTACK_DEFENDED_DAMAGE if next_state.player_defending else ATTACK_DAMAGE
+                base = ATTACK_DEFENDED_DAMAGE if next_state.player_defending else ATTACK_DAMAGE
+                dmg = max(1, base + next_state.npc_atk_bonus - next_state.player_def_bonus)
                 next_state.player_hp = max(0, next_state.player_hp - dmg)
             elif action == ACTION_HEAVY:
                 if heavy_hits:
-                    dmg = HEAVY_DEFENDED_DAMAGE if next_state.player_defending else HEAVY_DAMAGE
+                    base = HEAVY_DEFENDED_DAMAGE if next_state.player_defending else HEAVY_DAMAGE
+                    dmg = max(1, base + next_state.npc_atk_bonus - next_state.player_def_bonus)
                     next_state.player_hp = max(0, next_state.player_hp - dmg)
                 next_state.npc_heavy_cd = HEAVY_COOLDOWN_TURNS  # Set cooldown
             elif action == ACTION_DEFEND:
@@ -192,7 +219,7 @@ class BattleState:
             elif action == ACTION_POTION:
                 if next_state.npc_potions > 0:
                     next_state.npc_potions -= 1
-                    next_state.npc_hp = min(MAX_HP, next_state.npc_hp + POTION_HEAL)
+                    next_state.npc_hp = min(next_state.npc_max_hp, next_state.npc_hp + POTION_HEAL)
 
             next_state.is_npc_turn = False
         else:
@@ -204,11 +231,13 @@ class BattleState:
                 next_state.player_heavy_cd -= 1
 
             if action == ACTION_ATTACK:
-                dmg = ATTACK_DEFENDED_DAMAGE if next_state.npc_defending else ATTACK_DAMAGE
+                base = ATTACK_DEFENDED_DAMAGE if next_state.npc_defending else ATTACK_DAMAGE
+                dmg = max(1, base + next_state.player_atk_bonus - next_state.npc_def_bonus)
                 next_state.npc_hp = max(0, next_state.npc_hp - dmg)
             elif action == ACTION_HEAVY:
                 if heavy_hits:
-                    dmg = HEAVY_DEFENDED_DAMAGE if next_state.npc_defending else HEAVY_DAMAGE
+                    base = HEAVY_DEFENDED_DAMAGE if next_state.npc_defending else HEAVY_DAMAGE
+                    dmg = max(1, base + next_state.player_atk_bonus - next_state.npc_def_bonus)
                     next_state.npc_hp = max(0, next_state.npc_hp - dmg)
                 next_state.player_heavy_cd = HEAVY_COOLDOWN_TURNS  # Set cooldown
             elif action == ACTION_DEFEND:
@@ -216,7 +245,7 @@ class BattleState:
             elif action == ACTION_POTION:
                 if next_state.player_potions > 0:
                     next_state.player_potions -= 1
-                    next_state.player_hp = min(MAX_HP, next_state.player_hp + POTION_HEAL)
+                    next_state.player_hp = min(next_state.player_max_hp, next_state.player_hp + POTION_HEAL)
 
             next_state.is_npc_turn = True
 

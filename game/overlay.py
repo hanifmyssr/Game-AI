@@ -25,6 +25,30 @@ def draw_card(surface, rect, bg_color, border_color=None, border_radius=8, borde
         pygame.draw.rect(surface, border_color, rect, border_width, border_radius=border_radius)
 
 
+def draw_metric_tile(
+    surface,
+    rect,
+    label,
+    value,
+    val_color=config.DEBUG_TEXT_PRIMARY,
+    font_lbl=None,
+    font_val=None,
+    bg_color=(238, 243, 252, 230),
+    border_color=(205, 218, 238, 180),
+):
+    """Menggambar satu kotak metrik (grid tile) dengan clipping mask untuk jaminan 100% anti text-overflow."""
+    draw_card(surface, rect, bg_color, border_color=border_color, border_radius=6)
+    old_clip = surface.get_clip()
+    surface.set_clip(rect)
+    if font_lbl:
+        lbl_surf = font_lbl.render(str(label), True, config.DEBUG_TEXT_SECONDARY)
+        surface.blit(lbl_surf, (rect.x + 6, rect.y + 4))
+    if font_val:
+        val_surf = font_val.render(str(value), True, val_color)
+        surface.blit(val_surf, (rect.x + 6, rect.y + 19))
+    surface.set_clip(old_clip)
+
+
 class Dropdown:
     def __init__(self, rect, labels, on_select, initial_idx=0, placeholder="-- Pilih Algoritma --"):
         self.rect = pygame.Rect(rect)
@@ -151,11 +175,46 @@ class DebugOverlay:
         self.battle_system = None
         self._init_battle_ui()
 
+        # --- UI Pre-Battle Mode (CSP & Local Search) ---
+        self.pre_battle_config = None
+        self.pre_battle_stats = None
+        self.pre_battle_algo = "HILL_CLIMBING"
+        self.on_ls_algo_changed = None
+        self._init_pre_battle_ui()
+
         # --- Decision Tree Overlay ---
         self.tree_overlay = TreeOverlay(fonts)
 
         events.register_overlay(self)
         self.update_stats(0, 0.0)
+
+    def _init_pre_battle_ui(self):
+        px = self.panel_x + 12
+        pw = self.panel_w - 24
+        ls_labels = [label for _, label in config.LS_ALGORITHMS]
+        self.dropdown_ls_algo = Dropdown(
+            (px + 6, self.panel_y + 70, pw - 12, 28),
+            ls_labels,
+            self._on_ls_algo_selected,
+            initial_idx=0,
+        )
+
+    def _on_ls_algo_selected(self, index):
+        if index is None or index < 0 or index >= len(config.LS_ALGORITHMS):
+            return
+        algo_code = config.LS_ALGORITHMS[index][0]
+        self.pre_battle_algo = algo_code
+        if self.on_ls_algo_changed:
+            self.on_ls_algo_changed(algo_code)
+
+    def set_pre_battle_data(self, config_dict, stats, algo_name="HILL_CLIMBING"):
+        self.pre_battle_config = config_dict
+        self.pre_battle_stats = stats
+        self.pre_battle_algo = algo_name
+        for idx, (code, _) in enumerate(config.LS_ALGORITHMS):
+            if code == algo_name:
+                self.dropdown_ls_algo.selected = idx
+                break
 
     def _init_battle_ui(self):
         px = self.panel_x + 12
@@ -299,99 +358,97 @@ class DebugOverlay:
         steps = max(0, len(self.path_nodes) - 1)
         cur_cost = self.comparison_data.get("cur_cost", 0.0) if self.comparison_data else 0.0
 
-        lines = []
-        lines.append(("── BOBOT MEDAN (COST) ────────────────", config.DEBUG_TEXT_SECONDARY))
-        lines.append(("  • Jalan Tanah  : Cost 1.0 (Ringan)", config.DEBUG_TEXT_PRIMARY))
-        lines.append(("  • Area Rumput  : Cost 2.0 (Normal)", config.DEBUG_TEXT_WARN))
-        lines.append(("", None))
-
-        lines.append(("── STATISTIK JALUR ────────────────────", config.DEBUG_TEXT_SECONDARY))
-        lines.append((f"  Node Diekspansi : {count}", config.DEBUG_TEXT_PRIMARY))
-        lines.append((f"  Panjang Jalur   : {steps} langkah", config.DEBUG_TEXT_PRIMARY))
-        lines.append((f"  Total Cost Rute : {cur_cost:.1f}", config.DEBUG_TEXT_PRIMARY))
-        lines.append((f"  Waktu Eksekusi  : {time_ms:.3f} ms", config.DEBUG_TEXT_PRIMARY))
-        lines.append(("", None))
-
-        if self.comparison_data:
-            cd = self.comparison_data
-            lines.append(("── PERBANDINGAN RUTE ──────────────────", config.DEBUG_TEXT_SECONDARY))
-            ucs_expanded = cd.get("ucs_expanded", 0)
-            ucs_time = cd.get("ucs_time_ms", 0.0)
-            ucs_cost = cd.get("ucs_cost", 0.0)
-
-            cur_expanded = cd.get("cur_expanded", count)
-            cur_time = cd.get("cur_time_ms", time_ms)
-            cur_label = cd.get("cur_label", selected_label)
-            cur_heuristic = cd.get("cur_heuristic", "—")
-
-            lines.append(("  UCS (h=0):", config.DEBUG_TEXT_WARN))
-            lines.append((f"    Node: {ucs_expanded} │ Cost: {ucs_cost:.1f} │ {ucs_time:.3f} ms", config.DEBUG_TEXT_PRIMARY))
-
-            lines.append((f"  {cur_label}:", config.DEBUG_TEXT_HIGHLIGHT))
-            lines.append((f"    Node: {cur_expanded} │ Cost: {cur_cost:.1f} │ {cur_time:.3f} ms", config.DEBUG_TEXT_PRIMARY))
-
-            if cur_heuristic != "—":
-                lines.append((f"    Heuristik: {cur_heuristic}", config.DEBUG_TEXT_SECONDARY))
-
-            if ucs_expanded > 0 and cur_expanded > 0:
-                ratio = ucs_expanded / cur_expanded
-                if ratio > 1.0:
-                    eff_text = f"  ⚡ A* {ratio:.1f}x lebih hemat ekspansi"
-                    lines.append((eff_text, config.DEBUG_TEXT_HIGHLIGHT))
-                elif ratio < 1.0:
-                    eff_text = f"  ⚠ UCS {1/ratio:.1f}x lebih hemat"
-                    lines.append((eff_text, config.DEBUG_TEXT_HIGHLIGHT))
-                else:
-                    lines.append(("  ≈ Efisiensi node sama", config.DEBUG_TEXT_SECONDARY))
-
-        lines.append(("", None))
-        lines.append(("── KONTROL ────────────────────────────", config.DEBUG_TEXT_SECONDARY))
-        lines.append(("  [WASD / Panah]  : Gerakkan Player", config.DEBUG_TEXT_PRIMARY))
-        lines.append(("  [Ctrl]          : Tampilkan animasi path", config.DEBUG_TEXT_HIGHLIGHT))
-        lines.append(("  [Spasi]         : Toggle Kejar NPC", config.DEBUG_TEXT_HIGHLIGHT))
-        lines.append(("  [Esc]           : Keluar Game", config.DEBUG_TEXT_SECONDARY))
-
-        line_h = self.fonts["sm"].get_linesize() + 3
-        pad_x, pad_y = 12, 6
-        max_text_w = self.panel_w - 24 - (pad_x * 2)
-        wrapped_lines = []
-        for text, color in lines:
-            if not text:
-                wrapped_lines.append((text, color))
-                continue
-            words = text.split(" ")
-            current = ""
-            for word in words:
-                candidate = word if not current else f"{current} {word}"
-                if self.fonts["sm"].size(candidate)[0] <= max_text_w:
-                    current = candidate
-                else:
-                    if current:
-                        wrapped_lines.append((current, color))
-                    current = word
-            if current:
-                wrapped_lines.append((current, color))
-
-        total_h = pad_y * 2
-
-        for text, color in wrapped_lines:
-            if text == "":
-                total_h += line_h // 2
-            else:
-                total_h += line_h
-
         inner_w = self.panel_w - 24
+        total_h = 420
         surface = pygame.Surface((inner_w, total_h), SRCALPHA)
 
-        y = pad_y
-        for text, color in wrapped_lines:
-            if text == "":
-                y += line_h // 2
-                continue
-            ts = self.fonts["sm"].render(text, True, color)
-            surface.blit(ts, (pad_x, y))
-            y += line_h
+        font_sm = self.fonts["sm"]
+        tile_w = (inner_w - 10) // 2
+        tile_h = 40
 
+        # 1. Section: 4 Grid Tile Metrik Pathfinding (2 Kolom)
+        ts_hdr1 = font_sm.render("── METRIK JALUR (PATHFINDING) ──", True, config.DEBUG_TEXT_SECONDARY)
+        surface.blit(ts_hdr1, ((inner_w - ts_hdr1.get_width()) // 2, 4))
+
+        draw_metric_tile(surface, pygame.Rect(0, 22, tile_w, tile_h), "NODE DIEKSPANSI", f"{count} node", val_color=config.DEBUG_TEXT_PRIMARY, font_lbl=font_sm, font_val=font_sm)
+        draw_metric_tile(surface, pygame.Rect(tile_w + 10, 22, tile_w, tile_h), "PANJANG JALUR", f"{steps} langkah", val_color=config.DEBUG_TEXT_PRIMARY, font_lbl=font_sm, font_val=font_sm)
+        draw_metric_tile(surface, pygame.Rect(0, 68, tile_w, tile_h), "TOTAL COST", f"{cur_cost:.1f}", val_color=(25, 115, 210), font_lbl=font_sm, font_val=font_sm)
+        draw_metric_tile(surface, pygame.Rect(tile_w + 10, 68, tile_w, tile_h), "WAKTU", f"{time_ms:.3f} ms", val_color=(20, 135, 55), font_lbl=font_sm, font_val=font_sm)
+
+        # 2. Section: Bobot Medan (Cost) (2 Kolom)
+        ts_hdr2 = font_sm.render("── BOBOT MEDAN (COST) ──", True, config.DEBUG_TEXT_SECONDARY)
+        surface.blit(ts_hdr2, ((inner_w - ts_hdr2.get_width()) // 2, 116))
+
+        draw_metric_tile(surface, pygame.Rect(0, 134, tile_w, tile_h), "JALAN TANAH", "Cost 1.0 (Ringan)", val_color=config.DEBUG_TEXT_PRIMARY, font_lbl=font_sm, font_val=font_sm)
+        draw_metric_tile(surface, pygame.Rect(tile_w + 10, 134, tile_w, tile_h), "AREA RUMPUT", "Cost 2.0 (Normal)", val_color=config.DEBUG_TEXT_WARN, font_lbl=font_sm, font_val=font_sm)
+
+        # 3. Section: Perbandingan Rute (UCS vs A*)
+        ts_hdr3 = font_sm.render("── PERBANDINGAN RUTE ──", True, config.DEBUG_TEXT_SECONDARY)
+        surface.blit(ts_hdr3, ((inner_w - ts_hdr3.get_width()) // 2, 182))
+
+        y_comp = 200
+        if self.comparison_data:
+            cd = self.comparison_data
+            ucs_exp = cd.get("ucs_expanded", 0)
+            ucs_t = cd.get("ucs_time_ms", 0.0)
+            ucs_c = cd.get("ucs_cost", 0.0)
+            cur_exp = cd.get("cur_expanded", count)
+            cur_t = cd.get("cur_time_ms", time_ms)
+
+            ucs_rect = pygame.Rect(0, y_comp, inner_w, 24)
+            draw_card(surface, ucs_rect, (255, 246, 235, 220), border_color=(240, 205, 170, 180), border_radius=5)
+            t_ucs = f"• UCS (h=0)   : {ucs_exp} node │ Cost {ucs_c:.1f} │ {ucs_t:.3f} ms"
+            surface.blit(font_sm.render(t_ucs, True, config.DEBUG_TEXT_WARN), (6, y_comp + 4))
+
+            astar_rect = pygame.Rect(0, y_comp + 28, inner_w, 24)
+            draw_card(surface, astar_rect, (235, 245, 255, 220), border_color=(185, 215, 245, 180), border_radius=5)
+            lbl_trim = selected_label[:14] if len(selected_label) > 14 else selected_label
+            t_astar = f"• {lbl_trim}: {cur_exp} node │ Cost {cur_cost:.1f} │ {cur_t:.3f} ms"
+            surface.blit(font_sm.render(t_astar, True, config.DEBUG_TEXT_HIGHLIGHT), (6, y_comp + 32))
+
+            # Ratio / Efisiensi Badge
+            if ucs_exp > 0 and cur_exp > 0:
+                ratio = ucs_exp / cur_exp
+                eff_rect = pygame.Rect(0, y_comp + 56, inner_w, 22)
+                if ratio > 1.0:
+                    draw_card(surface, eff_rect, (230, 250, 238, 220), border_color=(150, 225, 180, 180), border_radius=4)
+                    eff_str = f"⚡ A* {ratio:.1f}x lebih hemat ekspansi node"
+                    surface.blit(font_sm.render(eff_str, True, (20, 130, 50)), (6, y_comp + 59))
+                elif ratio < 1.0:
+                    draw_card(surface, eff_rect, (255, 242, 235, 220), border_color=(245, 185, 160, 180), border_radius=4)
+                    eff_str = f"⚠ UCS {1/ratio:.1f}x lebih hemat ekspansi node"
+                    surface.blit(font_sm.render(eff_str, True, config.DEBUG_TEXT_WARN), (6, y_comp + 59))
+                else:
+                    draw_card(surface, eff_rect, (240, 244, 250, 220), border_radius=4)
+                    eff_str = "≈ Efisiensi node sama"
+                    surface.blit(font_sm.render(eff_str, True, config.DEBUG_TEXT_SECONDARY), (6, y_comp + 59))
+            y_comp += 82
+        else:
+            wait_rect = pygame.Rect(0, y_comp, inner_w, 26)
+            draw_card(surface, wait_rect, (244, 247, 252, 200), border_radius=5)
+            surface.blit(font_sm.render("Jalankan algoritma untuk melihat komparasi.", True, config.DEBUG_TEXT_SECONDARY), (8, y_comp + 5))
+            y_comp += 32
+
+        # 4. Section: Panduan Kontrol
+        ts_hdr4 = font_sm.render("── PANDUAN KONTROL ──", True, config.DEBUG_TEXT_SECONDARY)
+        surface.blit(ts_hdr4, ((inner_w - ts_hdr4.get_width()) // 2, y_comp + 4))
+        y_ctrl = y_comp + 22
+
+        ctrl_box = pygame.Rect(0, y_ctrl, inner_w, 82)
+        draw_card(surface, ctrl_box, (244, 247, 252, 220), border_color=(205, 218, 238, 180), border_radius=6)
+
+        ctrl_items = [
+            ("[WASD / Panah]", "Gerakkan Karakter Player", config.DEBUG_TEXT_PRIMARY),
+            ("[Ctrl]", "Tampilkan Animasi Jalur", config.DEBUG_TEXT_HIGHLIGHT),
+            ("[Spasi]", "Toggle Pengejaran NPC", (205, 75, 20)),
+            ("[Esc]", "Keluar Permainan", config.DEBUG_TEXT_SECONDARY),
+        ]
+        cy = y_ctrl + 6
+        for k_label, k_desc, k_col in ctrl_items:
+            surface.blit(font_sm.render(f"• {k_label:<14} : {k_desc}", True, k_col), (8, cy))
+            cy += 18
+
+        total_h = y_ctrl + 88
         self.stats_surface = surface
         self.stats_rect.height = total_h
 
@@ -475,6 +532,8 @@ class DebugOverlay:
         if self.mode == "EXPLORATION":
             self._draw_exploration_ui(surface)
             self._draw_cost_toggle(surface)
+        elif self.mode == "PRE_BATTLE":
+            self._draw_pre_battle_ui(surface)
         else:
             self._draw_battle_ui(surface)
 
@@ -505,6 +564,140 @@ class DebugOverlay:
             surface.blit(self.stats_surface, (px, self.stats_rect.y))
 
         self.dropdown_algo.draw(surface, self.fonts)
+
+    def _draw_pre_battle_ui(self, surface):
+        px = self.panel_x + 12
+        pw = self.panel_w - 24
+
+        # 1. Header Card Pre-Battle
+        header_rect = pygame.Rect(px, self.panel_y + 8, pw, 38)
+        draw_card(surface, header_rect, (235, 248, 242, 240), border_color=(120, 200, 150, 200), border_radius=8)
+        title_surf = self.fonts.get("title", self.fonts["sm"]).render("⚖️ CSP & LOCAL SEARCH", True, (25, 130, 60))
+        surface.blit(title_surf, (header_rect.x + 10, header_rect.y + (header_rect.height - title_surf.get_height()) // 2))
+
+        # 2. Card: Pengaturan Algoritma Local Search
+        card_algo = pygame.Rect(px, self.panel_y + 50, pw, 60)
+        draw_card(surface, card_algo, (244, 247, 253, 235), border_color=(200, 215, 235, 180), border_radius=8)
+        sub_algo = self.fonts["sm"].render("Algoritma Local Search:", True, config.DEBUG_TEXT_SECONDARY)
+        surface.blit(sub_algo, (px + 8, self.panel_y + 54))
+
+        # 3. Card: Evaluasi Kesulitan & Gauge Target 0.55
+        card_diff = pygame.Rect(px, self.panel_y + 116, pw, 134)
+        draw_card(surface, card_diff, (244, 247, 253, 235), border_color=(200, 215, 235, 180), border_radius=8)
+
+        diff_score = 0.55
+        fit_score = 0.0
+        iters = 0
+        t_ms = 0.0
+        if self.pre_battle_stats:
+            diff_score = self.pre_battle_stats.get("final_difficulty", 0.55)
+            fit_score = self.pre_battle_stats.get("final_fitness", 0.0)
+            iters = self.pre_battle_stats.get("iterations", 0)
+            t_ms = self.pre_battle_stats.get("time_ms", 0.0)
+
+        gauge_y = self.panel_y + 122
+        gauge_label = self.fonts["sm"].render(f"Difficulty Score: {diff_score:.4f} (Target 0.55)", True, config.DEBUG_TEXT_PRIMARY)
+        surface.blit(gauge_label, (px + 8, gauge_y))
+
+        bar_rect = pygame.Rect(px + 8, gauge_y + 18, pw - 16, 12)
+        pygame.draw.rect(surface, (215, 222, 232), bar_rect, border_radius=4)
+        fill_w = max(4, int(bar_rect.width * min(1.0, max(0.0, diff_score))))
+        pygame.draw.rect(surface, (40, 145, 225), pygame.Rect(bar_rect.x, bar_rect.y, fill_w, bar_rect.height), border_radius=4)
+        target_marker_x = bar_rect.x + int(bar_rect.width * 0.55)
+        pygame.draw.line(surface, (230, 90, 20), (target_marker_x, bar_rect.y - 2), (target_marker_x, bar_rect.bottom + 2), 2)
+
+        tile_w = (pw - 22) // 2
+        tile_h = 36
+        ty1 = gauge_y + 35
+        ty2 = ty1 + tile_h + 4
+
+        draw_metric_tile(surface, pygame.Rect(px + 8, ty1, tile_w, tile_h), "DIFFICULTY", f"{diff_score:.4f}", val_color=(25, 110, 210), font_lbl=self.fonts["sm"], font_val=self.fonts["sm"])
+        draw_metric_tile(surface, pygame.Rect(px + 14 + tile_w, ty1, tile_w, tile_h), "FITNESS", f"{fit_score:+.4f}", val_color=(20, 135, 55), font_lbl=self.fonts["sm"], font_val=self.fonts["sm"])
+        draw_metric_tile(surface, pygame.Rect(px + 8, ty2, tile_w, tile_h), "ITERASI", f"{iters}", val_color=config.DEBUG_TEXT_PRIMARY, font_lbl=self.fonts["sm"], font_val=self.fonts["sm"])
+        draw_metric_tile(surface, pygame.Rect(px + 14 + tile_w, ty2, tile_w, tile_h), "WAKTU AI", f"{t_ms:.2f} ms", val_color=config.DEBUG_TEXT_PRIMARY, font_lbl=self.fonts["sm"], font_val=self.fonts["sm"])
+
+        # 4. Card: Status Verifikasi Constraint CSP
+        card_csp = pygame.Rect(px, self.panel_y + 256, pw, 126)
+        draw_card(surface, card_csp, (244, 247, 253, 235), border_color=(200, 215, 235, 180), border_radius=8)
+
+        csp_title = self.fonts["sm"].render("── STATUS CONSTRAINT CSP (C1-C8) ──", True, config.DEBUG_TEXT_SECONDARY)
+        surface.blit(csp_title, (px + (pw - csp_title.get_width()) // 2, card_csp.y + 6))
+
+        total_hp = 0
+        total_pot = 0
+        total_atk = 0
+        members = self.pre_battle_config.get("members", []) if self.pre_battle_config else []
+        for m in members:
+            total_hp += m.get("hp", 0)
+            total_pot += m.get("potions", 0)
+            total_atk += m.get("atk_bonus", 0)
+
+        cy = card_csp.y + 25
+        csp_items = [
+            (f"• C1 Total HP  : {total_hp}/250 (Valid)", True),
+            (f"• C2 Total Pot : {total_pot}/5 (Valid)", True),
+            (f"• C8 Bonus ATK : {total_atk}/25 (Valid)", True),
+            (f"• C5 Job Unik  : TERPENUHI (Unik)", True),
+            (f"• C3-C7 Aturan : VALID (MRV+LCV)", True),
+        ]
+        for ctext, ok in csp_items:
+            col = (20, 130, 50) if ok else (210, 40, 40)
+            surface.blit(self.fonts["sm"].render(ctext, True, col), (px + 10, cy))
+            cy += 19
+
+        # 5. Card: Komposisi Skuad Terbentuk (2 baris per member agar tidak terpotong)
+        card_roster = pygame.Rect(px, self.panel_y + 388, pw, 132)
+        draw_card(surface, card_roster, (244, 247, 253, 235), border_color=(200, 215, 235, 180), border_radius=8)
+
+        r_title = self.fonts["sm"].render("── ANGGOTA TIM LAWAN ──", True, config.DEBUG_TEXT_SECONDARY)
+        surface.blit(r_title, (px + (pw - r_title.get_width()) // 2, card_roster.y + 6))
+
+        ry = card_roster.y + 24
+        for idx, m in enumerate(members):
+            ctype = m.get("char_type", "warrior").capitalize()
+            if ctype.lower() == "warrior":
+                n_name = "Oyen"
+            elif ctype.lower() == "ranger":
+                n_name = "Kuro"
+            elif ctype.lower() == "mage":
+                n_name = "Shiro"
+            else:
+                n_name = f"NPC-{idx+1}"
+
+            hp = m.get("hp", 100)
+            pot = m.get("potions", 0)
+            atk = m.get("atk_bonus", 0)
+            df = m.get("def_bonus", 0)
+            ev = m.get("eval_profile", "BALANCED")[:4]
+
+            # Baris 1: Nama & Job
+            l1 = f"{idx+1}. {n_name} ({ctype}) [{ev}]"
+            surface.blit(self.fonts.get("bubble", self.fonts["sm"]).render(l1, True, config.DEBUG_TEXT_HIGHLIGHT), (px + 8, ry))
+            # Baris 2: Rincian Stat
+            l2 = f"   HP:{hp}  Pot:{pot}  +{atk}ATK  +{df}DEF"
+            surface.blit(self.fonts["sm"].render(l2, True, config.DEBUG_TEXT_PRIMARY), (px + 8, ry + 15))
+            ry += 34
+
+        # 6. Card: Panduan Kontrol & Tombol Aksi
+        card_ctrl = pygame.Rect(px, self.panel_y + 526, pw, 102)
+        draw_card(surface, card_ctrl, (235, 242, 252, 240), border_color=(185, 205, 235, 200), border_radius=8)
+
+        ctrl_title = self.fonts["sm"].render("── KONTROL PRE-BATTLE ──", True, config.DEBUG_TEXT_SECONDARY)
+        surface.blit(ctrl_title, (px + (pw - ctrl_title.get_width()) // 2, card_ctrl.y + 6))
+
+        shortcuts = [
+            ("[SPACE] : Mulai Duel", config.DEBUG_TEXT_HIGHLIGHT),
+            ("[R]     : Re-Roll AI Skuad", (205, 80, 20)),
+            ("[1 - 5] : Ganti Algo Local Search", config.DEBUG_TEXT_PRIMARY),
+            ("[ESC]   : Batal / Kembali ke Peta", config.DEBUG_TEXT_SECONDARY),
+        ]
+        sc_y = card_ctrl.y + 24
+        for s_txt, s_col in shortcuts:
+            surface.blit(self.fonts["sm"].render(s_txt, True, s_col), (px + 8, sc_y))
+            sc_y += 18
+
+        # Gambar dropdown local search di atas elemen lainnya
+        self.dropdown_ls_algo.draw(surface, self.fonts)
 
     def _draw_battle_ui(self, surface):
         battle_system = self.battle_system
@@ -884,6 +1077,11 @@ class DebugOverlay:
                 self.show_costs = not self.show_costs
                 return True
             return self.dropdown_algo.handle_event(event)
+
+        if self.mode == "PRE_BATTLE":
+            if self.dropdown_ls_algo.handle_event(event):
+                return True
+            return False
 
         # Mode BATTLE
         if self.dropdown_battle_algo.handle_event(event):

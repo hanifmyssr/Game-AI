@@ -127,7 +127,9 @@ class TreeOverlay:
             self.font_badge = fonts.get("sm", pygame.font.Font(None, 12))
             self.font_body = fonts.get("sm", pygame.font.Font(None, 14))
 
-        self.visible = True         # Aktif secara default di mode duel
+        self.visible = False        # Default hidden saat duel dimulai (buka via tombol/T)
+        self.is_modal = True        # Mode modal fullscreen semi-transparan
+        self.btn_close = pygame.Rect(0, 0, 0, 0)
         self.tree_root = None       # TreeNode root dari pencarian terakhir
         self.scroll_x = 0           # Offset scroll horizontal (px)
         self.scroll_y = 0           # Offset scroll vertikal (px)
@@ -260,34 +262,42 @@ class TreeOverlay:
     # Draw Utama
     # ------------------------------------------------------------------ #
     def draw(self, screen, custom_rect=None):
-        """Render panel decision tree di bawah battle log arena."""
+        """Render panel decision tree secara modal fullscreen atau di rect tertentu."""
+        # Jika sedang nonaktif/OFF, tidak perlu digambar sama sekali (bersih)
+        if not self.visible:
+            self.panel_rect = pygame.Rect(0, 0, 0, 0)
+            self.toggle_rect = pygame.Rect(0, 0, 0, 0)
+            self.btn_close = pygame.Rect(0, 0, 0, 0)
+            return
+
+        w, h = screen.get_size()
         if custom_rect is not None:
             panel_x, panel_y, panel_w, panel_h = (
                 custom_rect.x, custom_rect.y, custom_rect.width, custom_rect.height
             )
         else:
-            w, h = screen.get_size()
-            panel_w = config.TREE_PANEL_WIDTH
-            panel_x = w - panel_w - 12
-            panel_y = 12
-            panel_h = h - 24
+            # Fullscreen Modal dengan padding elegan
+            panel_w = max(500, w - 80)
+            panel_h = max(350, h - 70)
+            panel_x = (w - panel_w) // 2
+            panel_y = (h - panel_h) // 2
+
+        # Redupkan latar belakang dengan overlay hitam semi-transparan (~86% opasitas)
+        if self.is_modal:
+            dim_surf = pygame.Surface((w, h), SRCALPHA)
+            dim_surf.fill((8, 12, 18, 220))
+            screen.blit(dim_surf, (0, 0))
 
         font_title = self.fonts.get("title", self.fonts["sm"])
         font_sm = self.fonts["sm"]
         font_bubble = self.fonts.get("bubble", font_sm)
-
-        # Jika sedang nonaktif/OFF, tidak perlu digambar sama sekali (bersih)
-        if not self.visible:
-            self.panel_rect = pygame.Rect(0, 0, 0, 0)
-            self.toggle_rect = pygame.Rect(0, 0, 0, 0)
-            return
 
         self.panel_rect = pygame.Rect(panel_x, panel_y, panel_w, panel_h)
 
         # Background Panel
         bg_surf = pygame.Surface((panel_w, panel_h), SRCALPHA)
         bg_surf.fill(COLOR_PANEL_BG)
-        pygame.draw.rect(bg_surf, COLOR_PANEL_BORDER, bg_surf.get_rect(), 2, border_radius=8)
+        pygame.draw.rect(bg_surf, COLOR_PANEL_BORDER, bg_surf.get_rect(), 2, border_radius=10)
         screen.blit(bg_surf, (panel_x, panel_y))
 
         # -------------------------------------------------------------- #
@@ -371,19 +381,19 @@ class TreeOverlay:
         hint_nav = font_sm.render("(Drag / Shift+Scroll)", True, (120, 135, 155))
         screen.blit(hint_nav, (leg_x + chance_txt.get_width() + 16, leg_y - hint_nav.get_height() // 2))
 
-        # 5. Tombol Toggle ON/OFF (Kanan atas)
-        toggle_w = 38
-        self.toggle_rect = pygame.Rect(header_rect.right - toggle_w - 4, header_rect.y + 4, toggle_w, 22)
-        t_fill = COLOR_TOGGLE_ON if self.visible else COLOR_TOGGLE_OFF
-        pygame.draw.rect(screen, t_fill, self.toggle_rect, border_radius=8)
-        t_text = font_sm.render("ON", True, (255, 255, 255))
+        # 5. Tombol Tutup Modal [✕ TUTUP / T] (Kanan atas)
+        close_w = 90
+        self.btn_close = pygame.Rect(header_rect.right - close_w - 4, header_rect.y + 4, close_w, 22)
+        pygame.draw.rect(screen, (205, 55, 55), self.btn_close, border_radius=6)
+        c_text = font_sm.render("✕ TUTUP (T)", True, (255, 255, 255))
         screen.blit(
-            t_text,
+            c_text,
             (
-                self.toggle_rect.centerx - t_text.get_width() // 2,
-                self.toggle_rect.centery - t_text.get_height() // 2,
+                self.btn_close.centerx - c_text.get_width() // 2,
+                self.btn_close.centery - c_text.get_height() // 2,
             ),
         )
+        self.toggle_rect = self.btn_close
 
         # -------------------------------------------------------------- #
         # Area Kanvas Tree (Clipped & Virtual Viewport)
@@ -712,6 +722,12 @@ class TreeOverlay:
                     self.scroll_x += wheel_x * 50
 
                 self._clamp_scroll(self._tree_area_rect.width, self._tree_area_rect.height)
+                return True
+
+        # 5. Keyboard Shortcut [T] atau [ESC] untuk Tutup Modal
+        elif event.type == pygame.KEYDOWN:
+            if event.key in (pygame.K_t, pygame.K_ESCAPE) and self.visible:
+                self.visible = False
                 return True
 
         return False

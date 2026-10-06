@@ -14,6 +14,7 @@ from .battle_ai import (
     EVAL_FUNCTIONS,
     HEAVY_COOLDOWN_TURNS,
 )
+from .npc_squad import NPCSquad, NPCMember
 
 
 # Pemetaan aksi -> teks pendek yang ditampilkan di atas karakter
@@ -37,6 +38,9 @@ class BattleSystem:
         self.move_ordering_mode = "HEURISTIC"  # OFF, HEURISTIC, REVERSED
         self.record_tree = True  # Apakah merekam pohon keputusan untuk visualisasi
 
+        # Squad NPC
+        self.squad: Optional[NPCSquad] = None
+
         # Riwayat pertempuran (log)
         self.battle_logs: List[str] = []
         self.last_ai_stats: Dict[str, Any] = {}
@@ -48,10 +52,14 @@ class BattleSystem:
         self.player_action_text: Optional[Dict] = None
         self.npc_action_text: Optional[Dict] = None
         self.ACTION_TEXT_DURATION = 2.5  # Detik teks ditampilkan
+        # Callback notifikasi aksi pertempuran untuk modul visual VFX
+        self.on_action_callback = None
 
         self.reset()
 
     def reset(self):
+        self.squad = NPCSquad([NPCMember("Oyen the Warrior", "warrior", 100, 2, 0, 0, "BALANCED")])
+        self.eval_mode = "BALANCED"
         self.state = BattleState(
             player_hp=100,
             npc_hp=100,
@@ -71,6 +79,70 @@ class BattleSystem:
         self.winner = None
         self.player_action_text = None
         self.npc_action_text = None
+
+    def reset_with_squad(
+        self,
+        squad: NPCSquad,
+        player_hp: int = 100,
+        player_potions: int = 2,
+        player_atk: int = 0,
+        player_def: int = 0,
+        player: Any = None,
+    ):
+        """Reset duel dengan tim petarung NPC yang telah dikonfigurasi / dioptimasi."""
+        if player is not None:
+            player_hp = getattr(player, "persistent_hp", player_hp)
+            player_potions = getattr(player, "persistent_potions", player_potions)
+            player_atk = getattr(player, "atk_bonus", player_atk)
+            player_def = getattr(player, "def_bonus", player_def)
+
+        self.squad = squad
+        active = squad.get_active_member()
+        npc_hp = active.max_hp if active else 100
+        npc_pots = active.potions if active else 2
+        npc_atk = active.atk_bonus if active else 0
+        npc_def = active.def_bonus if active else 0
+        self.eval_mode = active.eval_profile if active else "BALANCED"
+
+        self.state = BattleState(
+            player_hp=player_hp,
+            npc_hp=npc_hp,
+            player_potions=player_potions,
+            npc_potions=npc_pots,
+            player_defending=False,
+            npc_defending=False,
+            is_npc_turn=False,
+            player_heavy_cd=0,
+            npc_heavy_cd=0,
+            player_atk_bonus=player_atk,
+            npc_atk_bonus=npc_atk,
+            player_def_bonus=player_def,
+            npc_def_bonus=npc_def,
+            player_max_hp=100,
+            npc_max_hp=npc_hp,
+        )
+
+        name_str = active.name if active else "NPC"
+        self.battle_logs = [f"Duel dimulai! Player berhadapan dengan {name_str}!"]
+        self.last_ai_stats = {}
+        if hasattr(self.ai_solver, "last_tree"):
+            self.ai_solver.last_tree = None
+        self.is_finished = False
+        self.winner = None
+        self.player_action_text = None
+        self.npc_action_text = None
+
+    def reset_with_config(
+        self,
+        config_dict: Dict[str, Any],
+        player_hp: int = 100,
+        player_potions: int = 2,
+        player_atk: int = 0,
+        player_def: int = 0,
+    ):
+        """Reset duel langsung dari dictionary konfigurasi CSP / Local Search."""
+        squad = NPCSquad.from_config(config_dict)
+        self.reset_with_squad(squad, player_hp, player_potions, player_atk, player_def)
 
     def update_ai_preview(self):
         """Kalkulasi ulang preview AI stats untuk tampilan debug overlay saat pengaturan diubah."""
@@ -112,6 +184,9 @@ class BattleSystem:
             self.player_action_text = entry
         else:
             self.npc_action_text = entry
+
+        if self.on_action_callback:
+            self.on_action_callback(who, action)
 
     def update_action_texts(self, dt: float):
         """Update timer teks aksi melayang, hilangkan saat habis."""
@@ -204,14 +279,40 @@ class BattleSystem:
         return best_action
 
     def _check_game_over(self):
+        # 1. Jika NPC tumbang tetapi masih ada anggota cadangan di squad
+        if self.state.npc_hp <= 0 and self.squad and self.squad.has_next():
+            active = self.squad.get_active_member()
+            if active:
+                active.current_hp = 0
+            next_npc = self.squad.advance_to_next()
+            if next_npc:
+                self.log(f"💥 {active.name if active else 'NPC'} Tumbang! {next_npc.name} masuk ke arena duel!")
+                self._set_action_text("NPC", "TAG-IN!", next_npc.name)
+                # Sinkronisasi state duel ke karakter NPC baru
+                self.state.npc_hp = next_npc.current_hp
+                self.state.npc_max_hp = next_npc.max_hp
+                self.state.npc_potions = next_npc.potions
+                self.state.npc_atk_bonus = next_npc.atk_bonus
+                self.state.npc_def_bonus = next_npc.def_bonus
+                self.state.npc_defending = False
+                self.state.npc_heavy_cd = 0
+                self.eval_mode = next_npc.eval_profile
+                return
+
+        # 2. Kondisi duel benar-benar berakhir
         if self.state.is_terminal():
             self.is_finished = True
+            if self.squad:
+                active = self.squad.get_active_member()
+                if active and self.state.npc_hp <= 0:
+                    active.current_hp = 0
+
             if self.state.player_hp <= 0 and self.state.npc_hp <= 0:
                 self.winner = "DRAW"
                 self.log("Pertarungan Sengit berakhir SERI!")
             elif self.state.player_hp <= 0:
                 self.winner = "NPC"
-                self.log("Player Tumbang! NPC (AI) Memenangkan Duel!")
+                self.log("Player Tumbang! Tim NPC (AI) Memenangkan Duel!")
             else:
                 self.winner = "PLAYER"
-                self.log("Selamat! Player berhasil mengalahkan NPC!")
+                self.log("🏆 Selamat! Seluruh tim NPC berhasil dikalahkan!")

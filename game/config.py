@@ -21,6 +21,10 @@ UI_TEXT = (230, 230, 235)
 UI_ACCENT = (30, 144, 255)
 UI_SELECTED = (45, 100, 170)
 
+# Parameter Pertarungan
+MAX_HP = 100
+POTION_HEAL = 25
+
 # Durasi animasi
 PLAYER_MOVE_DURATION = 0.12
 NPC_STEP_DURATION = 0.2
@@ -67,3 +71,49 @@ DEBUG_TEXT_WARN = (170, 92, 0)
 DEBUG_DROPDOWN_BG = (250, 250, 250, 245)
 DEBUG_DROPDOWN_HOVER = (220, 235, 250, 245)
 DEBUG_DROPDOWN_SELECTED = (190, 215, 245, 255)
+
+# --------------------------------------------------------------------------- #
+# Konstanta Tahap 3 & 4: CSP & Local Search Optimizer
+# --------------------------------------------------------------------------- #
+CHAR_TYPES = ["warrior", "ranger", "mage"]
+EVAL_PROFILES = ["BALANCED", "AGGRESSIVE", "DEFENSIVE"]
+
+DOMAIN_NPC_COUNT = [1, 2, 3]
+DOMAIN_HP = [60, 70, 80, 90, 100, 110, 120]
+DOMAIN_POTIONS = [0, 1, 2, 3]
+DOMAIN_ATK_BONUS = [0, 5, 10, 15]
+DOMAIN_DEF_BONUS = [0, 2, 4, 6]  # Pengurang damage flat
+
+# Budget Standar Tim NPC
+BUDGET_HP_DEFAULT = 250
+BUDGET_POTIONS_DEFAULT = 5
+BUDGET_ATK_DEFAULT = 25
+
+# Target Difficulty & Bobot Heuristik
+TARGET_DIFFICULTY_DEFAULT = 0.55
+DEFAULT_DIFFICULTY_WEIGHTS = {
+    "w_hp": 0.25,
+    "w_pot": 0.15,
+    "w_atk": 0.20,
+    "w_def": 0.10,
+    "w_count": 0.20,
+    "w_aggro": 0.10,
+}
+
+# Algoritma Local Search
+LS_ALGORITHMS = [
+    ("HILL_CLIMBING", "Hill Climbing"),
+    ("SIDEWAYS", "HC + Sideways Move"),
+    ("RANDOM_RESTART", "HC + Random Restart"),
+    ("SIMULATED_ANNEALING", "Simulated Annealing"),
+    ("GENETIC_ALGORITHM", "Genetic Algorithm"),
+]
+
+# Parameter Local Search
+SA_INITIAL_TEMP = 100.0
+SA_COOLING_RATE = 0.95
+SA_MIN_TEMP = 0.1
+GA_POPULATION_SIZE = 20
+GA_GENERATIONS = 30
+GA_MUTATION_RATE = 0.15
+GA_CROSSOVER_RATE = 0.80

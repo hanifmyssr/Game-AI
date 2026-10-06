@@ -32,10 +32,25 @@ def _build_dispatch():
 
 
 class NPC:
-    def __init__(self, map_data, events, player):
+    def __init__(
+        self,
+        map_data,
+        events,
+        player,
+        name="Oyen",
+        tint_color=None,
+        is_patrol=False,
+        waypoints=None,
+    ):
         self.map = map_data
         self.events = events
         self.player = player
+        self.name = name
+        self.tint_color = tint_color
+        self.is_patrol = is_patrol
+        self.waypoints = waypoints or []
+        self.current_waypoint_idx = 0
+        self.patrol_timer = 0.0
 
         self.algorithm = "A_STAR_MANHATTAN"
         self.dispatch = _build_dispatch()
@@ -58,18 +73,23 @@ class NPC:
             config.OYEN_DIR,
             target_height=config.CHARACTER_HEIGHT,
             frame_duration=config.NPC_WALK_FRAME_DURATION,
+            tint_color=self.tint_color,
         )
 
         self._spawn()
-        self.find_path(self.player.grid)
+        if not self.is_patrol:
+            self.find_path(self.player.grid)
 
     # ------------------------------------------------------------------ #
     def _spawn(self):
-        target_preferred = (
-            self.player.grid[0] + 4,
-            self.player.grid[1] + 4,
-        )
-        self.grid = self.map.get_valid_spawn_point(target_preferred)
+        if self.waypoints:
+            self.grid = self.waypoints[0]
+        else:
+            target_preferred = (
+                self.player.grid[0] + 4,
+                self.player.grid[1] + 4,
+            )
+            self.grid = self.map.get_valid_spawn_point(target_preferred)
         self.px, self.py = self.map.world_to_px(self.grid)
         self.frame_from = (self.px, self.py)
         self.frame_to = (self.px, self.py)
@@ -95,6 +115,24 @@ class NPC:
             if self.chase_timer >= config.NPC_CHASE_INTERVAL:
                 self.chase_timer = 0.0
                 self.move_one_step_towards(self.player.grid)
+        elif self.is_patrol and not self.moving and self.waypoints:
+            self.patrol_timer += dt
+            if self.patrol_timer >= 0.85:
+                self.patrol_timer = 0.0
+                target_wp = self.waypoints[self.current_waypoint_idx]
+                if self.grid == target_wp:
+                    self.current_waypoint_idx = (self.current_waypoint_idx + 1) % len(self.waypoints)
+                    target_wp = self.waypoints[self.current_waypoint_idx]
+                self._patrol_step_towards(target_wp)
+
+    def _patrol_step_towards(self, target_grid):
+        if self.moving or self.grid == tuple(target_grid):
+            return
+        run = self.dispatch.get(self.algorithm, self.dispatch["A_STAR_MANHATTAN"])
+        result = run(self.grid, tuple(target_grid), self.grid_manager, None)
+        path = result.get("path", [])
+        if len(path) > 1:
+            self.move_to_grid(path[1])
 
     def _on_movement_finished(self):
         if self.chasing and self.grid != self.player.grid:
@@ -109,9 +147,12 @@ class NPC:
 
     def set_algorithm(self, algo_name):
         self.algorithm = algo_name
-        self.find_path(self.player.grid)
+        if not self.is_patrol:
+            self.find_path(self.player.grid)
 
     def on_player_moved(self, player_grid):
+        if self.is_patrol:
+            return
         result = self.find_path(player_grid)
         if self.chasing and not self.moving:
             path = result.get("path", [])
@@ -126,12 +167,14 @@ class NPC:
 
         path = result.get("path", [])
         self.current_path = path
-        self.events.path_calculated(
-            path,
-            result.get("visited_nodes", []),
-            result.get("execution_time_ms", 0.0),
-            self.grid,
-        )
+
+        if not self.is_patrol:
+            self.events.path_calculated(
+                path,
+                result.get("visited_nodes", []),
+                result.get("execution_time_ms", 0.0),
+                self.grid,
+            )
 
         # --- Hitung perbandingan UCS vs algoritma terpilih ---
         selected_key = self.algorithm

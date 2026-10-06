@@ -256,20 +256,34 @@ class AnimatedSprite:
         sprite.current_image              # surface siap blit
     """
 
-    def __init__(self, directory, target_height=None, frame_duration=None):
+    def __init__(self, directory, target_height=None, frame_duration=None, tint_color=None):
         self.target_height = target_height or config.CHARACTER_HEIGHT
         self.frame_duration = (
             frame_duration if frame_duration is not None
             else config.WALK_FRAME_DURATION
         )
+        self.tint_color = tint_color
 
         self.frames = _load_animation_frames(directory, self.target_height)
+        if self.tint_color:
+            self._apply_tint(self.tint_color)
 
         self.direction = DEFAULT_DIRECTION
         self.state = AnimationState.IDLE
         self.frame_index = 0
         self.frame_timer = 0.0
         self.moving = False
+
+    def _apply_tint(self, tint):
+        tinted_frames = {}
+        for key, seq in self.frames.items():
+            tinted_seq = []
+            for img in seq:
+                t_img = img.copy()
+                t_img.fill((*tint, 255), special_flags=pygame.BLEND_RGBA_MULT)
+                tinted_seq.append(t_img)
+            tinted_frames[key] = tinted_seq
+        self.frames = tinted_frames
 
     # ------------------------------------------------------------------ #
     # Arah hadap

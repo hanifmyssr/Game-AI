@@ -28,6 +28,13 @@ class Player:
         self.call_bubble_visible = False
         self.call_bubble_timer = 0.0
 
+        # Status Persistent & Inventory untuk Tahap 3 & 4
+        self.persistent_hp = 100
+        self.persistent_potions = 2
+        self.atk_bonus = 0
+        self.def_bonus = 0
+        self.inventory = []
+
         self.sprite = AnimatedSprite(config.BOLU_DIR, config.CHARACTER_HEIGHT)
 
         preferred_spawn = self.map.get_map_center()

@@ -465,32 +465,45 @@ Di mode PRE_BATTLE dan BATTLE, panel debug (sidebar kiri) mendapatkan **tab/sect
 
 ## 8. Tahapan Implementasi (Urutan Kerja)
 
-### Phase 1: Foundation (Core CSP & Difficulty)
-1. Buat `game/difficulty.py` — fungsi evaluasi kesulitan
-2. Buat `game/npc_config_csp.py` — CSP solver lengkap (Backtracking + MRV + LCV + AC-3)
-3. Buat unit test sederhana untuk CSP solver
+### Phase 0: Pre-Requisites & Fondasi Sistem (Pencegahan Masalah) ✅ SELESAI
+1. [x] **Penyiapan Stat Buff di `BattleState` (`game/battle_ai.py`):**
+   - Tambahkan atribut `player_atk_bonus=0`, `npc_atk_bonus=0`, `player_def_bonus=0`, `npc_def_bonus=0` dengan nilai default ke dalam `__slots__` agar kompatibel 100% dan tidak merusak Minimax saat ada item.
+2. [x] **Optimasi Struktur Data CSP & Local Search:**
+   - Gunakan representasi data berbasis tuple/dict ringan (tanpa `copy.deepcopy()` berulang di loop) agar waktu pencarian dijamin **< 5 milidetik (bebas lag/stutter)** saat masuk Pre-Battle.
+3. [x] **Logika Pergantian Tag-Team di `BattleSystem`:**
+   - Siapkan metode transisi `squad.has_next()` agar duel tidak langsung selesai saat NPC pertama gugur.
+4. [x] **Logika Jarak Interaksi Peti (`MapData`):**
+   - Siapkan fungsi deteksi proximity ubin (jarak Manhattan $\le 1$) untuk membuka peti interaktif tanpa terhambat status rintangan (*obstacle*).
 
-### Phase 2: Local Search Optimizer
-4. Buat `game/npc_config_optimizer.py` — semua metode Local Search
-5. Hubungkan CSP sebagai validator untuk setiap neighbour/offspring
-6. Buat tes: pastikan optimizer menghasilkan konfigurasi yang valid dan mendekati target difficulty
+### Phase 1: Foundation (Core CSP & Difficulty) ✅ SELESAI
+1. [x] Buat `game/difficulty.py` — fungsi evaluasi kesulitan & breakdown bobot normalisasi
+2. [x] Buat `game/npc_config_csp.py` — CSP solver lengkap (Backtracking + MRV + LCV + AC-3)
+3. [x] Buat unit test `scratch/test_csp.py` untuk validasi constraint C1-C8
 
-### Phase 3: Game Integration
-7. Buat `game/npc_squad.py` — manager tim NPC
-8. Modifikasi `battle_ai.py` — tambahkan parameter stat variabel (backward compatible)
-9. Modifikasi `battle_system.py` — tambahkan `reset_with_config()`
-10. Modifikasi `app.py` — tambahkan state PRE_BATTLE, integrasi squad
+### Phase 2: Local Search Optimizer ✅ SELESAI
+4. [x] Buat `game/npc_config_optimizer.py` — 5 algoritma Local Search (HC, Sideways, Random Restart, SA, GA)
+5. [x] Hubungkan CSP sebagai validator untuk setiap neighbour/offspring
+6. [x] Buat unit test `scratch/test_optimizer.py` — pastikan optimasi mendekati target 0.55 ("Fun Zone")
 
-### Phase 4: UI & Overlay
-11. Modifikasi `overlay.py` — tambahkan panel CSP/Local Search/Squad stats
-12. Implementasi PRE_BATTLE screen (progress bar, kartu NPC, tombol mulai)
-13. Implementasi multi-NPC arena rendering (tag-team display)
+### Phase 3: Game Integration ✅ SELESAI
+7. [x] Buat `game/npc_squad.py` — manager tim NPC & rotasi Tag-Team
+8. [x] Modifikasi `battle_ai.py` — kompatibilitas stat buff tanpa regresi
+9. [x] Modifikasi `battle_system.py` — `reset_with_squad()` dan `on_action_callback`
+10. [x] Modifikasi `app.py` — state machine PRE_BATTLE, 3 NPC map, peti gacha, persistent player
 
-### Phase 5: Polish & Benchmark
-14. Tambahkan script benchmark baru: `scratch/run_tahap3_experiments.py`
-15. Fine-tune bobot difficulty function
-16. Update `README.md` dengan dokumentasi Tahap 3 & 4
-17. Testing end-to-end: exploration → pre-battle → battle → game over → kembali
+### Phase 4: UI & Overlay ✅ SELESAI
+11. [x] Modifikasi `overlay.py` — panel grid ber-tile dengan clipping mask (0% text overflow)
+12. [x] Implementasi PRE_BATTLE screen (pratinjau squad, re-roll R, ganti algo 1-5, mulai battle)
+13. [x] Implementasi multi-NPC arena rendering (lencana antrean bench cadangan)
+14. [x] Implementasi Fullscreen Semi-Transparent Decision Tree Modal Overlay (`[T]`)
+
+### Phase 5: Polish, Benchmark & Battle VFX ✅ SELESAI
+15. [x] Buat modul animasi prosedural `game/battle_vfx.py` (Tweening pedang meluncur/berputar, pulsing perisai, pouring ramuan, hit shake)
+16. [x] Hubungkan `BattleVFXManager` ke action callback `BattleSystem` dan rendering battle arena di `app.py`
+17. [x] Buat script benchmark baru `scratch/run_tahap3_experiments.py` (CSP performance, 5 Local Search benchmark, dynamic adaptive balancing)
+18. [x] Update `README.md` dengan dokumentasi lengkap Tahap 3 & 4
+19. [x] Testing end-to-end menyeluruh via `scratch/test_app_integration.py` (100% test lulus tanpa regresi)
+
 
 ---
 
@@ -709,6 +722,42 @@ Bagian ini melengkapi perancangan game agar ekosistem permainannya terasa hidup 
   - Saat dibuka, muncul overlay layar penuh dengan latar belakang gelap semi-transparan (opasitas ~85%).
   - Pertarungan di belakang tetap terlihat samar, sementara pohon pencarian Minimax digambar dengan ukuran **luas, besar, dan bebas overlap**.
   - Dilengkapi fitur navigasi geser (pan 2D), zoom, dan tombol `[✕ Tutup / ESC / T]` di pojok kanan atas untuk kembali ke arena pertempuran secara instan.
+
+### 13.7 Desain Grid Kotak-Kotak (Dashboard Metric Tiles) pada Debug Overlay
+- **Peningkatan Visual dari Teks Memanjang ke Sistem Kartu/Grid:**
+  - Sidebar kiri dibagi menjadi kartu-kartu metrik terstruktur (grid 2 kolom untuk angka ringkas, kartu 1 kolom penuh untuk judul/status panjang).
+- **Jaminan 100% Bebas Text Overflow:**
+  - Pengukuran dimensi teks via `font.size(text)` sebelum digambar.
+  - Teks panjang otomatis di-*wrap* atau di-elipsis secara rapi.
+  - Pemasangan batas potong (*clipping mask*) via `surface.set_clip(card_rect)` sehingga mustahil ada pixel teks menembus batas kotak.
+- **Konservasi Data 100% (Tidak Ada Metrik yang Dihapus):**
+  - **Mode Eksplorasi:** Dropdown Algo, Node Dikunjungi, Panjang Jalur, Biaya Jalur, Waktu Eksekusi, Perbandingan vs UCS (Node, Cost, Waktu, Rasio Hemat), dan Panduan Kontrol tetap tampil lengkap.
+  - **Mode Battle:** Dropdown Algo/Eval, Slider Depth, Move Ordering, Status Giliran, Tombol Aksi, Komparasi Metode, Pilihan Terbaik, Tabel Scoring Root Node, dan Shortcut Footer tetap tampil lengkap.
+
+### 13.8 Sistem Animasi Battle VFX (Programmatic Tweening)
+- **Prinsip Utama:**
+  - Dikerjakan secara terisolasi pada tahap akhir setelah seluruh logika AI (CSP, Local Search, Tag-Team) dan UI utama dinyatakan aman dan stabil.
+- **Pemanfaatan Aset VFX:**
+  - **Aksi ATTACK & HEAVY ATTACK:** Sprite pedang meluncur cepat (`lerp` posisi), berputar (`pygame.transform.rotate`) ke arah target dengan efek getar (*hit shake*) saat mengenai musuh.
+  - **Aksi DEFEND:** Sprite perisai muncul melayang di depan karakter dengan denyut pulsing glow.
+  - **Aksi POTION:** Sprite ramuan muncul di atas kepala karakter, miring menuang, diiringi angka pemulihan hijau yang melayang ke atas (+25 HP).
+  - **Hit Feedback:** Karakter penerima damage bergetar (*sprite shake offset*) saat terkena serangan.
+
+### 13.9 Aset Visual Karakter Full-Body Battle Sprites (Selesai Diterapkan ✅)
+- **Eliminasi "Bentuk Kartu Melayang" di Mode Duel:**
+  - Sebelumnya, arena pertempuran merender avatar portrait kotak (112x112 px) yang tampak seperti kartu profil.
+  - Telah di-*generate* dan diproses 4 aset **Full-Body Battle Sprites** (pixel-art 16-bit JRPG dengan background transparan bersih via BFS exterior edge flood-fill):
+    1. **Bolu (Player):** Kucing putih pahlawan menghadap ke kanan, mengenakan bandana jubah merah, memegang pedang & perisai kayu (`assets/battle_sprites/battle_bolu.png`).
+    2. **Oyen (Warrior):** Kucing oranye ksatria menghadap ke kiri, mengenakan zirah pelat perak lengkap, memegang pedang baja & tameng logam (`assets/battle_sprites/battle_warrior.png`).
+    3. **Kuro (Ranger):** Kucing hitam rogue menghadap ke kiri, mengenakan jubah bertudung hijau hutan dan zirah kulit, memegang busur panah tempur (`assets/battle_sprites/battle_ranger.png`).
+    4. **Shiro (Mage):** Kucing putih penyihir menghadap ke kiri, mengenakan jubah & topi penyihir biru malam berbintang emas, memegang tongkat kristal bercahaya (`assets/battle_sprites/battle_mage.png`).
+- **Integrasi Arena Duel & Pre-Battle:**
+  - Di **Battle Arena**, kedua karakter berdiri berhadapan secara proporsional (tinggi ~135 px) dengan efek getar hit reaksi yang dinamis.
+  - Di **Pre-Battle Arena**, kartu Bolu dan setiap kartu anggota squad musuh menampilkan miniatur siluet petarung penuh (*full-body character thumbnail*).
+- **Perbaikan Ergonomi Battle Log:**
+  - Kotak *Battle Log* diletakkan di bagian terbawah layar (`h - log_h - 14`) dengan tombol modal *Decision Tree* di atasnya, menghasilkan arena duel yang sangat luas, bersih, dan memanjakan mata.
+
+
 
 
 

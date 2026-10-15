@@ -61,21 +61,27 @@ COLOR_EXPANDED_BORDER = (255, 230, 90, 210)
 COLOR_PATH = (40, 110, 255, 135)
 COLOR_PATH_BORDER = (90, 165, 255, 210)
 
-# Warna panel debug overlay (light mode)
-DEBUG_PANEL_BG = (250, 250, 247, 255)
-DEBUG_PANEL_BORDER = (75, 85, 105, 230)
-DEBUG_TEXT_PRIMARY = (28, 32, 40)
-DEBUG_TEXT_SECONDARY = (85, 92, 105)
-DEBUG_TEXT_HIGHLIGHT = (18, 88, 170)
-DEBUG_TEXT_WARN = (170, 92, 0)
-DEBUG_DROPDOWN_BG = (250, 250, 250, 245)
-DEBUG_DROPDOWN_HOVER = (220, 235, 250, 245)
-DEBUG_DROPDOWN_SELECTED = (190, 215, 245, 255)
+# Warna panel debug overlay (tema light modern - clean white background)
+DEBUG_PANEL_BG = (255, 255, 255, 250)
+DEBUG_PANEL_BORDER = (200, 212, 228, 230)
+DEBUG_CARD_BG = (248, 250, 254, 245)
+DEBUG_CARD_BORDER = (215, 225, 238, 220)
+DEBUG_CARD_HEADER_BG = (238, 245, 255, 245)
+DEBUG_CARD_HEADER_BORDER = (195, 215, 245, 220)
+DEBUG_CARD_ROW_BG = (255, 255, 255, 240)
+DEBUG_CARD_ROW_BORDER = (225, 232, 242, 220)
+DEBUG_TEXT_PRIMARY = (25, 32, 45)
+DEBUG_TEXT_SECONDARY = (95, 108, 125)
+DEBUG_TEXT_HIGHLIGHT = (16, 95, 195)
+DEBUG_TEXT_WARN = (190, 85, 15)
+DEBUG_DROPDOWN_BG = (255, 255, 255, 255)
+DEBUG_DROPDOWN_HOVER = (235, 243, 255, 255)
+DEBUG_DROPDOWN_SELECTED = (35, 110, 215, 255)
 
 # --------------------------------------------------------------------------- #
 # Konstanta Tahap 3 & 4: CSP & Local Search Optimizer
 # --------------------------------------------------------------------------- #
-CHAR_TYPES = ["warrior", "ranger", "mage"]
+CHAR_TYPES = ["warrior", "ranger", "mage", "assassin"]
 EVAL_PROFILES = ["BALANCED", "AGGRESSIVE", "DEFENSIVE"]
 
 DOMAIN_NPC_COUNT = [1, 2, 3]

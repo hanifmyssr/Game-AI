@@ -81,9 +81,18 @@ class NPCConfigCSP:
             if ctype == "tank" and hp < 90:
                 violations.append(f"C3: NPC {idx+1} Tank harus memiliki HP >= 90 (HP saat ini: {hp})")
 
-            # C4: Assassin / Ranger -> atk_bonus >= 5
-            if ctype in ("assassin", "ranger") and atk < 5:
-                violations.append(f"C4: NPC {idx+1} {ctype.capitalize()} harus memiliki Atk Bonus >= 5 (Atk saat ini: {atk})")
+            # C4: Ranger -> atk_bonus >= 5
+            if ctype == "ranger" and atk < 5:
+                violations.append(f"C4: NPC {idx+1} Ranger harus memiliki Atk Bonus >= 5 (Atk saat ini: {atk})")
+
+            # C8: Assassin -> atk_bonus >= 10, hp <= 90 (Lethal Burst Assassin)
+            if ctype == "assassin":
+                if atk < 10:
+                    violations.append(f"C8: NPC {idx+1} Assassin harus memiliki Atk Bonus >= 10 (Atk saat ini: {atk})")
+                if hp > 90:
+                    violations.append(f"C8: NPC {idx+1} Assassin adalah petarung lincah bertubuh ramping (HP maksimal 90, saat ini: {hp})")
+                if eval_p not in {"BALANCED", "AGGRESSIVE"}:
+                    violations.append(f"C8: NPC {idx+1} Assassin harus bertipe BALANCED atau AGGRESSIVE (saat ini: {eval_p})")
 
             # C6: Mage -> hp <= 90 (Glass Cannon) & eval_profile in {"BALANCED", "AGGRESSIVE"}
             if ctype == "mage":
@@ -143,10 +152,23 @@ class NPCConfigCSP:
                     domains[f"eval_profile_{i}"] = [e for e in domains[f"eval_profile_{i}"] if e in {"BALANCED", "DEFENSIVE"}]
                     pruned_count += old_eval - len(domains[f"eval_profile_{i}"])
 
-                elif ctype in ("assassin", "ranger"):
+                elif ctype == "ranger":
                     old_atk = len(domains[f"atk_bonus_{i}"])
                     domains[f"atk_bonus_{i}"] = [a for a in domains[f"atk_bonus_{i}"] if a >= 5]
                     pruned_count += old_atk - len(domains[f"atk_bonus_{i}"])
+
+                    old_eval = len(domains[f"eval_profile_{i}"])
+                    domains[f"eval_profile_{i}"] = [e for e in domains[f"eval_profile_{i}"] if e in {"BALANCED", "AGGRESSIVE"}]
+                    pruned_count += old_eval - len(domains[f"eval_profile_{i}"])
+
+                elif ctype == "assassin":
+                    old_atk = len(domains[f"atk_bonus_{i}"])
+                    domains[f"atk_bonus_{i}"] = [a for a in domains[f"atk_bonus_{i}"] if a >= 10]
+                    pruned_count += old_atk - len(domains[f"atk_bonus_{i}"])
+
+                    old_hp = len(domains[f"hp_{i}"])
+                    domains[f"hp_{i}"] = [hp for hp in domains[f"hp_{i}"] if hp <= 90]
+                    pruned_count += old_hp - len(domains[f"hp_{i}"])
 
                     old_eval = len(domains[f"eval_profile_{i}"])
                     domains[f"eval_profile_{i}"] = [e for e in domains[f"eval_profile_{i}"] if e in {"BALANCED", "AGGRESSIVE"}]
@@ -264,7 +286,11 @@ class NPCConfigCSP:
                     return False
 
                 atk = tentative.get(f"atk_bonus_{i}")
-                if atk is not None and ctype in ("assassin", "ranger") and atk < 5:
+                if atk is not None and ctype == "ranger" and atk < 5:
+                    return False
+                if atk is not None and ctype == "assassin" and atk < 10:
+                    return False
+                if hp is not None and ctype == "assassin" and hp > 90:
                     return False
 
                 if hp is not None and ctype == "mage" and hp > 90:

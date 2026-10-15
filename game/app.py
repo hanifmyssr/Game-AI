@@ -3,6 +3,7 @@
 
 import math
 import os
+from typing import Optional, Dict, Any, List, Tuple
 import pygame
 
 from . import config
@@ -46,6 +47,7 @@ K_5 = getattr(pygame, "K_5", 53)
 K_w = getattr(pygame, "K_w", 119)
 K_e = getattr(pygame, "K_e", 101)
 K_RETURN = getattr(pygame, "K_RETURN", 13)
+K_KP_ENTER = getattr(pygame, "K_KP_ENTER", 1073741912)
 K_UP = getattr(pygame, "K_UP", 1073741906)
 K_DOWN = getattr(pygame, "K_DOWN", 1073741905)
 K_LEFT = getattr(pygame, "K_LEFT", 1073741904)
@@ -153,6 +155,8 @@ class App:
         self.battle_system = BattleSystem()
         self.vfx = BattleVFXManager(self.fonts)
         self.battle_system.on_action_callback = self._on_battle_action_executed
+        self.battle_system.on_tag_in = self._on_npc_tag_in
+        self.card_summon_anim = None
         self.game_mode = "EXPLORATION"  # "EXPLORATION", "PRE_BATTLE", atau "BATTLE"
         self.battle_reentry_locked = False
 
@@ -185,8 +189,8 @@ class App:
         self.player = Player(self.map, self.events)
 
         # 3 NPC di Peta (Opsi B: 1 Pengejar Utama + 2 Patroli Waypoint)
-        # NPC 1: Oyen (Pengejar Utama pada [SPACE])
-        self.npc = NPC(self.map, self.events, self.player, name="Oyen")
+        # NPC 1: Bolu (Pengejar Utama pada [SPACE])
+        self.npc = NPC(self.map, self.events, self.player, name="Bolu")
         # NPC 2: Kuro (Patroli Wilayah Barat/Utara - Warna Gelap)
         self.npc_kuro = NPC(
             self.map,
@@ -218,6 +222,7 @@ class App:
             {"pos": (32, 27), "opened": False, "item": "item_shield"},
         ]
         self.item_images = self._load_item_images()
+        self.item_images_large = self._load_item_images_large()
         self.battle_sprites = self._load_battle_sprites()
 
         # State Animasi Gacha / Loot Peti
@@ -227,6 +232,11 @@ class App:
         self.gacha_reward_item = None
         self.gacha_message = ""
         self.gacha_message_timer = 0.0
+        self.gacha_showcase = None
+        self.loot_toast = None
+        self.loot_modal = None
+        self.npc_defeat_anim = None
+        self.final_loot_shown = False
 
         self.map_surface = None
         self.scaled_map = None
@@ -298,7 +308,7 @@ class App:
             self.npc_kuro.update(dt)
             self.npc_shiro.update(dt)
 
-            if not self.player.moving:
+            if not self.player.moving and not self.gacha_active and not self.gacha_showcase:
                 self._process_continuous_player_movement()
 
             # Animasi Gacha / Loot Peti
@@ -310,7 +320,12 @@ class App:
                 if self.gacha_timer <= 0.0:
                     self.gacha_active = False
                     self._award_gacha_reward()
-            if self.gacha_message_timer > 0:
+            elif self.gacha_showcase:
+                self.gacha_showcase["timer"] -= dt
+                self.gacha_showcase["anim_time"] += dt
+                if self.gacha_showcase["timer"] <= 0.0:
+                    self.gacha_showcase = None
+            elif self.gacha_message_timer > 0:
                 self.gacha_message_timer -= dt
 
             camera_target = (self.player.px, self.player.py)
@@ -343,12 +358,69 @@ class App:
             if self.reroll_toast_timer > 0:
                 self.reroll_toast_timer = max(0.0, self.reroll_toast_timer - dt)
         else:
+            # Mode Battle: Update animasi pemanggilan kartu (tag-in summon animation)
+            if self.card_summon_anim:
+                self._update_card_summon_anim(dt)
+
+            # Mode Battle: Update jeda animasi NPC tumbang (Defeat Animation)
+            if self.npc_defeat_anim:
+                self.npc_defeat_anim["timer"] -= dt
+                if self.npc_defeat_anim["timer"] <= 0.0:
+                    anim = self.npc_defeat_anim
+                    self.npc_defeat_anim = None
+                    if anim.get("loot"):
+                        self.loot_modal = {
+                            "loot": anim["loot"],
+                            "old_npc": anim["npc"],
+                            "next_npc": anim["next_npc"],
+                            "heal_amount": anim["heal_amount"],
+                            "timer": 0.0,
+                            "is_final": anim["is_final"],
+                        }
+                    elif anim.get("next_npc"):
+                        self._start_card_summon_anim(anim["npc"], anim["next_npc"])
+                    elif anim.get("is_final"):
+                        self.exit_battle()
+
+            # Mode Battle: Cek kemenangan final jika player memenangkan seluruh duel
+            if (
+                self.battle_system.is_finished
+                and self.battle_system.winner == "PLAYER"
+                and hasattr(self.battle_system, "last_loot")
+                and self.battle_system.last_loot
+                and not getattr(self, "final_loot_shown", False)
+                and not self.loot_modal
+                and not self.npc_defeat_anim
+            ):
+                self.final_loot_shown = True
+                active_m = getattr(self.current_squad, "active_member", None)
+                self.npc_defeat_anim = {
+                    "npc": active_m or self.npc,
+                    "next_npc": None,
+                    "heal_amount": 0,
+                    "loot": self.battle_system.last_loot,
+                    "timer": 1.4,
+                    "duration": 1.4,
+                    "is_final": True,
+                }
+
             # Mode Battle: Update floating action text timer & VFX animasi
             self.battle_system.update_action_texts(dt)
             self.vfx.update(dt)
 
-            # Handle giliran NPC dengan jeda singkat (~0.5 detik)
-            if self.battle_system.state.is_npc_turn and not self.battle_system.is_finished:
+            if hasattr(self, "loot_toast") and self.loot_toast:
+                self.loot_toast["timer"] -= dt
+                if self.loot_toast["timer"] <= 0:
+                    self.loot_toast = None
+
+            # Handle giliran NPC dengan jeda singkat (~0.5 detik), tunda jika kartu sedang meluncur, modal loot aktif, atau animasi kalah
+            if (
+                self.battle_system.state.is_npc_turn
+                and not self.battle_system.is_finished
+                and not self.card_summon_anim
+                and not self.loot_modal
+                and not self.npc_defeat_anim
+            ):
                 self.npc_battle_turn_timer += dt
                 if self.npc_battle_turn_timer >= 0.5:
                     self.npc_battle_turn_timer = 0.0
@@ -393,11 +465,16 @@ class App:
             self.reroll_toast_timer = 1.4
 
     def enter_pre_battle(self, leader_npc=None):
+        self.current_encounter_npc = leader_npc
         self.game_mode = "PRE_BATTLE"
         self.overlay.set_mode("PRE_BATTLE")
         self.overlay.set_chasing_visualization(False)
         self.overlay.stop_path_animation()
         self.npc.chasing = False
+        # Jika darah player sebelumnya habis/kalah atau <= 10, pulihkan penuh ke 100
+        if getattr(self.player, "persistent_hp", 100) <= 10:
+            self.player.persistent_hp = 100
+            self.player.persistent_potions = max(2, self.player.persistent_potions)
         self._run_optimization()
 
     def enter_battle(self):
@@ -408,9 +485,18 @@ class App:
         self.npc.chasing = False
         self.npc_battle_turn_timer = 0.0
         self.battle_log_scroll_offset = 0
+        self.card_summon_anim = None
+        self.loot_modal = None
+        self.npc_defeat_anim = None
+        self.final_loot_shown = False
         if hasattr(self, "vfx") and self.vfx:
             self.vfx.animations.clear()
+        # Jika darah player sebelumnya habis/kalah atau <= 10, pulihkan penuh ke 100
+        if getattr(self.player, "persistent_hp", 100) <= 10:
+            self.player.persistent_hp = 100
+            self.player.persistent_potions = max(2, self.player.persistent_potions)
         if self.current_squad:
+            self.current_squad.reset()
             self.battle_system.reset_with_squad(self.current_squad, player=self.player)
         else:
             self.battle_system.reset()
@@ -420,12 +506,33 @@ class App:
         self.overlay.set_mode("EXPLORATION")
         self.battle_reentry_locked = True
         self.npc.chasing = False
+        self.card_summon_anim = None
+        self.loot_toast = None
+        self.loot_modal = None
+        self.npc_defeat_anim = None
+        self.final_loot_shown = False
         if hasattr(self, "vfx") and self.vfx:
             self.vfx.animations.clear()
+
+        # Relokasi/respawn NPC yang kalah agar tidak terjadi loop pertempuran tak berujung
+        if getattr(self.battle_system, "winner", None) == "PLAYER":
+            enc_npc = getattr(self, "current_encounter_npc", None) or self.npc
+            if enc_npc:
+                enc_npc._spawn()
+                enc_npc.chasing = False
+                enc_npc.moving = False
+                enc_npc.path = []
+        self.current_encounter_npc = None
+
         # Sinkronkan sisa HP dan Potion player secara persistent
         if hasattr(self.battle_system, "state"):
-            self.player.persistent_hp = max(10, self.battle_system.state.player_hp)
-            self.player.persistent_potions = self.battle_system.state.player_potions
+            if self.battle_system.state.player_hp <= 0 or getattr(self.battle_system, "winner", None) == "NPC":
+                # Jika Player kalah/tumbang dalam duel, pulihkan HP kembali PENUH (100) saat kembali ke map!
+                self.player.persistent_hp = 100
+                self.player.persistent_potions = max(2, self.player.persistent_potions)
+            else:
+                self.player.persistent_hp = max(10, self.battle_system.state.player_hp)
+                self.player.persistent_potions = self.battle_system.state.player_potions
 
     def _get_battle_char_positions(self):
         """Menghitung koordinat posisi pusat Player dan NPC di arena battle."""
@@ -455,6 +562,9 @@ class App:
                 self.vfx.trigger_defend(p_pos)
             elif action == ACTION_POTION:
                 self.vfx.trigger_potion(p_pos, heal_val=config.POTION_HEAL)
+            elif action == "SECOND WIND!":
+                heal_val = getattr(self.battle_system, "last_second_wind_heal", 45)
+                self.vfx.trigger_potion(p_pos, heal_val=heal_val)
         else:
             if action == ACTION_ATTACK:
                 self.vfx.trigger_attack(n_pos, p_pos, is_heavy=False, recipient="PLAYER")
@@ -476,16 +586,16 @@ class App:
             elif event.type == MOUSEWHEEL:
                 m_pos = pygame.mouse.get_pos()
                 if self.game_mode == "BATTLE":
+                    # Scroll mousewheel pada Decision Tree Overlay (prioritas utama jika aktif)
+                    if self.overlay.tree_overlay.visible and self.overlay.tree_overlay.panel_rect.collidepoint(m_pos):
+                        self.overlay.tree_overlay.handle_event(event)
                     # Scroll mousewheel pada Battle Log
-                    if self.battle_log_rect.collidepoint(m_pos):
+                    elif self.battle_log_rect.collidepoint(m_pos):
                         total_logs = len(self.battle_system.battle_logs)
                         max_scroll = max(0, total_logs - 2)
                         # event.y > 0 = scroll ke atas (lihat log lama)
                         # event.y < 0 = scroll ke bawah (lihat log terbaru)
                         self.battle_log_scroll_offset = max(0, min(max_scroll, self.battle_log_scroll_offset + event.y))
-                    # Scroll mousewheel pada Decision Tree Overlay
-                    elif self.overlay.tree_overlay.panel_rect.collidepoint(m_pos):
-                        self.overlay.tree_overlay.handle_event(event)
                     else:
                         self.overlay.handle_event(event)
                 else:
@@ -502,6 +612,13 @@ class App:
                     else:
                         self.overlay.handle_event(event)
                 elif self.game_mode == "BATTLE":
+                    if self.loot_modal:
+                        self._dismiss_loot_modal()
+                        return
+                    # Prioritaskan penanganan klik pada Decision Tree jika sedang aktif
+                    if self.overlay.tree_overlay.visible:
+                        if self.overlay.tree_overlay.handle_event(event):
+                            return
                     # Klik tombol [Lihat Decision Tree]
                     if self.btn_tree_modal.collidepoint(pos):
                         self.overlay.toggle_tree_overlay()
@@ -512,11 +629,12 @@ class App:
                         self.battle_log_scroll_offset = min(max_scroll, self.battle_log_scroll_offset + 1)
                     elif self.btn_log_down.collidepoint(pos):
                         self.battle_log_scroll_offset = max(0, self.battle_log_scroll_offset - 1)
-                    elif self.overlay.tree_overlay.visible and self.overlay.tree_overlay.handle_event(event):
-                        pass
                     else:
                         self.overlay.handle_event(event)
                 else:
+                    if getattr(self, "gacha_showcase", None):
+                        self.gacha_showcase = None
+                        return
                     self.overlay.handle_event(event)
             elif event.type in (MOUSEBUTTONUP, MOUSEMOTION):
                 if self.game_mode == "BATTLE":
@@ -526,6 +644,9 @@ class App:
 
     def _handle_key(self, key):
         if key == K_ESCAPE:
+            if getattr(self, "gacha_showcase", None):
+                self.gacha_showcase = None
+                return
             if self.game_mode == "BATTLE":
                 if self.overlay.tree_overlay.visible:
                     self.overlay.tree_overlay.visible = False
@@ -570,12 +691,22 @@ class App:
             return
 
         if self.game_mode == "BATTLE":
+            # Jika modal rampasan perang aktif, tekan ENTER atau SPASI untuk lanjut
+            if self.loot_modal:
+                if key in (K_RETURN, K_KP_ENTER, K_SPACE, K_ESCAPE):
+                    self._dismiss_loot_modal()
+                return
+
             # Shortcut tombol di mode Battle
             if key == K_TAB:
                 self.exit_battle()
             elif key == K_r:
                 self.battle_log_scroll_offset = 0
+                self.card_summon_anim = None
+                self.player.persistent_hp = 100
+                self.player.persistent_potions = max(2, self.player.persistent_potions)
                 if self.current_squad:
+                    self.current_squad.reset()
                     self.battle_system.reset_with_squad(self.current_squad, player=self.player)
                 else:
                     self.battle_system.reset()
@@ -584,7 +715,7 @@ class App:
             elif self.overlay.tree_overlay.visible:
                 if key in (K_t, K_ESCAPE):
                     self.overlay.tree_overlay.visible = False
-            elif not self.battle_system.state.is_npc_turn and not self.battle_system.is_finished:
+            elif not self.battle_system.state.is_npc_turn and not self.battle_system.is_finished and not self.card_summon_anim and not self.loot_modal and not self.npc_defeat_anim:
                 self.battle_log_scroll_offset = 0  # Auto-scroll ke log aksi terbaru saat giliran jalan
                 if key in (K_1, K_a):
                     self.battle_system.execute_player_action(ACTION_ATTACK)
@@ -596,6 +727,11 @@ class App:
                     self.battle_system.execute_player_action(ACTION_POTION)
         else:
             # Mode Eksplorasi Peta
+            if getattr(self, "gacha_showcase", None):
+                if key in (K_RETURN, K_KP_ENTER, K_SPACE, K_e, K_ESCAPE):
+                    self.gacha_showcase = None
+                return
+
             if key in (K_LCTRL, K_RCTRL):
                 if self.npc.chasing:
                     self.overlay.set_chasing_visualization(True)
@@ -655,7 +791,7 @@ class App:
             if self.player.call_bubble_visible:
                 self._draw_call_bubble()
             self._draw_npc_offscreen_indicator()
-            if self.gacha_active or self.gacha_message_timer > 0:
+            if self.gacha_active or getattr(self, "gacha_showcase", None) or self.gacha_message_timer > 0:
                 self._draw_gacha_popup()
         elif self.game_mode == "PRE_BATTLE":
             self._draw_pre_battle_arena()
@@ -672,6 +808,11 @@ class App:
 
         # 3. Gambar overlay UI di sidebar kiri
         self.overlay.draw_ui(self.screen)
+
+        # 4. Gambar modal rampasan perang di paling atas (menutup seluruh layar dengan dramatis)
+        if self.game_mode == "BATTLE" and getattr(self, "loot_modal", None):
+            self._draw_loot_modal()
+
         pygame.display.flip()
 
     def _draw_npc_offscreen_indicator(self):
@@ -737,9 +878,9 @@ class App:
         pygame.draw.polygon(self.screen, (255, 225, 50), [p1, p2, p3])
         pygame.draw.polygon(self.screen, (210, 80, 0), [p1, p2, p3], 1)
 
-        # Label Teks Badge "🐱 Oyen (X ubin)"
+        # Label Teks Badge "🐱 Bolu (X meter)"
         font = self.fonts.get("bubble", self.fonts["sm"])
-        txt_surf = font.render(f"🐱 Bolu ({dist_grid} meter)", True, (255, 255, 255))
+        txt_surf = font.render(f"🐱 {self.npc.name} ({dist_grid} meter)", True, (255, 255, 255))
 
         txt_x = int(edge_x)
         txt_y = int(edge_y + radius + 16)
@@ -793,163 +934,44 @@ class App:
         p_ox, p_oy = self.vfx.get_shake_offset("PLAYER")
         n_ox, n_oy = self.vfx.get_shake_offset("NPC")
         self.screen.blit(big_player, big_player.get_rect(center=(player_arena_x + p_ox, char_y + p_oy)))
-        self.screen.blit(big_npc, big_npc.get_rect(center=(npc_arena_x + n_ox, char_y + n_oy)))
+
+        if self.npc_defeat_anim:
+            # Sprite NPC yang tumbang berkedip merah dan sedikit transparan
+            npc_dead_surf = big_npc.copy()
+            red_tint = pygame.Surface(npc_dead_surf.get_size(), SRCALPHA)
+            red_tint.fill((255, 30, 30, 130))
+            npc_dead_surf.blit(red_tint, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+            self.screen.blit(npc_dead_surf, npc_dead_surf.get_rect(center=(npc_arena_x + n_ox, char_y + n_oy)))
+            self._draw_defeat_badge(npc_arena_x, char_y - 20, self.npc_defeat_anim["npc"])
+        elif self.card_summon_anim:
+            self._draw_card_summon_animation(npc_arena_x, char_y, target_h)
+        else:
+            self.screen.blit(big_npc, big_npc.get_rect(center=(npc_arena_x + n_ox, char_y + n_oy)))
 
         # ================================================================== #
-        # Kartu Skuad NPC Lawan & Cadangan (Pinggir Kanan Layar)
-        # Menampilkan profil lawan aktif dan kartu lawan cadangan berikutnya
+        # Kartu Skuad NPC Cadangan (Deck Portrait Bertumpuk di Kanan Layar)
+        # Menampilkan potret NPC antrian bertumpuk (kartu berikutnya di depan)
         # ================================================================== #
-        if self.current_squad and len(self.current_squad.members) > 1:
-            bench_w = 245
-            bench_x = w - bench_w - 14
-            header_y = 18
-
-            # Header Panel Skuad Lawan
-            hdr_rect = pygame.Rect(bench_x, header_y, bench_w, 32)
-            pygame.draw.rect(self.screen, (18, 22, 32, 235), hdr_rect, border_radius=8)
-            pygame.draw.rect(self.screen, (70, 85, 115), hdr_rect, 1, border_radius=8)
-
-            b_icon_txt = self.fonts.get("bubble", self.fonts["sm"]).render("👥 SKUAD LAWAN (TAG-TEAM)", True, (255, 215, 75))
-            self.screen.blit(b_icon_txt, (hdr_rect.x + (bench_w - b_icon_txt.get_width()) // 2, hdr_rect.y + 6))
-
-            card_y = header_y + 38
-            card_h = 86
-            card_gap = 8
-
-            for i, mem in enumerate(self.current_squad.members):
-                m_rect = pygame.Rect(bench_x, card_y, bench_w, card_h)
-                is_active = (i == self.current_squad.active_index)
-                is_defeated = (i < self.current_squad.active_index)
-                is_reserve = (i > self.current_squad.active_index)
-
-                ctype_lower = mem.char_type.lower()
-                # Tema warna berdasarkan kelas dan status
-                if is_defeated:
-                    bg_col = (20, 18, 22, 210)
-                    border_col = (110, 50, 50)
-                    border_w = 1
-                    status_badge = "[GUGUR ✕]"
-                    badge_bg = (60, 20, 20)
-                    badge_col = (220, 100, 100)
-                elif is_active:
-                    bg_col = (22, 32, 28, 240)
-                    border_col = (75, 220, 130)
-                    border_w = 2
-                    status_badge = "[BERTARUNG ⚔️]"
-                    badge_bg = (20, 75, 40)
-                    badge_col = (90, 240, 140)
-                else:
-                    # Cadangan (Lawan berikutnya)
-                    if i == self.current_squad.active_index + 1:
-                        status_badge = f"[NEXT #{i+1} ⏳]"
-                        badge_bg = (85, 65, 15)
-                        badge_col = (255, 220, 80)
-                    else:
-                        status_badge = f"[CADANGAN #{i+1}]"
-                        badge_bg = (25, 45, 75)
-                        badge_col = (130, 185, 255)
-
-                    if ctype_lower == "warrior":
-                        bg_col = (30, 26, 24, 235)
-                        border_col = (210, 130, 45)
-                    elif ctype_lower == "ranger":
-                        bg_col = (22, 30, 26, 235)
-                        border_col = (45, 180, 95)
-                    elif ctype_lower == "mage":
-                        bg_col = (22, 26, 36, 235)
-                        border_col = (65, 145, 240)
-                    else:
-                        bg_col = (24, 24, 30, 235)
-                        border_col = (160, 90, 90)
-                    border_w = 1
-
-                # Gambar Kartu Member
-                pygame.draw.rect(self.screen, bg_col, m_rect, border_radius=8)
-                pygame.draw.rect(self.screen, border_col, m_rect, border_w, border_radius=8)
-
-                # Pasang clipping mask untuk jaminan anti-overflow
-                old_clip = self.screen.get_clip()
-                self.screen.set_clip(m_rect)
-
-                # Thumbnail Member
-                thumb_size = 52
-                thumb_x = bench_x + 8
-                thumb_y = card_y + (card_h - thumb_size) // 2
-                thumb_rect = pygame.Rect(thumb_x, thumb_y, thumb_size, thumb_size)
-                pygame.draw.rect(self.screen, (12, 14, 20), thumb_rect, border_radius=6)
-
-                raw_thumb = mem.portrait or mem.battle_sprite
-                if raw_thumb:
-                    t_w, t_h = raw_thumb.get_width(), raw_thumb.get_height()
-                    scale = min((thumb_size - 4) / float(t_w), (thumb_size - 4) / float(t_h))
-                    nw = max(1, int(round(t_w * scale)))
-                    nh = max(1, int(round(t_h * scale)))
-                    scaled_thumb = pygame.transform.smoothscale(raw_thumb, (nw, nh))
-                    self.screen.blit(scaled_thumb, scaled_thumb.get_rect(center=thumb_rect.center))
-                else:
-                    icon_lbl = self.fonts.get("bubble", self.fonts["sm"]).render("🐱", True, (255, 255, 255))
-                    self.screen.blit(icon_lbl, icon_lbl.get_rect(center=thumb_rect.center))
-
-                pygame.draw.rect(self.screen, border_col, thumb_rect, 1, border_radius=6)
-
-                # Jika gugur, beri tanda silang / overlay pada thumbnail
-                if is_defeated:
-                    cross_surf = pygame.Surface((thumb_size, thumb_size), SRCALPHA)
-                    cross_surf.fill((40, 10, 10, 140))
-                    pygame.draw.line(cross_surf, (220, 50, 50), (4, 4), (thumb_size - 4, thumb_size - 4), 3)
-                    pygame.draw.line(cross_surf, (220, 50, 50), (4, thumb_size - 4), (thumb_size - 4, 4), 3)
-                    self.screen.blit(cross_surf, thumb_rect)
-
-                # Info Nama & Role
-                info_x = thumb_x + thumb_size + 8
-                info_w = bench_w - (thumb_size + 24)
-
-                # Baris 1: Nama & Badge Status
-                cname = mem.char_type.capitalize()
-                txt_name = self.fonts.get("bubble", self.fonts["sm"]).render(f"{mem.name}", True, (255, 255, 255) if not is_defeated else (150, 150, 150))
-                self.screen.blit(txt_name, (info_x, card_y + 6))
-
-                badge_surf = self.fonts["sm"].render(status_badge, True, badge_col)
-                badge_bg_rect = pygame.Rect(bench_x + bench_w - badge_surf.get_width() - 8, card_y + 6, badge_surf.get_width() + 6, 16)
-                pygame.draw.rect(self.screen, badge_bg, badge_bg_rect, border_radius=4)
-                self.screen.blit(badge_surf, (badge_bg_rect.x + 3, badge_bg_rect.y + 1))
-
-                # Baris 2: Job Role
-                job_desc = f"{cname} • {mem.eval_profile}"
-                txt_job = self.fonts["sm"].render(job_desc, True, (170, 185, 205) if not is_defeated else (120, 120, 130))
-                self.screen.blit(txt_job, (info_x, card_y + 24))
-
-                # Baris 3: Mini Bar HP (Real-time sinkron untuk aktif)
-                cur_hp = self.battle_system.state.npc_hp if is_active else max(0, mem.current_hp)
-                hp_bar_w = info_w
-                hp_bar_h = 7
-                hp_bar_y = card_y + 44
-                pygame.draw.rect(self.screen, (32, 36, 46), (info_x, hp_bar_y, hp_bar_w, hp_bar_h), border_radius=2)
-                fill_w = int(hp_bar_w * (cur_hp / float(max(1, mem.max_hp))))
-                if fill_w > 0 and not is_defeated:
-                    bar_c = (50, 195, 100) if is_active else (70, 150, 240)
-                    pygame.draw.rect(self.screen, bar_c, (info_x, hp_bar_y, fill_w, hp_bar_h), border_radius=2)
-                pygame.draw.rect(self.screen, (75, 85, 105), (info_x, hp_bar_y, hp_bar_w, hp_bar_h), 1, border_radius=2)
-
-                # Baris 4: Teks Stat (HP & Atk/Def)
-                txt_hp = self.fonts["sm"].render(f"{cur_hp}/{mem.max_hp} HP  │ +{mem.atk_bonus}A +{mem.def_bonus}D", True, (215, 225, 240) if not is_defeated else (130, 130, 140))
-                self.screen.blit(txt_hp, (info_x, card_y + 55))
-
-                self.screen.set_clip(old_clip)
-                card_y += card_h + card_gap
+        self._draw_battle_queue_deck(w, h)
 
         # Floating Action Text di atas karakter
         self._draw_action_text(self.battle_system.player_action_text, player_arena_x, char_y - 75)
-        self._draw_action_text(self.battle_system.npc_action_text, npc_arena_x, char_y - 75)
+        if not self.card_summon_anim and not self.npc_defeat_anim:
+            self._draw_action_text(self.battle_system.npc_action_text, npc_arena_x, char_y - 75)
 
         # Status & Bar HP
         st = self.battle_system.state
-        player_cd_text = f"  ⏳ Heavy CD: {st.player_heavy_cd}" if st.player_heavy_cd > 0 else ""
-        npc_cd_text = f"  ⏳ Heavy CD: {st.npc_heavy_cd}" if st.npc_heavy_cd > 0 else ""
+        player_cd_text = f"  (Heavy CD: {st.player_heavy_cd})" if st.player_heavy_cd > 0 else ""
+        npc_cd_text = f"  (Heavy CD: {st.npc_heavy_cd})" if st.npc_heavy_cd > 0 else ""
         npc_display_name = active_member.name if active_member else "NPC (Minimax AI)"
         npc_max_hp = active_member.max_hp if active_member else 100
-        self._draw_hp_bar(player_arena_x, char_y + 98, "Bolu (Player)", st.player_hp, st.player_defending, st.player_potions, (60, 160, 255), player_cd_text, max_hp=100)
-        self._draw_hp_bar(npc_arena_x, char_y + 98, npc_display_name, st.npc_hp, st.npc_defending, st.npc_potions, (255, 90, 80), npc_cd_text, max_hp=npc_max_hp)
+        display_npc_hp = 0 if self.npc_defeat_anim else st.npc_hp
+        self._draw_hp_bar(player_arena_x, char_y + 98, "Hero Player", st.player_hp, st.player_defending, st.player_potions, (60, 160, 255), player_cd_text, max_hp=100)
+        self._draw_hp_bar(npc_arena_x, char_y + 98, npc_display_name, display_npc_hp, st.npc_defending, st.npc_potions, (255, 90, 80), npc_cd_text, max_hp=npc_max_hp)
+
+        # Banner Notifikasi Rampasan Perang (Spoils of War)
+        if hasattr(self, "loot_toast") and self.loot_toast and self.loot_toast["timer"] > 0:
+            self._draw_loot_toast(w, h, (player_arena_x + npc_arena_x) // 2)
 
         # ------------------------------------------------------------------ #
         # 1. Battle Log Box (Bagian Paling Bawah Layar, Scrollable)
@@ -966,7 +988,7 @@ class App:
         font_bubble = self.fonts.get("bubble", self.fonts["sm"])
         font_sm = self.fonts["sm"]
 
-        ltitle = font_bubble.render("📜 RIWAYAT PERTEMPURAN (BATTLE LOG)", True, (255, 255, 255))
+        ltitle = font_bubble.render("RIWAYAT PERTEMPURAN", True, (240, 245, 255))
         self.screen.blit(ltitle, (self.battle_log_rect.x + 12, self.battle_log_rect.y + 6))
 
         total_logs = len(self.battle_system.battle_logs)
@@ -990,25 +1012,25 @@ class App:
         self.btn_log_up = pygame.Rect(self.battle_log_rect.right - 54, self.battle_log_rect.y + 5, btn_w, btn_h)
         self.btn_log_down = pygame.Rect(self.battle_log_rect.right - 28, self.battle_log_rect.y + 5, btn_w, btn_h)
 
-        up_col = (60, 100, 160) if self.battle_log_scroll_offset < max_scroll else (45, 50, 65)
-        down_col = (60, 100, 160) if self.battle_log_scroll_offset > 0 else (45, 50, 65)
+        up_col = (38, 54, 80) if self.battle_log_scroll_offset < max_scroll else (28, 32, 42)
+        down_col = (38, 54, 80) if self.battle_log_scroll_offset > 0 else (28, 32, 42)
 
         pygame.draw.rect(self.screen, up_col, self.btn_log_up, border_radius=3)
         pygame.draw.rect(self.screen, down_col, self.btn_log_down, border_radius=3)
 
-        ts_up = font_bubble.render("▲", True, (255, 255, 255) if self.battle_log_scroll_offset < max_scroll else (120, 125, 135))
-        ts_dn = font_bubble.render("▼", True, (255, 255, 255) if self.battle_log_scroll_offset > 0 else (120, 125, 135))
+        ts_up = font_bubble.render("▲", True, (240, 245, 255) if self.battle_log_scroll_offset < max_scroll else (90, 100, 115))
+        ts_dn = font_bubble.render("▼", True, (240, 245, 255) if self.battle_log_scroll_offset > 0 else (90, 100, 115))
         self.screen.blit(ts_up, (self.btn_log_up.centerx - ts_up.get_width() // 2, self.btn_log_up.centery - ts_up.get_height() // 2))
         self.screen.blit(ts_dn, (self.btn_log_down.centerx - ts_dn.get_width() // 2, self.btn_log_down.centery - ts_dn.get_height() // 2))
 
         ly = self.battle_log_rect.y + 28
         if display_logs:
             for log_line in display_logs:
-                ts = font_sm.render(f"• {log_line}", True, (245, 245, 250))
+                ts = font_sm.render(f"• {log_line}", True, (240, 245, 250))
                 self.screen.blit(ts, (self.battle_log_rect.x + 14, ly))
                 ly += 22
         else:
-            ts = font_sm.render("• Pertarungan dimulai! Pilih aksi Player untuk bertarung melawan AI.", True, (150, 160, 180))
+            ts = font_sm.render("• Pertarungan dimulai. Pilih aksi pada panel kiri untuk bertarung.", True, (145, 155, 175))
             self.screen.blit(ts, (self.battle_log_rect.x + 14, ly))
 
         if total_logs > 2 and max_scroll > 0:
@@ -1017,17 +1039,17 @@ class App:
             thumb_h = max(10, int(track_h * (2.0 / total_logs)))
             norm_pos = 1.0 - (self.battle_log_scroll_offset / float(max_scroll))
             thumb_y = track_y + int(norm_pos * (track_h - thumb_h))
-            pygame.draw.rect(self.screen, (50, 58, 75), pygame.Rect(self.battle_log_rect.right - 6, track_y, 3, track_h), border_radius=1)
-            pygame.draw.rect(self.screen, (100, 180, 255), pygame.Rect(self.battle_log_rect.right - 6, thumb_y, 3, thumb_h), border_radius=1)
+            pygame.draw.rect(self.screen, (40, 48, 64), pygame.Rect(self.battle_log_rect.right - 6, track_y, 3, track_h), border_radius=1)
+            pygame.draw.rect(self.screen, (80, 165, 255), pygame.Rect(self.battle_log_rect.right - 6, thumb_y, 3, thumb_h), border_radius=1)
 
         # ------------------------------------------------------------------ #
-        # 2. Tombol Elegan: [🌲 LIHAT DECISION TREE (T)] di Atas Battle Log
+        # 2. Tombol Elegan: [Lihat Decision Tree (T)] di Atas Battle Log
         # ------------------------------------------------------------------ #
         btn_tree_h = 32
-        self.btn_tree_modal = pygame.Rect(panel_w + 15, log_y - btn_tree_h - 8, 245, btn_tree_h)
-        pygame.draw.rect(self.screen, (35, 125, 70), self.btn_tree_modal, border_radius=6)
-        pygame.draw.rect(self.screen, (90, 210, 135), self.btn_tree_modal, 1, border_radius=6)
-        tree_btn_txt = font_bubble.render("🌲 LIHAT DECISION TREE [T]", True, (255, 255, 255))
+        self.btn_tree_modal = pygame.Rect(panel_w + 15, log_y - btn_tree_h - 8, 255, btn_tree_h)
+        pygame.draw.rect(self.screen, (32, 90, 58), self.btn_tree_modal, border_radius=6)
+        pygame.draw.rect(self.screen, (60, 165, 105), self.btn_tree_modal, 1, border_radius=6)
+        tree_btn_txt = font_bubble.render("[T] Lihat Pohon Keputusan (Tree)", True, (255, 255, 255))
         self.screen.blit(tree_btn_txt, (self.btn_tree_modal.centerx - tree_btn_txt.get_width() // 2, self.btn_tree_modal.centery - tree_btn_txt.get_height() // 2))
 
         # ------------------------------------------------------------------ #
@@ -1046,6 +1068,510 @@ class App:
                 self.overlay.tree_overlay.set_tree(tree_data)
             self.overlay.tree_overlay.draw(self.screen)
 
+    def _draw_battle_queue_deck(self, w: int, h: int):
+        """Merender antrian kartu NPC cadangan dalam bentuk tumpukan kartu potret (deck).
+        
+        Karakter yang akan bertarung berikutnya (Next Challenger) berada di paling depan,
+        dan karakter berikutnya berada di belakangnya (efek stacked cards).
+        """
+        if not self.current_squad or len(self.current_squad.members) <= 1:
+            return
+
+        bench_w = 232
+        bench_x = w - bench_w - 18
+        header_y = 20
+
+        # 1. Header Panel Antrian Cadangan
+        hdr_rect = pygame.Rect(bench_x, header_y, bench_w, 34)
+        pygame.draw.rect(self.screen, (16, 20, 30, 240), hdr_rect, border_radius=8)
+        pygame.draw.rect(self.screen, (65, 80, 110), hdr_rect, 1, border_radius=8)
+
+        queue = [m for i, m in enumerate(self.current_squad.members) if i > self.current_squad.active_index]
+        q_count = len(queue)
+        hdr_title = f"ANTRIAN CADANGAN ({q_count})"
+        t_surf = self.fonts.get("bubble", self.fonts["sm"]).render(hdr_title, True, (255, 215, 75))
+        self.screen.blit(t_surf, (hdr_rect.x + (bench_w - t_surf.get_width()) // 2, hdr_rect.y + 7))
+
+        curr_y = header_y + 40
+
+        # 2. Status Petarung yang Telah Gugur (jika ada)
+        defeated = [m for i, m in enumerate(self.current_squad.members) if i < self.current_squad.active_index]
+        if defeated:
+            d_h = 24
+            d_rect = pygame.Rect(bench_x, curr_y, bench_w, d_h)
+            pygame.draw.rect(self.screen, (28, 16, 18, 225), d_rect, border_radius=6)
+            pygame.draw.rect(self.screen, (120, 45, 50), d_rect, 1, border_radius=6)
+            names_str = ", ".join(m.name.split()[0] for m in defeated)
+            d_txt = self.fonts["sm"].render(f"Gugur ({len(defeated)}): {names_str}", True, (240, 110, 110))
+            self.screen.blit(d_txt, (bench_x + 8, curr_y + 4))
+            curr_y += 30
+
+        if not queue:
+            # Tidak ada cadangan tersisa (Duel Terakhir)
+            empty_rect = pygame.Rect(bench_x, curr_y + 10, bench_w, 140)
+            pygame.draw.rect(self.screen, (18, 20, 28, 225), empty_rect, border_radius=10)
+            pygame.draw.rect(self.screen, (70, 80, 105), empty_rect, 1, border_radius=10)
+
+            t1 = self.fonts.get("bubble", self.fonts["sm"]).render("DUEL TERAKHIR", True, (255, 215, 80))
+            t2 = self.fonts["sm"].render("Semua cadangan telah turun.", True, (165, 175, 195))
+            t3 = self.fonts["sm"].render("Habisi petarung di arena ini", True, (135, 145, 165))
+            t4 = self.fonts["sm"].render("untuk meraih kemenangan!", True, (135, 145, 165))
+
+            self.screen.blit(t1, t1.get_rect(center=(empty_rect.centerx, empty_rect.y + 30)))
+            self.screen.blit(t2, t2.get_rect(center=(empty_rect.centerx, empty_rect.y + 60)))
+            self.screen.blit(t3, t3.get_rect(center=(empty_rect.centerx, empty_rect.y + 88)))
+            self.screen.blit(t4, t4.get_rect(center=(empty_rect.centerx, empty_rect.y + 108)))
+            return
+
+        # Ukuran kartu portrait deck
+        card_w = 188
+        card_h = 248
+
+        max_depth = len(queue) - 1
+        base_x = bench_x + 4
+        base_y = curr_y + 14 + (max_depth * 18)
+
+        # Gambar dari kedalaman terdalam (kartu belakang) ke depth 0 (kartu depan)
+        for depth in range(len(queue) - 1, -1, -1):
+            mem = queue[depth]
+            is_front = (depth == 0)
+
+            offset_x = depth * 22
+            offset_y = -depth * 18
+            c_x = base_x + offset_x
+            c_y = base_y + offset_y
+
+            ctype_lower = mem.char_type.lower()
+            if ctype_lower == "warrior":
+                theme_border = (225, 140, 45)
+                theme_bg = (32, 26, 24)
+            elif ctype_lower == "ranger":
+                theme_border = (48, 195, 95)
+                theme_bg = (20, 30, 24)
+            elif ctype_lower == "mage":
+                theme_border = (65, 155, 245)
+                theme_bg = (20, 26, 38)
+            elif ctype_lower == "assassin":
+                theme_border = (195, 65, 230)
+                theme_bg = (28, 18, 32)
+            else:
+                theme_border = (180, 180, 190)
+                theme_bg = (24, 24, 28)
+
+            # Drop Shadow
+            shadow_surf = pygame.Surface((card_w, card_h), SRCALPHA)
+            shadow_alpha = 140 if is_front else 85
+            shadow_surf.fill((0, 0, 0, shadow_alpha))
+            self.screen.blit(shadow_surf, (c_x + 6, c_y + 8))
+
+            # Surface Kartu
+            card_surf = self._build_npc_card_surface(mem, is_front=is_front, card_w=card_w, card_h=card_h, depth=depth)
+            self.screen.blit(card_surf, (c_x, c_y))
+
+    def _build_npc_card_surface(self, mem, is_front: bool = True, card_w: int = 188, card_h: int = 248, depth: int = 0) -> pygame.Surface:
+        """Membuat surface grafis kartu potret NPC dengan visual JRPG elegan."""
+        card_surf = pygame.Surface((card_w, card_h), SRCALPHA)
+
+        ctype_lower = mem.char_type.lower()
+        if ctype_lower == "warrior":
+            theme_border = (225, 140, 45)
+            theme_bg = (32, 26, 24)
+        elif ctype_lower == "ranger":
+            theme_border = (48, 195, 95)
+            theme_bg = (20, 30, 24)
+        elif ctype_lower == "mage":
+            theme_border = (65, 155, 245)
+            theme_bg = (20, 26, 38)
+        elif ctype_lower == "assassin":
+            theme_border = (195, 65, 230)
+            theme_bg = (28, 18, 32)
+        else:
+            theme_border = (180, 180, 190)
+            theme_bg = (24, 24, 28)
+
+        if not is_front:
+            dim_bg = tuple(max(10, int(c * 0.58)) for c in theme_bg)
+            dim_bdr = tuple(max(35, int(c * 0.55)) for c in theme_border)
+            card_surf.fill((*dim_bg, 245))
+            pygame.draw.rect(card_surf, dim_bdr, (0, 0, card_w, card_h), 1, border_radius=10)
+
+            # Tab nama di pojok kanan atas yang mencuat
+            q_num = (self.current_squad.active_index + 1 + depth + 1) if self.current_squad else (depth + 1)
+            peek_lbl = self.fonts["sm"].render(f"#{q_num} {mem.name.split()[0]}", True, theme_border)
+            peek_rect = pygame.Rect(card_w - peek_lbl.get_width() - 14, 6, peek_lbl.get_width() + 10, 18)
+            pygame.draw.rect(card_surf, (18, 22, 32), peek_rect, border_radius=4)
+            pygame.draw.rect(card_surf, dim_bdr, peek_rect, 1, border_radius=4)
+            card_surf.blit(peek_lbl, (peek_rect.x + 5, peek_rect.y + 2))
+        else:
+            card_surf.fill((*theme_bg, 252))
+            pygame.draw.rect(card_surf, theme_border, (0, 0, card_w, card_h), 2, border_radius=10)
+            pygame.draw.rect(card_surf, (255, 255, 255, 45), (2, 2, card_w - 4, card_h - 4), 1, border_radius=8)
+
+            badge_lbl = self.fonts["sm"].render("NEXT CHALLENGER", True, (255, 225, 90))
+            badge_rect = pygame.Rect((card_w - badge_lbl.get_width() - 14) // 2, 7, badge_lbl.get_width() + 14, 18)
+            pygame.draw.rect(card_surf, (60, 45, 15), badge_rect, border_radius=4)
+            pygame.draw.rect(card_surf, (225, 180, 50), badge_rect, 1, border_radius=4)
+            card_surf.blit(badge_lbl, (badge_rect.x + 7, badge_rect.y + 2))
+
+        # Bingkai Portrait Tengah
+        p_size = 108
+        p_x = (card_w - p_size) // 2
+        p_y = 29
+        p_rect = pygame.Rect(p_x, p_y, p_size, p_size)
+        pygame.draw.rect(card_surf, (12, 14, 20), p_rect, border_radius=8)
+
+        if mem.portrait:
+            p_img = pygame.transform.smoothscale(mem.portrait, (p_size - 4, p_size - 4))
+            if not is_front:
+                dark_tint = pygame.Surface((p_size - 4, p_size - 4), SRCALPHA)
+                dark_tint.fill((0, 0, 0, 80))
+                card_surf.blit(p_img, (p_x + 2, p_y + 2))
+                card_surf.blit(dark_tint, (p_x + 2, p_y + 2))
+            else:
+                card_surf.blit(p_img, (p_x + 2, p_y + 2))
+        else:
+            ph = self.fonts.get("bubble", self.fonts["sm"]).render("🐱", True, (255, 255, 255))
+            card_surf.blit(ph, ph.get_rect(center=p_rect.center))
+
+        p_bdr_col = theme_border if is_front else tuple(max(30, int(c * 0.55)) for c in theme_border)
+        pygame.draw.rect(card_surf, p_bdr_col, p_rect, 2 if is_front else 1, border_radius=8)
+
+        # Footer: Nama, Kelas & Profil
+        name_font = self.fonts.get("bubble", self.fonts["sm"])
+        txt_name = name_font.render(mem.name, True, (255, 255, 255) if is_front else (170, 175, 185))
+        card_surf.blit(txt_name, txt_name.get_rect(center=(card_w // 2, p_y + p_size + 14)))
+
+        job_txt = self.fonts["sm"].render(f"{mem.char_type.capitalize()} • {mem.eval_profile}", True, theme_border if is_front else (135, 140, 155))
+        card_surf.blit(job_txt, job_txt.get_rect(center=(card_w // 2, p_y + p_size + 30)))
+
+        # Stat Pill: HP & ATK/DEF
+        stat_rect = pygame.Rect(10, p_y + p_size + 44, card_w - 20, 24)
+        pygame.draw.rect(card_surf, (16, 18, 26, 230), stat_rect, border_radius=6)
+        pygame.draw.rect(card_surf, (50, 60, 80) if is_front else (35, 40, 55), stat_rect, 1, border_radius=6)
+
+        stat_str = f"HP {mem.max_hp}  │ +{mem.atk_bonus}A +{mem.def_bonus}D"
+        stat_lbl = self.fonts["sm"].render(stat_str, True, (220, 230, 245) if is_front else (145, 150, 160))
+        card_surf.blit(stat_lbl, stat_lbl.get_rect(center=stat_rect.center))
+
+        return card_surf
+
+    def _on_npc_tag_in(self, old_npc, next_npc, heal_amount: int = 45, loot: Optional[Dict[str, Any]] = None):
+        """Callback saat NPC aktif tumbang dan NPC berikutnya maju ke duel arena."""
+        self.battle_system.is_locked = True
+        self.npc_battle_turn_timer = 0.0
+
+        if loot is None and hasattr(self.battle_system, "last_loot"):
+            loot = self.battle_system.last_loot
+
+        # Mulai animasi kekalahan NPC terlebih dahulu (terlihat tulisan kalah) sebelum modal rampasan
+        self.npc_defeat_anim = {
+            "npc": old_npc,
+            "next_npc": next_npc,
+            "heal_amount": heal_amount,
+            "loot": loot,
+            "timer": 1.4,
+            "duration": 1.4,
+            "is_final": False,
+        }
+
+    def _start_card_summon_anim(self, old_npc, next_npc):
+        """Memulai animasi peluncuran kartu potret dan transformasi ke karakter NPC."""
+        w, h = self.screen.get_size()
+        bench_w = 232
+        bench_x = w - bench_w - 18
+        header_y = 20
+        curr_y = header_y + 40
+        defeated_count = self.current_squad.active_index if self.current_squad else 1
+        if defeated_count > 0:
+            curr_y += 30
+
+        remaining_queue_len = len(self.current_squad.members) - 1 - self.current_squad.active_index if self.current_squad else 0
+        base_x = bench_x + 4
+        base_y = curr_y + 14 + (remaining_queue_len * 18)
+
+        card_w, card_h = 188, 248
+        start_center = (base_x + card_w // 2, base_y + card_h // 2)
+
+        (_, _), (npc_arena_x, char_y) = self._get_battle_char_positions()
+        target_center = (npc_arena_x, char_y)
+
+        ctype_lower = next_npc.char_type.lower()
+        if ctype_lower == "warrior":
+            theme_color = (235, 145, 45)
+            trail_colors = [(255, 180, 50), (255, 235, 120)]
+        elif ctype_lower == "ranger":
+            theme_color = (48, 205, 95)
+            trail_colors = [(50, 220, 100), (180, 255, 160)]
+        elif ctype_lower == "mage":
+            theme_color = (65, 165, 255)
+            trail_colors = [(70, 175, 255), (195, 230, 255)]
+        elif ctype_lower == "assassin":
+            theme_color = (195, 65, 230)
+            trail_colors = [(210, 70, 245), (245, 150, 255)]
+        else:
+            theme_color = (200, 200, 210)
+            trail_colors = [(220, 220, 230), (255, 255, 255)]
+
+        self.card_summon_anim = {
+            "old_npc": old_npc,
+            "next_npc": next_npc,
+            "start_pos": start_center,
+            "target_pos": target_center,
+            "timer": 0.0,
+            "duration": 1.75,
+            "fly_duration": 0.75,
+            "theme_color": theme_color,
+            "trail_colors": trail_colors,
+            "particles": [],
+            "burst_particles": [],
+            "burst_triggered": False,
+        }
+
+    def _dismiss_loot_modal(self):
+        """Menutup modal rampasan perang dan melanjutkan pemanggilan kartu NPC berikutnya."""
+        if not self.loot_modal:
+            return
+        modal = self.loot_modal
+        self.loot_modal = None
+
+        if modal.get("next_npc") and not modal.get("is_final", False):
+            self._start_card_summon_anim(modal["old_npc"], modal["next_npc"])
+        else:
+            self.battle_system.is_locked = False
+            if modal.get("is_final", False):
+                self.exit_battle()
+
+    def _update_card_summon_anim(self, dt: float):
+        """Memperbarui fisika partikel dan timeline animasi pemanggilan kartu."""
+        if not self.card_summon_anim:
+            return
+
+        import random
+
+        anim = self.card_summon_anim
+        anim["timer"] += dt
+        t = anim["timer"]
+        fly_dur = anim["fly_duration"]
+
+        # 1. Update posisi partikel trail
+        for p in anim["particles"]:
+            p["x"] += p["vx"] * dt
+            p["y"] += p["vy"] * dt
+            p["life"] -= dt
+        anim["particles"] = [p for p in anim["particles"] if p["life"] > 0]
+
+        # 2. Spawn partikel trail selama kartu meluncur (Fase 1: 0.0s s/d 0.75s)
+        if t < fly_dur:
+            prog = min(1.0, t / fly_dur)
+            ease = 1.0 - (1.0 - prog) ** 3
+            cur_x = anim["start_pos"][0] + (anim["target_pos"][0] - anim["start_pos"][0]) * ease
+            arc_y = -math.sin(prog * math.pi) * 38.0
+            cur_y = anim["start_pos"][1] + (anim["target_pos"][1] - anim["start_pos"][1]) * ease + arc_y
+
+            for _ in range(3):
+                col = random.choice(anim["trail_colors"])
+                anim["particles"].append({
+                    "x": cur_x + random.uniform(-16, 16),
+                    "y": cur_y + random.uniform(-16, 16),
+                    "vx": random.uniform(-25, 25),
+                    "vy": random.uniform(-25, 25),
+                    "life": random.uniform(0.25, 0.45),
+                    "max_life": 0.45,
+                    "radius": random.uniform(2.5, 5.0),
+                    "color": col,
+                })
+
+        # 3. Pemicu Burst Transformasi pada t >= 1.15s (Fase 2B)
+        if t >= 1.15 and not anim["burst_triggered"]:
+            anim["burst_triggered"] = True
+            target_x, target_y = anim["target_pos"]
+            self.vfx.trigger_hit_shake("NPC", intensity=8.0, duration=0.25)
+            # Spawn 36 partikel ledakan memancar 360 derajat
+            for i in range(36):
+                angle = (i / 36.0) * math.pi * 2 + random.uniform(-0.1, 0.1)
+                spd = random.uniform(140.0, 360.0)
+                col = random.choice([(255, 255, 255), (255, 240, 160), *anim["trail_colors"]])
+                anim["burst_particles"].append({
+                    "x": target_x,
+                    "y": target_y,
+                    "vx": math.cos(angle) * spd,
+                    "vy": math.sin(angle) * spd,
+                    "life": random.uniform(0.35, 0.65),
+                    "max_life": 0.65,
+                    "radius": random.uniform(3.0, 6.5),
+                    "color": col,
+                })
+
+        # 4. Update partikel burst
+        for bp in anim["burst_particles"]:
+            bp["x"] += bp["vx"] * dt
+            bp["y"] += bp["vy"] * dt
+            bp["vx"] *= max(0.0, 1.0 - 2.8 * dt)
+            bp["vy"] *= max(0.0, 1.0 - 2.8 * dt)
+            bp["life"] -= dt
+        anim["burst_particles"] = [bp for bp in anim["burst_particles"] if bp["life"] > 0]
+
+        # 5. Selesai animasi (t >= duration)
+        if t >= anim["duration"]:
+            self.card_summon_anim = None
+            self.battle_system.is_locked = False
+
+    def _draw_card_summon_animation(self, npc_arena_x: int, char_y: int, target_h: int):
+        """Merender seluruh rangkaian animasi meluncurnya kartu NPC dan transformasi ke karakter."""
+        if not self.card_summon_anim:
+            return
+
+        anim = self.card_summon_anim
+        t = anim["timer"]
+        next_npc = anim["next_npc"]
+        old_npc = anim.get("old_npc")
+        fly_dur = anim["fly_duration"]
+        theme_col = anim["theme_color"]
+
+        card_w, card_h = 188, 248
+
+        # --- A. Efek Karakter Lama Memudar (Fade Out) ---
+        if old_npc and t < 0.40:
+            old_fade = max(0, int(255 * (1.0 - (t / 0.40))))
+            old_img = old_npc.battle_sprite or old_npc.portrait or self.npc.sprite.current_image
+            asp = old_img.get_width() / float(old_img.get_height())
+            old_scaled = pygame.transform.smoothscale(old_img, (int(round(target_h * asp)), target_h))
+            f_surf = old_scaled.copy()
+            f_surf.fill((160, 40, 40, 120), special_flags=pygame.BLEND_RGBA_MULT)
+            f_surf.set_alpha(old_fade)
+            self.screen.blit(f_surf, f_surf.get_rect(center=(npc_arena_x, char_y)))
+
+        # --- B. Partikel Jejak & Trail ---
+        for p in anim["particles"]:
+            alpha = max(0, min(255, int(255 * (p["life"] / p["max_life"]))))
+            rad = max(1, int(p["radius"]))
+            p_surf = pygame.Surface((rad * 2 + 4, rad * 2 + 4), SRCALPHA)
+            pygame.draw.circle(p_surf, (*p["color"], alpha), (rad + 2, rad + 2), rad)
+            self.screen.blit(p_surf, (int(p["x"] - rad - 2), int(p["y"] - rad - 2)))
+
+        # --- C. Lingkaran Sihir Pemanggilan (Magic Summoning Circle di Tanah) ---
+        if t >= 0.50:
+            circle_prog = min(1.0, (t - 0.50) / 0.35)
+            circle_fade = 1.0 if t < 1.45 else max(0.0, 1.0 - (t - 1.45) / 0.30)
+            circle_alpha = int(210 * circle_prog * circle_fade)
+
+            if circle_alpha > 0:
+                cw, ch = 190, 64
+                c_surf = pygame.Surface((cw, ch), SRCALPHA)
+                pygame.draw.ellipse(c_surf, (*theme_col, circle_alpha), (4, 4, cw - 8, ch - 8), 2)
+                pygame.draw.ellipse(c_surf, (255, 255, 255, int(circle_alpha * 0.8)), (24, 12, cw - 48, ch - 24), 1)
+                rot_ang = t * 3.5
+                pts = []
+                for i in range(6):
+                    ang = rot_ang + i * (math.pi / 3.0)
+                    rx = (cw // 2) + math.cos(ang) * (cw // 2 - 28)
+                    ry = (ch // 2) + math.sin(ang) * (ch // 2 - 14)
+                    pts.append((int(rx), int(ry)))
+                if len(pts) >= 6:
+                    pygame.draw.polygon(c_surf, (*theme_col, int(circle_alpha * 0.45)), [pts[0], pts[2], pts[4]], 1)
+                    pygame.draw.polygon(c_surf, (*theme_col, int(circle_alpha * 0.45)), [pts[1], pts[3], pts[5]], 1)
+
+                self.screen.blit(c_surf, c_surf.get_rect(center=(npc_arena_x, char_y + 68)))
+
+        # --- D. FASE 1: Kartu Meluncur Menuju Tengah (0.0s s/d 0.75s) ---
+        if t < fly_dur:
+            prog = min(1.0, t / fly_dur)
+            ease = 1.0 - (1.0 - prog) ** 3
+            cur_x = anim["start_pos"][0] + (anim["target_pos"][0] - anim["start_pos"][0]) * ease
+            arc_y = -math.sin(prog * math.pi) * 38.0
+            cur_y = anim["start_pos"][1] + (anim["target_pos"][1] - anim["start_pos"][1]) * ease + arc_y
+
+            scale = 1.0 + 0.12 * math.sin(prog * math.pi)
+            angle = -math.sin(prog * math.pi) * 8.0
+
+            raw_card = self._build_npc_card_surface(next_npc, is_front=True, card_w=card_w, card_h=card_h)
+            sc_w = int(card_w * scale)
+            sc_h = int(card_h * scale)
+            card_scaled = pygame.transform.smoothscale(raw_card, (sc_w, sc_h))
+
+            shadow = pygame.Surface((sc_w, sc_h), SRCALPHA)
+            shadow.fill((0, 0, 0, 110))
+            if abs(angle) > 0.5:
+                card_rot = pygame.transform.rotate(card_scaled, angle)
+                shadow_rot = pygame.transform.rotate(shadow, angle)
+                self.screen.blit(shadow_rot, shadow_rot.get_rect(center=(int(cur_x + 8), int(cur_y + 12))))
+                self.screen.blit(card_rot, card_rot.get_rect(center=(int(cur_x), int(cur_y))))
+            else:
+                self.screen.blit(shadow, shadow.get_rect(center=(int(cur_x + 8), int(cur_y + 12))))
+                self.screen.blit(card_scaled, card_scaled.get_rect(center=(int(cur_x), int(cur_y))))
+
+        # --- E. FASE 2: Transformasi dari Kartu ke Karakter NPC (0.75s s/d 1.75s) ---
+        else:
+            n_ox, n_oy = self.vfx.get_shake_offset("NPC")
+            center_x = npc_arena_x + n_ox
+            center_y = char_y + n_oy
+
+            # Sub-fase 2A: Kartu Melayang, Menyerap Energi, dan Flip 3D (0.75s s/d 1.15s)
+            if t < 1.15:
+                flip_prog = (t - 0.75) / 0.40
+                cos_val = max(0.01, math.cos(flip_prog * (math.pi / 2.0)))
+                raw_card = self._build_npc_card_surface(next_npc, is_front=True, card_w=card_w, card_h=card_h)
+                cur_cw = max(2, int(card_w * 1.12 * cos_val))
+                cur_ch = int(card_h * 1.12)
+                card_scaled = pygame.transform.smoothscale(raw_card, (cur_cw, cur_ch))
+
+                glow_overlay = pygame.Surface((cur_cw, cur_ch), SRCALPHA)
+                glow_alpha = int(220 * flip_prog)
+                glow_overlay.fill((255, 255, 255, glow_alpha))
+                card_scaled.blit(glow_overlay, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+
+                self.screen.blit(card_scaled, card_scaled.get_rect(center=(center_x, center_y)))
+
+            # Sub-fase 2B & 2C: Flash Ledakan & Karakter Terbentuk (1.15s s/d 1.75s)
+            else:
+                char_prog = min(1.0, (t - 1.15) / 0.60)
+                bounce = 1.0 + 0.32 * math.exp(-char_prog * 5.0) * math.cos(char_prog * math.pi * 2.5)
+
+                n_img = next_npc.battle_sprite
+                if not n_img and next_npc.char_type in self.battle_sprites:
+                    n_img = self.battle_sprites[next_npc.char_type]
+                elif not n_img:
+                    n_img = next_npc.portrait or self.npc.sprite.current_image
+
+                asp = n_img.get_width() / float(n_img.get_height())
+                final_h = int(target_h * bounce)
+                final_w = int(round(final_h * asp))
+                char_scaled = pygame.transform.smoothscale(n_img, (max(1, final_w), max(1, final_h)))
+
+                if char_prog < 0.70:
+                    aura_alpha = int(180 * (1.0 - char_prog / 0.70))
+                    aura_surf = char_scaled.copy()
+                    aura_surf.fill((*theme_col, aura_alpha), special_flags=pygame.BLEND_RGBA_MULT)
+                    self.screen.blit(aura_surf, aura_surf.get_rect(center=(center_x, center_y)))
+
+                self.screen.blit(char_scaled, char_scaled.get_rect(center=(center_x, center_y)))
+
+                flash_dur = 0.20
+                if t < 1.15 + flash_dur:
+                    flash_prog = (t - 1.15) / flash_dur
+                    flash_alpha = int(240 * (1.0 - flash_prog))
+                    beam_w = int(90 * (1.0 - flash_prog))
+                    if beam_w > 0:
+                        beam_surf = pygame.Surface((beam_w, 280), SRCALPHA)
+                        beam_surf.fill((255, 255, 255, flash_alpha))
+                        self.screen.blit(beam_surf, beam_surf.get_rect(center=(center_x, center_y)))
+
+                banner_font = self.fonts.get("bubble", self.fonts["sm"])
+                badge_txt = banner_font.render(f"TAG-IN: {next_npc.name.upper()}", True, (255, 235, 120))
+                b_rect = badge_txt.get_rect(center=(center_x, center_y - 88))
+                b_bg = pygame.Rect(b_rect.x - 8, b_rect.y - 4, b_rect.width + 16, b_rect.height + 8)
+                pygame.draw.rect(self.screen, (20, 24, 34, 230), b_bg, border_radius=6)
+                pygame.draw.rect(self.screen, theme_col, b_bg, 2, border_radius=6)
+                self.screen.blit(badge_txt, b_rect)
+
+        # --- F. Partikel Burst Transformasi (360 derajat) ---
+        for bp in anim["burst_particles"]:
+            alpha = max(0, min(255, int(255 * (bp["life"] / bp["max_life"]))))
+            rad = max(1, int(bp["radius"]))
+            bp_surf = pygame.Surface((rad * 2 + 4, rad * 2 + 4), SRCALPHA)
+            pygame.draw.circle(bp_surf, (*bp["color"], alpha), (rad + 2, rad + 2), rad)
+            self.screen.blit(bp_surf, (int(bp["x"] - rad - 2), int(bp["y"] - rad - 2)))
+
     def _draw_pre_battle_arena(self):
         w, h = self.screen.get_size()
         panel_w = config.DEBUG_LEFT_PANEL_WIDTH
@@ -1063,28 +1589,28 @@ class App:
         font_sm = self.fonts["sm"]
 
         # Header Title
-        t_surf = font_huge.render("⚔️ PERSIAPAN PERTEMPURAN (PRE-BATTLE)", True, (255, 215, 70))
+        t_surf = font_huge.render("PERSIAPAN PERTEMPURAN (PRE-BATTLE)", True, (255, 220, 90))
         self.screen.blit(t_surf, (area_cx - t_surf.get_width() // 2, 24))
 
-        sub_txt = "AI menyeimbangkan komposisi skuad lawan via CSP (MRV+LCV+AC-3) & Local Search"
-        sub_surf = font_sm.render(sub_txt, True, (170, 190, 215))
+        sub_txt = "Keseimbangan komposisi skuad lawan dioptimasi via CSP (MRV+LCV+AC-3) & Local Search"
+        sub_surf = font_sm.render(sub_txt, True, (160, 180, 205))
         self.screen.blit(sub_surf, (area_cx - sub_surf.get_width() // 2, 58))
 
-        # Sisi Kiri: Profil Player (Bolu) - Diperbesar mengisi space vertikal
+        # Sisi Kiri: Profil Player - Diperbesar mengisi space vertikal
         btn_h = 44
         btn_y = h - 68
         available_h = max(380, btn_y - 20 - 92)
 
-        p_card_w = min(290, arena_w // 2 - 35)
+        p_card_w = min(340, int(arena_w * 0.40))
         p_card_h = available_h
-        p_card_x = panel_w + 25
+        p_card_x = panel_w + 20
         p_card_y = 90
         p_card_rect = pygame.Rect(p_card_x, p_card_y, p_card_w, p_card_h)
 
-        pygame.draw.rect(self.screen, (20, 26, 38), p_card_rect, border_radius=12)
-        pygame.draw.rect(self.screen, (55, 140, 235), p_card_rect, 2, border_radius=12)
+        pygame.draw.rect(self.screen, (20, 26, 38), p_card_rect, border_radius=10)
+        pygame.draw.rect(self.screen, (55, 95, 145), p_card_rect, 1, border_radius=10)
 
-        p_header = font_title.render("🛡️ Bolu (Player Hero)", True, (110, 190, 255))
+        p_header = font_title.render("Hero Utama (Player)", True, (140, 205, 255))
         self.screen.blit(p_header, (p_card_x + 16, p_card_y + 14))
 
         # Tampilan Sprite Bolu Besar & Heroik
@@ -1098,12 +1624,12 @@ class App:
         hp_bar_y = p_card_y + 42 + target_bolu_h
         hp_bar_w = p_card_w - 36
         hp_bar_h = 16
-        pygame.draw.rect(self.screen, (35, 40, 52), (p_card_x + 18, hp_bar_y, hp_bar_w, hp_bar_h), border_radius=4)
+        pygame.draw.rect(self.screen, (32, 38, 50), (p_card_x + 18, hp_bar_y, hp_bar_w, hp_bar_h), border_radius=4)
         hp_fill = int((self.player.persistent_hp / 100.0) * hp_bar_w)
         if hp_fill > 0:
-            pygame.draw.rect(self.screen, (45, 155, 235), (p_card_x + 18, hp_bar_y, hp_fill, hp_bar_h), border_radius=4)
-        pygame.draw.rect(self.screen, (90, 130, 180), (p_card_x + 18, hp_bar_y, hp_bar_w, hp_bar_h), 1, border_radius=4)
-        hp_lbl = font_sm.render(f"HP: {self.player.persistent_hp} / 100", True, (255, 255, 255))
+            pygame.draw.rect(self.screen, (45, 140, 225), (p_card_x + 18, hp_bar_y, hp_fill, hp_bar_h), border_radius=4)
+        pygame.draw.rect(self.screen, (75, 105, 150), (p_card_x + 18, hp_bar_y, hp_bar_w, hp_bar_h), 1, border_radius=4)
+        hp_lbl = font_sm.render(f"HP: {self.player.persistent_hp} / 100", True, (240, 245, 255))
         self.screen.blit(hp_lbl, (p_card_x + 18 + (hp_bar_w - hp_lbl.get_width()) // 2, hp_bar_y + 1))
 
         py_stat = hp_bar_y + 26
@@ -1111,28 +1637,46 @@ class App:
             f"• Ramuan Cadangan : {self.player.persistent_potions} Botol (+25 HP)",
             f"• Bonus Serangan  : +{self.player.atk_bonus} ATK",
             f"• Bonus Ketahanan : +{self.player.def_bonus} DEF Flat",
-            "• Gaya Bertarung  : Pendekar Berani",
+            "• Karakteristik   : Pengelana Tangguh",
         ]
         for s in p_stats:
-            self.screen.blit(font_sm.render(s, True, (220, 235, 250)), (p_card_x + 18, py_stat))
+            self.screen.blit(font_sm.render(s, True, (215, 228, 245)), (p_card_x + 18, py_stat))
             py_stat += 22
 
         # Rincian Inventori Barang
         py_stat += 6
-        self.screen.blit(font_bubble.render("🎒 Artefak & Perlengkapan:", True, (255, 215, 90)), (p_card_x + 18, py_stat))
+        self.screen.blit(font_bubble.render("Artefak & Perlengkapan:", True, (245, 210, 85)), (p_card_x + 18, py_stat))
         ix = p_card_x + 18
         iy = py_stat + 24
+        max_ix = p_card_rect.right - 44
+        name_to_key = {
+            "Pedang Ksatria Oyen": "item_sword",
+            "Busur Presisi Kuro": "item_bow",
+            "Belati Bayangan Kage": "item_dagger",
+            "Tongkat Sihir Shiro": "mega_potion",
+            "health_potion": "health_potion",
+            "mega_potion": "mega_potion",
+            "item_sword": "item_sword",
+            "item_shield": "item_shield",
+            "item_boots": "item_boots",
+            "item_bow": "item_bow",
+            "item_dagger": "item_dagger",
+        }
         for it in (self.player.inventory or ["item_sword"]):
-            if it in self.item_images:
-                icon = pygame.transform.smoothscale(self.item_images[it], (32, 32))
+            img_key = name_to_key.get(it, it)
+            if img_key in self.item_images:
+                if ix > max_ix:
+                    ix = p_card_x + 18
+                    iy += 38
+                icon = pygame.transform.smoothscale(self.item_images[img_key], (32, 32))
                 self.screen.blit(icon, (ix, iy))
                 ix += 38
 
-        # Sisi Kanan: Profil Squad NPC Lawan (1 - 3 Member) - Diperbesar mengisi space vertikal
-        squad_area_x = p_card_rect.right + 22
-        squad_area_w = (panel_w + arena_w - 25) - squad_area_x
+        # Sisi Kanan: Profil Squad NPC Lawan (1 - 3 Member) - Tema Obsidian Slate Elegan & Bersatu
+        squad_area_x = p_card_rect.right + 20
+        squad_area_w = (panel_w + arena_w - 20) - squad_area_x
 
-        sq_header = font_title.render("🐱 Skuad Lawan (CSP & Local Search)", True, (255, 120, 90))
+        sq_header = font_title.render("Skuad Lawan (CSP & Local Search)", True, (245, 175, 110))
         self.screen.blit(sq_header, (squad_area_x, p_card_y - 2))
 
         members = self.current_squad.members if self.current_squad else []
@@ -1141,28 +1685,46 @@ class App:
         member_card_h = max(100, (available_h - 26 - (num_m - 1) * gap) // num_m)
         m_y = p_card_y + 26
 
+        # Warna Kotak Bersatu yang Teduh & Tidak Terlalu Warna-Warni
+        card_bg_col = (22, 26, 36)
+        card_border_col = (52, 65, 88)
+
         for idx, m in enumerate(members):
             m_rect = pygame.Rect(squad_area_x, m_y, squad_area_w, member_card_h)
             ctype_lower = m.char_type.lower()
             if ctype_lower == "warrior":
-                border_col = (220, 130, 40)
-                card_bg_col = (28, 26, 32)
-                trait_desc = "⚔ Ketahanan tinggi & serangan seimbang"
+                job_label = "WARRIOR"
+                pill_bg = (38, 28, 20)
+                pill_border = (165, 105, 45)
+                pill_text_col = (245, 185, 105)
+                trait_desc = "Ketahanan tinggi & serangan seimbang"
             elif ctype_lower == "ranger":
-                border_col = (45, 185, 90)
-                card_bg_col = (22, 28, 25)
-                trait_desc = "🏹 Pemanah lincah dengan damage penetrasi tinggi"
+                job_label = "RANGER"
+                pill_bg = (20, 34, 25)
+                pill_border = (50, 135, 75)
+                pill_text_col = (115, 230, 150)
+                trait_desc = "Pemanah lincah dengan akurasi tinggi"
             elif ctype_lower == "mage":
-                border_col = (70, 140, 245)
-                card_bg_col = (22, 26, 36)
-                trait_desc = "🔮 Penyihir sakti berdaya hancur tinggi (Glass Cannon)"
+                job_label = "MAGE"
+                pill_bg = (20, 30, 44)
+                pill_border = (55, 115, 185)
+                pill_text_col = (130, 195, 255)
+                trait_desc = "Spesialis sihir berdaya hancur tinggi"
+            elif ctype_lower == "assassin":
+                job_label = "ASSASSIN"
+                pill_bg = (34, 20, 36)
+                pill_border = (145, 70, 165)
+                pill_text_col = (225, 135, 250)
+                trait_desc = "Penyelinap lincah & serangan kritis"
             else:
-                border_col = (200, 75, 75)
-                card_bg_col = (26, 26, 30)
-                trait_desc = "🛡 Petarung tangguh tim AI"
+                job_label = ctype_lower.upper()
+                pill_bg = (26, 30, 38)
+                pill_border = (100, 115, 135)
+                pill_text_col = (200, 210, 225)
+                trait_desc = "Petarung tangguh tim AI"
 
-            pygame.draw.rect(self.screen, card_bg_col, m_rect, border_radius=10)
-            pygame.draw.rect(self.screen, border_col, m_rect, 1, border_radius=10)
+            pygame.draw.rect(self.screen, card_bg_col, m_rect, border_radius=8)
+            pygame.draw.rect(self.screen, card_border_col, m_rect, 1, border_radius=8)
 
             # Thumbnail Besar Full-Body Sprite
             npc_thumb = m.battle_sprite or m.portrait
@@ -1172,30 +1734,38 @@ class App:
                 p_icon = pygame.transform.smoothscale(npc_thumb, (int(round(thumb_target_h * asp)), thumb_target_h))
                 self.screen.blit(p_icon, p_icon.get_rect(center=(m_rect.x + 52, m_rect.centery)))
             else:
-                pygame.draw.rect(self.screen, (45, 50, 65), (m_rect.x + 12, m_rect.y + 12, 64, 64), border_radius=6)
+                pygame.draw.rect(self.screen, (40, 46, 60), (m_rect.x + 12, m_rect.y + 12, 64, 64), border_radius=6)
 
             tx = m_rect.x + 104
             ty = m_rect.y + max(8, (member_card_h - 85) // 2)
 
-            # Baris 1: Nama & Badge Job
-            t_name = font_title.render(f"{idx+1}. {m.name}", True, (255, 235, 160))
+            # Baris 1: Nama & Pill Badge Job Elegan
+            t_name = font_title.render(f"{idx+1}. {m.name}", True, (245, 235, 195))
             self.screen.blit(t_name, (tx, ty))
 
-            # Baris 2: Mini HP Bar & Potions
-            m_hp_w = min(160, squad_area_w - 280)
+            pill_txt = font_sm.render(job_label, True, pill_text_col)
+            pill_w = pill_txt.get_width() + 12
+            pill_h = 18
+            pill_rect = pygame.Rect(tx + t_name.get_width() + 10, ty + 2, pill_w, pill_h)
+            pygame.draw.rect(self.screen, pill_bg, pill_rect, border_radius=4)
+            pygame.draw.rect(self.screen, pill_border, pill_rect, 1, border_radius=4)
+            self.screen.blit(pill_txt, (pill_rect.x + 6, pill_rect.y + 1))
+
+            # Baris 2: Mini HP Bar (Warna Coral Konsisten) & Potions
+            m_hp_w = max(40, min(140, squad_area_w - 290))
             m_hp_y = ty + 24
-            pygame.draw.rect(self.screen, (35, 40, 52), (tx, m_hp_y, m_hp_w, 13), border_radius=3)
-            m_fill = int((m.max_hp / 120.0) * m_hp_w)
-            pygame.draw.rect(self.screen, border_col, (tx, m_hp_y, m_fill, 13), border_radius=3)
-            txt_hp = font_sm.render(f"{m.max_hp} HP  │  {m.potions} Potion", True, (240, 245, 255))
+            pygame.draw.rect(self.screen, (34, 40, 52), (tx, m_hp_y, m_hp_w, 13), border_radius=3)
+            m_fill = max(0, min(m_hp_w, int((m.max_hp / 120.0) * m_hp_w)))
+            pygame.draw.rect(self.screen, (215, 85, 75), (tx, m_hp_y, m_fill, 13), border_radius=3)
+            txt_hp = font_sm.render(f"{m.max_hp} HP  │  {m.potions} Potion", True, (235, 242, 252))
             self.screen.blit(txt_hp, (tx + m_hp_w + 12, m_hp_y - 1))
 
             # Baris 3: ATK, DEF, dan Profil AI
-            line3 = f"ATK: +{m.atk_bonus}  │  DEF: +{m.def_bonus}  │  Taktik: {m.eval_profile}"
-            self.screen.blit(font_sm.render(line3, True, (215, 225, 240)), (tx, m_hp_y + 18))
+            line3 = f"ATK: +{m.atk_bonus}  │  DEF: +{m.def_bonus}  │  AI: {m.eval_profile}"
+            self.screen.blit(font_sm.render(line3, True, (205, 218, 235)), (tx, m_hp_y + 18))
 
             # Baris 4: Deskripsi Karakteristik
-            self.screen.blit(font_sm.render(trait_desc, True, (150, 185, 220)), (tx, m_hp_y + 36))
+            self.screen.blit(font_sm.render(trait_desc, True, (150, 172, 198)), (tx, m_hp_y + 36))
 
             m_y += member_card_h + gap
 
@@ -1205,13 +1775,18 @@ class App:
         self.btn_pre_battle_reroll = pygame.Rect(area_cx - btn_w // 2, btn_y, btn_w, btn_h)
         self.btn_pre_battle_cancel = pygame.Rect(area_cx + btn_w // 2 + 15, btn_y, btn_w - 30, btn_h)
 
-        pygame.draw.rect(self.screen, (40, 165, 80), self.btn_pre_battle_start, border_radius=8)
-        pygame.draw.rect(self.screen, (215, 115, 30), self.btn_pre_battle_reroll, border_radius=8)
-        pygame.draw.rect(self.screen, (60, 70, 85), self.btn_pre_battle_cancel, border_radius=8)
+        pygame.draw.rect(self.screen, (36, 135, 75), self.btn_pre_battle_start, border_radius=6)
+        pygame.draw.rect(self.screen, (45, 160, 90), self.btn_pre_battle_start, 1, border_radius=6)
 
-        t_start = font_bubble.render("▶ MASUK DUEL [SPASI]", True, (255, 255, 255))
-        t_reroll = font_bubble.render("🎲 RE-ROLL AI [R]", True, (255, 255, 255))
-        t_cancel = font_bubble.render("✕ KEMBALI [ESC]", True, (210, 215, 225))
+        pygame.draw.rect(self.screen, (185, 95, 30), self.btn_pre_battle_reroll, border_radius=6)
+        pygame.draw.rect(self.screen, (220, 125, 45), self.btn_pre_battle_reroll, 1, border_radius=6)
+
+        pygame.draw.rect(self.screen, (45, 54, 70), self.btn_pre_battle_cancel, border_radius=6)
+        pygame.draw.rect(self.screen, (70, 84, 108), self.btn_pre_battle_cancel, 1, border_radius=6)
+
+        t_start = font_bubble.render("[SPASI] Mulai Duel", True, (255, 255, 255))
+        t_reroll = font_bubble.render("[R] Acak Ulang Skuad", True, (255, 255, 255))
+        t_cancel = font_bubble.render("[ESC] Kembali ke Peta", True, (220, 228, 240))
 
         self.screen.blit(t_start, (self.btn_pre_battle_start.centerx - t_start.get_width() // 2, self.btn_pre_battle_start.centery - t_start.get_height() // 2))
         self.screen.blit(t_reroll, (self.btn_pre_battle_reroll.centerx - t_reroll.get_width() // 2, self.btn_pre_battle_reroll.centery - t_reroll.get_height() // 2))
@@ -1219,13 +1794,13 @@ class App:
 
         # Notifikasi visual saat Re-Roll berhasil dijalankan
         if self.reroll_toast_timer > 0:
-            toast_text = "🎲 Skuad NPC Berhasil Diacak Ulang & Dioptimasi!"
-            toast_surf = font_bubble.render(toast_text, True, (255, 240, 140))
+            toast_text = "Skuad NPC berhasil diperbarui & dioptimasi."
+            toast_surf = font_bubble.render(toast_text, True, (245, 235, 160))
             tw = toast_surf.get_width() + 28
             th = 28
             toast_rect = pygame.Rect(area_cx - tw // 2, btn_y - 34, tw, th)
-            pygame.draw.rect(self.screen, (185, 90, 15), toast_rect, border_radius=6)
-            pygame.draw.rect(self.screen, (255, 215, 80), toast_rect, 1, border_radius=6)
+            pygame.draw.rect(self.screen, (28, 36, 52), toast_rect, border_radius=6)
+            pygame.draw.rect(self.screen, (75, 140, 225), toast_rect, 1, border_radius=6)
             self.screen.blit(toast_surf, (toast_rect.centerx - toast_surf.get_width() // 2, toast_rect.centery - toast_surf.get_height() // 2))
 
     def _draw_chests(self):
@@ -1262,30 +1837,160 @@ class App:
         cy = h // 2
 
         if self.gacha_active:
-            pop_w, pop_h = 320, 160
+            # 1. Animasi Pembukaan Peti (Roulette Putar Item) - Background 50% Transparan
+            pop_w, pop_h = 360, 200
             pop_rect = pygame.Rect(cx - pop_w // 2, cy - pop_h // 2, pop_w, pop_h)
             card = pygame.Surface((pop_w, pop_h), SRCALPHA)
-            card.fill((18, 22, 32, 240))
-            pygame.draw.rect(card, (255, 200, 60), card.get_rect(), 2, border_radius=10)
+            card.fill((16, 20, 32, 128))  # 50% transparan
+            pygame.draw.rect(card, (255, 205, 60, 220), card.get_rect(), 2, border_radius=12)
+            pygame.draw.rect(card, (255, 255, 255, 30), (2, 2, pop_w - 4, pop_h - 4), 1, border_radius=10)
             self.screen.blit(card, pop_rect)
 
-            title = self.fonts.get("title", self.fonts["sm"]).render("✨ MEMBUKA PETI HARTA ✨", True, (255, 225, 80))
-            self.screen.blit(title, (cx - title.get_width() // 2, pop_rect.y + 14))
+            title = self.fonts.get("title", self.fonts["sm"]).render("MEMBUKA PETI HARTA", True, (255, 225, 80))
+            self.screen.blit(title, (cx - title.get_width() // 2, pop_rect.y + 16))
+
+            # Pedestal aura glow untuk preview item roulette
+            ped_rect = pygame.Rect(cx - 36, cy - 30, 72, 72)
+            pygame.draw.circle(self.screen, (28, 36, 55, 140), ped_rect.center, 36)
+            pygame.draw.circle(self.screen, (255, 205, 60), ped_rect.center, 36, width=2)
 
             cur_item = self.gacha_current_item
-            if cur_item and cur_item in self.item_images:
+            if cur_item and cur_item in self.item_images_large:
+                raw_img = self.item_images_large[cur_item]
+                img = pygame.transform.smoothscale(raw_img, (60, 60))
+                self.screen.blit(img, img.get_rect(center=ped_rect.center))
+            elif cur_item and cur_item in self.item_images:
                 img = self.item_images[cur_item]
-                self.screen.blit(img, img.get_rect(center=(cx, cy + 8)))
+                self.screen.blit(img, img.get_rect(center=ped_rect.center))
 
-            sub = self.fonts["sm"].render("Memutar keberuntungan...", True, (200, 215, 235))
-            self.screen.blit(sub, (cx - sub.get_width() // 2, pop_rect.bottom - 26))
+            sub = self.fonts.get("bubble", self.fonts["sm"]).render("Memutar takdir keberuntungan...", True, (200, 220, 245))
+            self.screen.blit(sub, (cx - sub.get_width() // 2, pop_rect.bottom - 28))
+
+        elif getattr(self, "gacha_showcase", None):
+            # 2. Modal Item Showcase di Tengah Layar (Center Screen Reveal) - Background 50% Transparan
+            showcase = self.gacha_showcase
+            item_key = showcase["item_key"]
+            item_name = showcase["name"]
+            item_badge = showcase["badge"]
+            item_desc = showcase["desc"]
+            item_col = showcase.get("color", (255, 215, 65))
+            anim_t = showcase.get("anim_time", 0.0)
+
+            # A. Backdrop halus transparan pada arena eksplorasi (hanya di viewport permainan)
+            dim_surf = pygame.Surface((arena_w, h), SRCALPHA)
+            dim_surf.fill((6, 8, 14, 110))
+            self.screen.blit(dim_surf, (panel_w, 0))
+
+            # B. Card modal container di tengah layar (50% transparan)
+            mw, mh = 480, 350
+            modal_rect = pygame.Rect(cx - mw // 2, cy - mh // 2, mw, mh)
+            card = pygame.Surface((mw, mh), SRCALPHA)
+            card.fill((14, 18, 28, 128))  # 50% transparan
+
+            # Border elegan ganda dengan warna tema item
+            pygame.draw.rect(card, (*item_col[:3], 230), (0, 0, mw, mh), 2, border_radius=14)
+            pygame.draw.rect(card, (255, 255, 255, 40), (2, 2, mw - 4, mh - 4), 1, border_radius=12)
+
+            font_huge = self.fonts.get("huge", self.fonts["title"])
+            font_title = self.fonts.get("title", self.fonts["sm"])
+            font_bubble = self.fonts.get("bubble", self.fonts["sm"])
+            font_sm = self.fonts["sm"]
+
+            # Header Top Pill: PETI HARTA BERHASIL DIBUKA!
+            top_badge_w, top_badge_h = 340, 30
+            top_badge_rect = pygame.Rect((mw - top_badge_w) // 2, 14, top_badge_w, top_badge_h)
+            badge_bg = pygame.Surface((top_badge_w, top_badge_h), SRCALPHA)
+            badge_bg.fill((55, 42, 16, 170))
+            pygame.draw.rect(badge_bg, (255, 215, 70), (0, 0, top_badge_w, top_badge_h), 1, border_radius=6)
+            card.blit(badge_bg, top_badge_rect)
+            hdr_lbl = font_bubble.render("PETI HARTA BERHASIL DIBUKA!", True, (255, 225, 80))
+            card.blit(hdr_lbl, hdr_lbl.get_rect(center=top_badge_rect.center))
+
+            # Pedestal showcase lingkaran di tengah dengan radial aura berdenyut
+            ped_cx = mw // 2
+            ped_cy = 118
+            ped_radius = 56
+
+            pulse = 0.5 + 0.5 * math.sin(anim_t * 4.0)
+            glow_surf = pygame.Surface((ped_radius * 2 + 32, ped_radius * 2 + 32), SRCALPHA)
+            glow_col = (*item_col[:3], int(65 + pulse * 65))
+            pygame.draw.circle(glow_surf, glow_col, (glow_surf.get_width() // 2, glow_surf.get_height() // 2), int(ped_radius + pulse * 6))
+            card.blit(glow_surf, glow_surf.get_rect(center=(ped_cx, ped_cy)))
+
+            ped_surf = pygame.Surface((ped_radius * 2, ped_radius * 2), SRCALPHA)
+            pygame.draw.circle(ped_surf, (24, 30, 46, 170), (ped_radius, ped_radius), ped_radius)
+            pygame.draw.circle(ped_surf, (*item_col[:3], 230), (ped_radius, ped_radius), ped_radius, width=2)
+            pygame.draw.circle(ped_surf, (255, 255, 255, 60), (ped_radius, ped_radius), ped_radius - 3, width=1)
+            card.blit(ped_surf, ped_surf.get_rect(center=(ped_cx, ped_cy)))
+
+            # Render GAMBAR ITEM BESAR (84x84 px)
+            item_img = None
+            if item_key in self.item_images_large:
+                item_img = self.item_images_large[item_key]
+            elif item_key in self.item_images:
+                item_img = self.item_images[item_key]
+
+            if item_img:
+                scale_pulse = 1.0 + 0.04 * math.sin(anim_t * 4.0)
+                target_sz = int(84 * scale_pulse)
+                rendered_img = pygame.transform.smoothscale(item_img, (target_sz, target_sz))
+                card.blit(rendered_img, rendered_img.get_rect(center=(ped_cx, ped_cy)))
+
+            # Nama Item yang diperoleh
+            name_lbl = font_huge.render(item_name, True, (255, 245, 180))
+            card.blit(name_lbl, name_lbl.get_rect(center=(mw // 2, 194)))
+
+            # Pill Badge Efek / Stat Bonus
+            stat_w, stat_h = 380, 30
+            stat_rect = pygame.Rect((mw - stat_w) // 2, 220, stat_w, stat_h)
+            stat_bg = pygame.Surface((stat_w, stat_h), SRCALPHA)
+            stat_bg.fill((18, 38, 30, 180))
+            pygame.draw.rect(stat_bg, (45, 205, 120), (0, 0, stat_w, stat_h), 1, border_radius=6)
+            card.blit(stat_bg, stat_rect)
+            stat_lbl = font_bubble.render(f"BONUS: {item_badge}", True, (95, 255, 175))
+            card.blit(stat_lbl, stat_lbl.get_rect(center=stat_rect.center))
+
+            # Deskripsi Efek Item (Automatic Word-Wrap)
+            words = item_desc.split(" ")
+            lines = []
+            cur_line = []
+            max_desc_w = mw - 40
+            for w_str in words:
+                test_str = " ".join(cur_line + [w_str])
+                if font_sm.size(test_str)[0] <= max_desc_w:
+                    cur_line.append(w_str)
+                else:
+                    if cur_line:
+                        lines.append(" ".join(cur_line))
+                    cur_line = [w_str]
+            if cur_line:
+                lines.append(" ".join(cur_line))
+
+            desc_y = 257 if len(lines) > 1 else 264
+            for l_idx, line_str in enumerate(lines[:2]):
+                desc_lbl = font_sm.render(line_str, True, (215, 225, 245))
+                card.blit(desc_lbl, desc_lbl.get_rect(center=(mw // 2, desc_y + l_idx * 16)))
+
+            # Tombol Interaktif / Petunjuk Tekan Tombol di Bawah
+            btn_w, btn_h = 420, 34
+            btn_rect = pygame.Rect((mw - btn_w) // 2, mh - 46, btn_w, btn_h)
+            btn_bg = pygame.Surface((btn_w, btn_h), SRCALPHA)
+            btn_bg.fill((28, 125, 60, 190))
+            pygame.draw.rect(btn_bg, (100, 235, 140), (0, 0, btn_w, btn_h), 1, border_radius=7)
+            card.blit(btn_bg, btn_rect)
+
+            prompt_str = "Tekan [ENTER] / [SPASI] / [E] atau Klik untuk Menutup"
+            p_txt = font_bubble.render(prompt_str, True, (255, 255, 255))
+            card.blit(p_txt, p_txt.get_rect(center=btn_rect.center))
+
+            self.screen.blit(card, modal_rect)
 
         elif self.gacha_message_timer > 0:
             alpha = min(255, int(255 * (self.gacha_message_timer / 0.5))) if self.gacha_message_timer < 0.5 else 255
             txt = self.fonts.get("bubble", self.fonts["sm"]).render(self.gacha_message, True, (255, 255, 255))
-            toast_rect = pygame.Rect(cx - txt.get_width() // 2 - 16, 30, txt.get_width() + 32, txt.get_height() + 14)
+            toast_rect = pygame.Rect(cx - txt.get_width() // 2 - 16, cy + 120, txt.get_width() + 32, txt.get_height() + 14)
             card = pygame.Surface((toast_rect.width, toast_rect.height), SRCALPHA)
-            card.fill((20, 28, 45, int(230 * (alpha / 255.0))))
+            card.fill((20, 28, 45, int(128 * (alpha / 255.0))))
             pygame.draw.rect(card, (70, 200, 120, alpha), card.get_rect(), 2, border_radius=8)
             self.screen.blit(card, toast_rect)
             self.screen.blit(txt, (toast_rect.centerx - txt.get_width() // 2, toast_rect.centery - txt.get_height() // 2))
@@ -1298,6 +2003,8 @@ class App:
             "item_sword": "item_sword.png",
             "item_shield": "item_shield.png",
             "item_boots": "item_boots.png",
+            "item_bow": "item_bow.png",
+            "item_dagger": "item_dagger.png",
         }
         for key, fn in item_files.items():
             path = os.path.join(config.ASSET_DIR, "items", fn)
@@ -1308,6 +2015,27 @@ class App:
                 except Exception:
                     pass
         return items
+
+    def _load_item_images_large(self):
+        items_large = {}
+        item_files = {
+            "health_potion": "health_potion.png",
+            "mega_potion": "mega_potion.png",
+            "item_sword": "item_sword.png",
+            "item_shield": "item_shield.png",
+            "item_boots": "item_boots.png",
+            "item_bow": "item_bow.png",
+            "item_dagger": "item_dagger.png",
+        }
+        for key, fn in item_files.items():
+            path = os.path.join(config.ASSET_DIR, "items", fn)
+            if os.path.exists(path):
+                try:
+                    img = pygame.image.load(path).convert_alpha()
+                    items_large[key] = pygame.transform.smoothscale(img, (96, 96))
+                except Exception:
+                    pass
+        return items_large
 
     def _load_battle_sprites(self):
         b_sprites = {}
@@ -1330,37 +2058,96 @@ class App:
         return b_sprites
 
     def _open_chest(self, chest):
-        if chest.get("opened", False) or self.gacha_active:
+        if chest.get("opened", False) or self.gacha_active or getattr(self, "gacha_showcase", None):
             return
         chest["opened"] = True
         self.gacha_active = True
-        self.gacha_timer = 1.2
+        self.gacha_timer = 1.0
         self.gacha_reward_item = chest.get("item", "health_potion")
+        self.gacha_showcase = None
 
     def _award_gacha_reward(self):
         item = self.gacha_reward_item or "health_potion"
+        item_meta = {
+            "health_potion": {
+                "name": "Health Potion",
+                "badge": "+1 Ramuan Pertempuran",
+                "desc": "Ramuan pemulih HP instan untuk pertarungan.",
+                "color": (65, 215, 120),
+            },
+            "mega_potion": {
+                "name": "Mega Potion",
+                "badge": "+50 HP Langsung & +1 Ramuan",
+                "desc": "Ramuan sakti yang memulihkan 50 HP seketika dan menambah stok ramuan.",
+                "color": (80, 225, 230),
+            },
+            "item_sword": {
+                "name": "Pedang Ksatria",
+                "badge": "+5 ATK Bonus Permanen",
+                "desc": "Menempa kekuatan hero, meningkatkan damage serangan setiap giliran.",
+                "color": (255, 140, 50),
+            },
+            "item_shield": {
+                "name": "Perisai Baja",
+                "badge": "+4 Reduksi DEF Flat",
+                "desc": "Pertahanan kokoh yang memangkas damage yang diterima dari musuh.",
+                "color": (75, 160, 245),
+            },
+            "item_boots": {
+                "name": "Boots Lincah",
+                "badge": "+Kelincahan Bertualang",
+                "desc": "Sepatu pengembara legendaris yang meningkatkan kelincahan melangkah.",
+                "color": (240, 200, 60),
+            },
+            "item_bow": {
+                "name": "Busur Pemburu",
+                "badge": "+4 ATK & Inisiatif Serang",
+                "desc": "Senjata jarak jauh presisi tinggi untuk menembus pertahanan lawan.",
+                "color": (160, 230, 70),
+            },
+            "item_dagger": {
+                "name": "Belati Bayangan",
+                "badge": "+Crit Rate & Ketangkasan",
+                "desc": "Belati ringan mematikan dengan ketajaman menusuk titik lemah lawan.",
+                "color": (210, 80, 240),
+            },
+        }
+
+        meta = item_meta.get(item, {
+            "name": item.replace("item_", "").replace("_", " ").title(),
+            "badge": "Item Baru",
+            "desc": f"Item {item} berhasil ditambahkan ke inventori.",
+            "color": (255, 215, 80),
+        })
+
         if item == "health_potion":
             self.player.persistent_potions += 1
-            msg = "Mendapatkan Health Potion (+1 Ramuan)!"
         elif item == "mega_potion":
             self.player.persistent_hp = min(100, self.player.persistent_hp + 50)
             self.player.persistent_potions += 1
-            msg = "Mendapatkan Mega Potion (+50 HP & +1 Ramuan)!"
         elif item == "item_sword":
             self.player.atk_bonus += 5
             self.player.inventory.append("item_sword")
-            msg = "Mendapatkan Pedang Ksatria (+5 ATK Bonus)!"
         elif item == "item_shield":
             self.player.def_bonus += 4
             self.player.inventory.append("item_shield")
-            msg = "Mendapatkan Perisai Baja (+4 DEF Flat Reduction)!"
         elif item == "item_boots":
             self.player.inventory.append("item_boots")
-            msg = "Mendapatkan Boots Lincah (+Kelincahan Bertualang)!"
         else:
-            msg = f"Mendapatkan item {item}!"
-        self.gacha_message = msg
-        self.gacha_message_timer = 3.0
+            self.player.inventory.append(item)
+
+        self.gacha_showcase = {
+            "item_key": item,
+            "name": meta["name"],
+            "badge": meta["badge"],
+            "desc": meta["desc"],
+            "color": meta["color"],
+            "timer": 4.5,
+            "max_timer": 4.5,
+            "anim_time": 0.0,
+        }
+        self.gacha_message = f"Mendapatkan {meta['name']}!"
+        self.gacha_message_timer = 0.0
 
     def _draw_action_text(self, action_data, cx, cy):
         """Gambar teks aksi melayang di atas karakter (floating + fade effect)."""
@@ -1454,3 +2241,188 @@ class App:
         pygame.draw.rect(self.screen, (255, 255, 255), rect, border_radius=4)
         pygame.draw.rect(self.screen, (30, 30, 40), rect, 1, border_radius=4)
         self.screen.blit(surf, (rect.x + pad_x, rect.y + pad_y))
+
+    def _draw_loot_toast(self, w: int, h: int, center_x: int):
+        """Merender banner pop-up Rampasan Perang (Spoils of War) di atas duel arena."""
+        if not self.loot_toast or self.loot_toast["timer"] <= 0:
+            return
+
+        toast = self.loot_toast
+        loot = toast["loot"]
+        timer = toast["timer"]
+        max_timer = toast["max_timer"]
+
+        # Efek Fade in / Fade out
+        if timer > max_timer - 0.25:
+            alpha = int(255 * (max_timer - timer) / 0.25)
+        elif timer < 0.4:
+            alpha = int(255 * (timer / 0.4))
+        else:
+            alpha = 255
+        alpha = max(0, min(255, alpha))
+
+        bw, bh = 480, 56
+        by = 28
+        banner_rect = pygame.Rect(center_x - bw // 2, by, bw, bh)
+
+        banner_surf = pygame.Surface((bw, bh), SRCALPHA)
+        bg_alpha = int(235 * (alpha / 255.0))
+        banner_surf.fill((16, 18, 26, bg_alpha))
+
+        border_col = loot.get("color", (255, 215, 60))
+        border_col_alpha = (*border_col[:3], alpha)
+        pygame.draw.rect(banner_surf, border_col_alpha, pygame.Rect(0, 0, bw, bh), width=2, border_radius=8)
+
+        glow_bar = pygame.Rect(4, 4, 6, bh - 8)
+        pygame.draw.rect(banner_surf, border_col_alpha, glow_bar, border_radius=3)
+
+        font_bubble = self.fonts.get("bubble", self.fonts["sm"])
+        font_sm = self.fonts["sm"]
+
+        title_str = "⚔️ RAMPASAN PERANG DIPEROLEH!"
+        title_txt = font_bubble.render(title_str, True, (255, 220, 80))
+        if alpha < 255:
+            title_txt.set_alpha(alpha)
+        banner_surf.blit(title_txt, (20, 6))
+
+        desc_str = f"Merebut: {loot['name']} ({loot['desc']})"
+        desc_txt = font_sm.render(desc_str, True, (235, 245, 255))
+        if alpha < 255:
+            desc_txt.set_alpha(alpha)
+        banner_surf.blit(desc_txt, (20, 31))
+
+        self.screen.blit(banner_surf, banner_rect)
+
+    def _draw_defeat_badge(self, cx: int, cy: int, npc_obj):
+        """Merender badge dramatis 'KALAH!' tepat di atas NPC yang baru saja tumbang."""
+        font_huge = self.fonts.get("huge", self.fonts["title"])
+        font_bubble = self.fonts.get("bubble", self.fonts["sm"])
+
+        bw, bh = 290, 68
+        b_rect = pygame.Rect(cx - bw // 2, cy - bh // 2, bw, bh)
+
+        badge_surf = pygame.Surface((bw, bh), SRCALPHA)
+        badge_surf.fill((36, 10, 14, 245))
+        border_col = (255, 55, 45)
+        pygame.draw.rect(badge_surf, border_col, (0, 0, bw, bh), width=2, border_radius=10)
+        pygame.draw.rect(badge_surf, (255, 210, 75), (2, 2, bw - 4, bh - 4), width=1, border_radius=8)
+
+        t_main = font_huge.render("KALAH / TUMBANG!", True, (255, 230, 80))
+        badge_surf.blit(t_main, t_main.get_rect(center=(bw // 2, 24)))
+
+        name_str = npc_obj.name if hasattr(npc_obj, "name") else "Musuh"
+        t_sub = font_bubble.render(f"{name_str} Telah Gugur!", True, (255, 220, 220))
+        badge_surf.blit(t_sub, t_sub.get_rect(center=(bw // 2, 50)))
+
+        self.screen.blit(badge_surf, b_rect)
+
+    def _draw_loot_modal(self):
+        """Merender modal dialog rampasan perang di tengah layar dengan latar belakang gelap pekat."""
+        if not self.loot_modal:
+            return
+
+        modal = self.loot_modal
+        loot = modal["loot"]
+        old_npc = modal.get("old_npc")
+        is_final = modal.get("is_final", False)
+
+        w, h = self.screen.get_size()
+        panel_w = config.DEBUG_LEFT_PANEL_WIDTH
+        arena_w = w - panel_w
+        cx = panel_w + arena_w // 2
+        cy = h // 2
+
+        # 1. Background Overlay Gelap (Dimmed Backdrop seluruh layar)
+        dim_surf = pygame.Surface((w, h), SRCALPHA)
+        dim_surf.fill((4, 6, 12, 225))
+        self.screen.blit(dim_surf, (0, 0))
+
+        # 2. Dimensi & Posisi Modal Card di Tengah Layar
+        mw, mh = 530, 390
+        modal_rect = pygame.Rect(cx - mw // 2, cy - mh // 2, mw, mh)
+
+        card_surf = pygame.Surface((mw, mh), SRCALPHA)
+        card_surf.fill((16, 20, 30, 252))
+
+        theme_col = loot.get("color", (255, 215, 60))
+        pygame.draw.rect(card_surf, theme_col, (0, 0, mw, mh), 2, border_radius=14)
+        pygame.draw.rect(card_surf, (255, 255, 255, 30), (2, 2, mw - 4, mh - 4), 1, border_radius=12)
+
+        font_huge = self.fonts.get("huge", self.fonts["title"])
+        font_bubble = self.fonts.get("bubble", self.fonts["sm"])
+        font_sm = self.fonts["sm"]
+
+        # 3. Header Badge: RAMPASAN PERANG DIPEROLEH!
+        badge_w, badge_h = 370, 32
+        badge_rect = pygame.Rect((mw - badge_w) // 2, 16, badge_w, badge_h)
+        pygame.draw.rect(card_surf, (55, 42, 16), badge_rect, border_radius=6)
+        pygame.draw.rect(card_surf, (255, 215, 70), badge_rect, 1, border_radius=6)
+
+        hdr_txt = font_bubble.render("⚔️ RAMPASAN PERANG DIPEROLEH! ⚔️", True, (255, 225, 80))
+        card_surf.blit(hdr_txt, hdr_txt.get_rect(center=badge_rect.center))
+
+        # 4. Sub-teks Info Lawan Gugur
+        if old_npc:
+            sub_str = f"Bolu berhasil menumbangkan {old_npc.name}!"
+        else:
+            sub_str = "Kemenangan gemilang di medan pertempuran!"
+        sub_txt = font_sm.render(sub_str, True, (190, 205, 230))
+        card_surf.blit(sub_txt, sub_txt.get_rect(center=(mw // 2, 60)))
+
+        # 5. Bingkai Showcase Item (Icon Frame di Tengah)
+        frame_sz = 108
+        frame_rect = pygame.Rect((mw - frame_sz) // 2, 82, frame_sz, frame_sz)
+        pygame.draw.rect(card_surf, (26, 32, 48), frame_rect, border_radius=12)
+        pygame.draw.rect(card_surf, theme_col, frame_rect, 2, border_radius=12)
+
+        # Efek glowing aura di belakang item
+        aura = pygame.Surface((frame_sz - 8, frame_sz - 8), SRCALPHA)
+        aura.fill((*theme_col[:3], 35))
+        card_surf.blit(aura, (frame_rect.x + 4, frame_rect.y + 4))
+
+        # Gambar Item Besar (96x96 px)
+        img_key = loot.get("image_key", "item_sword")
+        item_img = None
+        if hasattr(self, "item_images_large") and img_key in self.item_images_large:
+            item_img = self.item_images_large[img_key]
+        elif img_key in self.item_images:
+            item_img = pygame.transform.smoothscale(self.item_images[img_key], (96, 96))
+
+        if item_img:
+            card_surf.blit(item_img, item_img.get_rect(center=frame_rect.center))
+
+        # 6. Nama Item Rampasan
+        item_name = loot.get("name", "Artefak Misterius")
+        name_txt = font_huge.render(item_name, True, (255, 240, 140))
+        card_surf.blit(name_txt, name_txt.get_rect(center=(mw // 2, 212)))
+
+        # 7. Badge Stat Boost (+ATK / +DEF / Pulihkan HP)
+        stat_w, stat_h = 390, 32
+        stat_rect = pygame.Rect((mw - stat_w) // 2, 238, stat_w, stat_h)
+        pygame.draw.rect(card_surf, (16, 36, 28), stat_rect, border_radius=6)
+        pygame.draw.rect(card_surf, (45, 200, 115), stat_rect, 1, border_radius=6)
+
+        stat_str = f"⚡ BONUS: {loot.get('stat_text', '+Stat')}"
+        stat_txt = font_bubble.render(stat_str, True, (95, 255, 175))
+        card_surf.blit(stat_txt, stat_txt.get_rect(center=stat_rect.center))
+
+        # 8. Deskripsi Efek Item
+        desc_str = loot.get("desc", "")
+        desc_txt = font_sm.render(desc_str, True, (215, 225, 245))
+        card_surf.blit(desc_txt, desc_txt.get_rect(center=(mw // 2, 288)))
+
+        # 9. Tombol Interaktif / Petunjuk Tekan ENTER
+        btn_w, btn_h = 430, 38
+        btn_rect = pygame.Rect((mw - btn_w) // 2, mh - 54, btn_w, btn_h)
+
+        btn_bg = (32, 135, 68) if not is_final else (45, 110, 195)
+        btn_bdr = (110, 245, 150) if not is_final else (120, 190, 255)
+        pygame.draw.rect(card_surf, btn_bg, btn_rect, border_radius=8)
+        pygame.draw.rect(card_surf, btn_bdr, btn_rect, 1, border_radius=8)
+
+        prompt_str = "▶ Tekan [ENTER] / [SPASI] untuk Hadapi Lawan Berikutnya" if not is_final else "▶ Tekan [ENTER] / [SPASI] untuk Menyelesaikan Duel"
+        p_txt = font_bubble.render(prompt_str, True, (255, 255, 255))
+        card_surf.blit(p_txt, p_txt.get_rect(center=btn_rect.center))
+
+        # Blit Modal Card ke Layar
+        self.screen.blit(card_surf, modal_rect)

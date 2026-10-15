@@ -64,7 +64,7 @@ MAX_HP = 100
 MAX_POTIONS = 3
 POTION_HEAL = 25
 
-# Kerusakan Dasar
+# Kerusakan Dasar (Player)
 ATTACK_DAMAGE = 18
 ATTACK_DEFENDED_DAMAGE = 6
 
@@ -72,11 +72,28 @@ HEAVY_DAMAGE = 30
 HEAVY_DEFENDED_DAMAGE = 10
 HEAVY_ACCURACY = 0.75  # Digunakan dalam Expectimax
 
+# Kerusakan Dasar (NPC) - sedikit dikurangi agar seimbang saat player menghadapi squad NPC
+NPC_ATTACK_DAMAGE = 14
+NPC_ATTACK_DEFENDED_DAMAGE = 5
+
+NPC_HEAVY_DAMAGE = 24
+NPC_HEAVY_DEFENDED_DAMAGE = 8
+
 DEFEND_REDUCTION = 0.65  # ~65% reduksi
 
 
 # Cooldown Heavy Attack: jumlah giliran SENDIRI yang harus ditunggu sebelum bisa pakai lagi
 HEAVY_COOLDOWN_TURNS = 2
+
+
+def calc_damage(base_dmg: int, atk_bonus: int, def_bonus: int, is_heavy: bool = False) -> int:
+    """Kalkulasi damage akhir:
+    - Serangan kuat (Heavy): Menggunakan bonus ATK penuh (+bonus langsung ke base damage).
+    - Serangan biasa (Attack): Menggunakan bonus ATK proporsional (atk_bonus // 3)
+      agar serangan biasa berulang tidak menghasilkan damage berlebih (over-damage).
+    """
+    atk_eff = atk_bonus if is_heavy else (atk_bonus // 3)
+    return max(1, base_dmg + atk_eff - def_bonus)
 
 
 class BattleState:
@@ -205,13 +222,13 @@ class BattleState:
                 next_state.npc_heavy_cd -= 1
 
             if action == ACTION_ATTACK:
-                base = ATTACK_DEFENDED_DAMAGE if next_state.player_defending else ATTACK_DAMAGE
-                dmg = max(1, base + next_state.npc_atk_bonus - next_state.player_def_bonus)
+                base = NPC_ATTACK_DEFENDED_DAMAGE if next_state.player_defending else NPC_ATTACK_DAMAGE
+                dmg = calc_damage(base, next_state.npc_atk_bonus, next_state.player_def_bonus, is_heavy=False)
                 next_state.player_hp = max(0, next_state.player_hp - dmg)
             elif action == ACTION_HEAVY:
                 if heavy_hits:
-                    base = HEAVY_DEFENDED_DAMAGE if next_state.player_defending else HEAVY_DAMAGE
-                    dmg = max(1, base + next_state.npc_atk_bonus - next_state.player_def_bonus)
+                    base = NPC_HEAVY_DEFENDED_DAMAGE if next_state.player_defending else NPC_HEAVY_DAMAGE
+                    dmg = calc_damage(base, next_state.npc_atk_bonus, next_state.player_def_bonus, is_heavy=True)
                     next_state.player_hp = max(0, next_state.player_hp - dmg)
                 next_state.npc_heavy_cd = HEAVY_COOLDOWN_TURNS  # Set cooldown
             elif action == ACTION_DEFEND:
@@ -232,12 +249,12 @@ class BattleState:
 
             if action == ACTION_ATTACK:
                 base = ATTACK_DEFENDED_DAMAGE if next_state.npc_defending else ATTACK_DAMAGE
-                dmg = max(1, base + next_state.player_atk_bonus - next_state.npc_def_bonus)
+                dmg = calc_damage(base, next_state.player_atk_bonus, next_state.npc_def_bonus, is_heavy=False)
                 next_state.npc_hp = max(0, next_state.npc_hp - dmg)
             elif action == ACTION_HEAVY:
                 if heavy_hits:
                     base = HEAVY_DEFENDED_DAMAGE if next_state.npc_defending else HEAVY_DAMAGE
-                    dmg = max(1, base + next_state.player_atk_bonus - next_state.npc_def_bonus)
+                    dmg = calc_damage(base, next_state.player_atk_bonus, next_state.npc_def_bonus, is_heavy=True)
                     next_state.npc_hp = max(0, next_state.npc_hp - dmg)
                 next_state.player_heavy_cd = HEAVY_COOLDOWN_TURNS  # Set cooldown
             elif action == ACTION_DEFEND:

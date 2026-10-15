@@ -13,6 +13,7 @@ from .battle_ai import (
     ACTION_POTION,
     EVAL_FUNCTIONS,
     HEAVY_COOLDOWN_TURNS,
+    MAX_POTIONS,
 )
 from .npc_squad import NPCSquad, NPCMember
 
@@ -54,6 +55,12 @@ class BattleSystem:
         self.ACTION_TEXT_DURATION = 2.5  # Detik teks ditampilkan
         # Callback notifikasi aksi pertempuran untuk modul visual VFX
         self.on_action_callback = None
+        # Callback saat NPC berganti (Tag-in summon animation)
+        self.on_tag_in = None
+        self.is_locked = False
+        self.player: Any = None
+        self.last_second_wind_heal: int = 45
+        self.last_loot: Optional[Dict[str, Any]] = None
 
         self.reset()
 
@@ -76,9 +83,80 @@ class BattleSystem:
         if hasattr(self.ai_solver, "last_tree"):
             self.ai_solver.last_tree = None
         self.is_finished = False
+        self.is_locked = False
         self.winner = None
         self.player_action_text = None
         self.npc_action_text = None
+        self.last_loot = None
+
+    def _get_spoils_of_war(self, npc_member: Optional[NPCMember]) -> Dict[str, Any]:
+        """Menghasilkan hadiah rampasan perang (Spoils of War) berdasarkan kelas NPC yang dikalahkan."""
+        ctype = getattr(npc_member, "char_type", "warrior").lower() if npc_member else "warrior"
+        if ctype == "warrior":
+            return {
+                "id": "sword_warrior",
+                "image_key": "item_sword",
+                "name": "Pedang Ksatria Oyen",
+                "icon": "⚔️",
+                "atk_bonus": 4,
+                "def_bonus": 1,
+                "potions": 0,
+                "stat_text": "+4 ATK, +1 DEF",
+                "desc": "Senjata rampasan dari Warrior. Kekuatan tebasan meningkat!",
+                "color": (255, 175, 45),
+            }
+        elif ctype == "ranger":
+            return {
+                "id": "bow_ranger",
+                "image_key": "item_bow",
+                "name": "Busur Presisi Kuro",
+                "icon": "🏹",
+                "atk_bonus": 3,
+                "def_bonus": 0,
+                "potions": 1,
+                "stat_text": "+3 ATK, +1 Ramuan Cadangan",
+                "desc": "Busur lincah dari Ranger. Menembus pertahanan lawan!",
+                "color": (50, 215, 100),
+            }
+        elif ctype == "assassin":
+            return {
+                "id": "dagger_assassin",
+                "image_key": "item_dagger",
+                "name": "Belati Bayangan Kage",
+                "icon": "🗡️",
+                "atk_bonus": 5,
+                "def_bonus": 0,
+                "potions": 0,
+                "stat_text": "+5 ATK Lethal",
+                "desc": "Belati beracun dari Assassin. Serangan kritis mematikan!",
+                "color": (205, 75, 235),
+            }
+        elif ctype == "mage":
+            return {
+                "id": "staff_mage",
+                "image_key": "mega_potion",
+                "name": "Tongkat Sihir Shiro",
+                "icon": "🔮",
+                "atk_bonus": 3,
+                "def_bonus": 2,
+                "potions": 0,
+                "stat_text": "+3 ATK, +2 DEF",
+                "desc": "Pusaka magis dari Mage. Melindungi dan memperkuat sihir!",
+                "color": (70, 175, 255),
+            }
+        else:
+            return {
+                "id": "shield_tank",
+                "image_key": "item_shield",
+                "name": "Perisai Tempur Kucing",
+                "icon": "🛡️",
+                "atk_bonus": 3,
+                "def_bonus": 2,
+                "potions": 0,
+                "stat_text": "+3 ATK, +2 DEF",
+                "desc": "Perisai baja penahan benturan musuh!",
+                "color": (255, 215, 60),
+            }
 
     def reset_with_squad(
         self,
@@ -89,14 +167,18 @@ class BattleSystem:
         player_def: int = 0,
         player: Any = None,
     ):
-        """Reset duel dengan tim petarung NPC yang telah dikonfigurasi / dioptimasi."""
         if player is not None:
-            player_hp = getattr(player, "persistent_hp", player_hp)
+            p_hp = getattr(player, "persistent_hp", player_hp)
+            # Jika player HP <= 0 atau tersisa 10 akibat kalah duel sebelumnya, pulihkan penuh ke 100
+            player_hp = 100 if p_hp <= 10 else p_hp
             player_potions = getattr(player, "persistent_potions", player_potions)
             player_atk = getattr(player, "atk_bonus", player_atk)
             player_def = getattr(player, "def_bonus", player_def)
 
+        if hasattr(squad, "reset"):
+            squad.reset()
         self.squad = squad
+        self.player = player
         active = squad.get_active_member()
         npc_hp = active.max_hp if active else 100
         npc_pots = active.potions if active else 2
@@ -128,7 +210,9 @@ class BattleSystem:
         if hasattr(self.ai_solver, "last_tree"):
             self.ai_solver.last_tree = None
         self.is_finished = False
+        self.is_locked = False
         self.winner = None
+        self.last_loot = None
         self.player_action_text = None
         self.npc_action_text = None
 
@@ -176,6 +260,8 @@ class BattleSystem:
             ACTION_HEAVY:   (255, 100, 50),
             ACTION_DEFEND:  (100, 180, 255),
             ACTION_POTION:  (80, 255, 120),
+            "SECOND WIND!": (80, 255, 160),
+            "TAG-IN!":      (255, 215, 60),
         }
         color = color_map.get(action, (255, 255, 255))
 
@@ -201,7 +287,7 @@ class BattleSystem:
 
     def execute_player_action(self, action: str) -> bool:
         """Mengeksekusi aksi giliran Player."""
-        if self.is_finished or self.state.is_npc_turn:
+        if self.is_finished or self.state.is_npc_turn or self.is_locked:
             return False
 
         legal = self.state.get_legal_actions()
@@ -217,11 +303,13 @@ class BattleSystem:
 
         if action == ACTION_ATTACK:
             dmg = old_npc_hp - self.state.npc_hp
-            self.log(f"Player: Menyerang! Berhasil memberi {dmg} damage.")
+            def_str = f" (DEF -{self.state.npc_def_bonus})" if self.state.npc_def_bonus > 0 else ""
+            self.log(f"Player: Menyerang! Berhasil memberi {dmg} damage{def_str}.")
             self._set_action_text("PLAYER", ACTION_ATTACK, f"(-{dmg} HP)")
         elif action == ACTION_HEAVY:
             dmg = old_npc_hp - self.state.npc_hp
-            self.log(f"Player: Serangan Kuat! Memberi {dmg} damage!")
+            def_str = f" (DEF -{self.state.npc_def_bonus})" if self.state.npc_def_bonus > 0 else ""
+            self.log(f"Player: Serangan Kuat! Memberi {dmg} damage{def_str}!")
             self._set_action_text("PLAYER", ACTION_HEAVY, f"(-{dmg} HP)")
         elif action == ACTION_DEFEND:
             self.log("Player: Memasang kuda-kuda bertahan!")
@@ -236,7 +324,7 @@ class BattleSystem:
 
     def execute_npc_turn(self) -> Optional[str]:
         """Mengeksekusi giliran NPC menggunakan AI Solver."""
-        if self.is_finished or not self.state.is_npc_turn:
+        if self.is_finished or not self.state.is_npc_turn or self.is_locked:
             return None
 
         best_action, best_score, stats = self.ai_solver.select_best_action(
@@ -261,11 +349,13 @@ class BattleSystem:
 
         if best_action == ACTION_ATTACK:
             dmg = old_player_hp - self.state.player_hp
-            self.log(f"NPC: Menyerang biasa! Memberi {dmg} damage.")
+            def_str = f" (DEF -{self.state.player_def_bonus})" if self.state.player_def_bonus > 0 else ""
+            self.log(f"NPC: Menyerang biasa! Memberi {dmg} damage{def_str}.")
             self._set_action_text("NPC", ACTION_ATTACK, f"(-{dmg} HP)")
         elif best_action == ACTION_HEAVY:
             dmg = old_player_hp - self.state.player_hp
-            self.log(f"NPC: Serangan Telak! Memberi {dmg} damage!")
+            def_str = f" (DEF -{self.state.player_def_bonus})" if self.state.player_def_bonus > 0 else ""
+            self.log(f"NPC: Serangan Telak! Memberi {dmg} damage{def_str}!")
             self._set_action_text("NPC", ACTION_HEAVY, f"(-{dmg} HP)")
         elif best_action == ACTION_DEFEND:
             self.log("NPC: Bersiap bertahan menangkis serangan!")
@@ -286,8 +376,36 @@ class BattleSystem:
                 active.current_hp = 0
             next_npc = self.squad.advance_to_next()
             if next_npc:
+                # Opsi A: Second Wind / Tag-In Reward untuk Player
+                heal_amount = min(45, self.state.player_max_hp - self.state.player_hp)
+                self.state.player_hp += heal_amount
+                self.state.player_potions = min(MAX_POTIONS, self.state.player_potions + 1)
+                self.state.player_heavy_cd = 0
+                self.last_second_wind_heal = heal_amount
+
+                # Sistem Rampasan Perang (Spoils of War): Dapatkan item dari musuh yang tumbang!
+                loot = self._get_spoils_of_war(active)
+                self.state.player_atk_bonus += loot["atk_bonus"]
+                self.state.player_def_bonus += loot["def_bonus"]
+                if loot.get("potions", 0) > 0:
+                    self.state.player_potions = min(MAX_POTIONS, self.state.player_potions + loot["potions"])
+                self.last_loot = loot
+
+                if hasattr(self, "player") and self.player:
+                    self.player.persistent_hp = self.state.player_hp
+                    self.player.persistent_potions = self.state.player_potions
+                    self.player.atk_bonus = self.state.player_atk_bonus
+                    self.player.def_bonus = self.state.player_def_bonus
+                    if hasattr(self.player, "inventory") and isinstance(self.player.inventory, list):
+                        if loot["name"] not in self.player.inventory:
+                            self.player.inventory.append(loot["name"])
+
                 self.log(f"💥 {active.name if active else 'NPC'} Tumbang! {next_npc.name} masuk ke arena duel!")
+                self.log(f"✨ SECOND WIND! Player pulih +{heal_amount} HP, +1 Potion, Cooldown Heavy Attack siap!")
+                self.log(f"🎁 RAMPASAN PERANG: Merebut {loot['name']}! ({loot['desc']})")
+                self._set_action_text("PLAYER", "SECOND WIND!", f"(+{heal_amount} HP, +1 Pot)")
                 self._set_action_text("NPC", "TAG-IN!", next_npc.name)
+
                 # Sinkronisasi state duel ke karakter NPC baru
                 self.state.npc_hp = next_npc.current_hp
                 self.state.npc_max_hp = next_npc.max_hp
@@ -297,6 +415,10 @@ class BattleSystem:
                 self.state.npc_defending = False
                 self.state.npc_heavy_cd = 0
                 self.eval_mode = next_npc.eval_profile
+
+                # Panggil hook / callback animasi tag-in summon
+                if hasattr(self, "on_tag_in") and callable(self.on_tag_in):
+                    self.on_tag_in(active, next_npc, heal_amount, loot)
                 return
 
         # 2. Kondisi duel benar-benar berakhir
@@ -316,3 +438,16 @@ class BattleSystem:
             else:
                 self.winner = "PLAYER"
                 self.log("🏆 Selamat! Seluruh tim NPC berhasil dikalahkan!")
+                final_active = self.squad.get_active_member() if self.squad else None
+                if final_active:
+                    final_loot = self._get_spoils_of_war(final_active)
+                    self.state.player_atk_bonus += final_loot["atk_bonus"]
+                    self.state.player_def_bonus += final_loot["def_bonus"]
+                    if hasattr(self, "player") and self.player:
+                        self.player.atk_bonus = self.state.player_atk_bonus
+                        self.player.def_bonus = self.state.player_def_bonus
+                        if hasattr(self.player, "inventory") and isinstance(self.player.inventory, list):
+                            if final_loot["name"] not in self.player.inventory:
+                                self.player.inventory.append(final_loot["name"])
+                    self.log(f"🏆 RAMPASAN FINAL: Merebut {final_loot['name']}! ({final_loot['desc']})")
+                    self.last_loot = final_loot

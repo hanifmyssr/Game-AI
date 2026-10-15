@@ -13,10 +13,10 @@ CLASS_DISPLAY_NAMES = {
     "ranger": "Ranger (Kuro - Pemanah)",
     "mage": "Mage (Shiro - Penyihir)",
     "tank": "Tank (Penahan)",
-    "assassin": "Assassin (Penyelinap)",
+    "assassin": "Assassin (Kage - Penyelinap)",
 }
 
-DEFAULT_NAMES = ["Oyen", "Kuro", "Shiro"]
+DEFAULT_NAMES = ["Oyen", "Kuro", "Shiro", "Kage"]
 
 
 class NPCMember:
@@ -50,7 +50,7 @@ class NPCMember:
         portrait_map = {
             "warrior": "portrait_warrior.png",
             "tank": "portrait_warrior.png",
-            "assassin": "portrait_ranger.png",
+            "assassin": "portrait_assassin.png",
             "mage": "portrait_mage.png",
             "ranger": "portrait_ranger.png",
         }
@@ -113,7 +113,7 @@ class NPCSquad:
             elif ctype == "tank":
                 base_name = "Oyen"
             elif ctype == "assassin":
-                base_name = "Kuro"
+                base_name = "Kage"
             else:
                 base_name = DEFAULT_NAMES[i % len(DEFAULT_NAMES)]
             member_name = f"{base_name} the {ctype.capitalize()}"
@@ -133,6 +133,12 @@ class NPCSquad:
             members = [NPCMember("Oyen the Warrior", "warrior", 100, 2, 0, 0, "BALANCED")]
 
         return cls(members)
+
+    def reset(self):
+        """Memulihkan seluruh anggota squad ke kondisi awal (HP maksimal & frontline awal)."""
+        self.active_index = 0
+        for m in self.members:
+            m.current_hp = m.max_hp
 
     def get_active_member(self) -> Optional[NPCMember]:
         if 0 <= self.active_index < len(self.members):

@@ -652,6 +652,10 @@ Ditampilkan pada kartu squad di **Pre-Battle Overlay**:
    * **Fungsi:** Avatar kartu NPC bertipe Ranger (Seimbang, gesit).
    * **Prompt:** `Front-facing portrait avatar of an agile cat rogue ranger wearing a green hooded cloak and leather eyepatch, 16-bit pixel art style, RPG character portrait badge, isolated on black background, 1:1 aspect ratio.`
 
+9. **`portrait_assassin.png`** (Kelas: Assassin)
+   * **Fungsi:** Avatar kartu NPC bertipe Assassin (Burst damage kritis tinggi, lincah mematikan).
+   * **Prompt:** `Front-facing portrait avatar badge of a stealth cat ninja assassin named Kage, sleek dark charcoal fur, wearing a black shinobi cowl and dark face mask with striking glowing purple eyes, 16-bit pixel art style, RPG character portrait badge, centered, isolated on pure black background, 1:1 aspect ratio.`
+
 > [!NOTE]
 > Semua aset di atas akan digenerate ke format gambar resolusi persegi (1:1), kemudian di-convert dan disimpan dengan transparan background ke folder `assets/items/` dan `assets/portraits/` saat fase integrasi UI dimulai.
 
@@ -746,16 +750,64 @@ Bagian ini melengkapi perancangan game agar ekosistem permainannya terasa hidup 
 ### 13.9 Aset Visual Karakter Full-Body Battle Sprites (Selesai Diterapkan ✅)
 - **Eliminasi "Bentuk Kartu Melayang" di Mode Duel:**
   - Sebelumnya, arena pertempuran merender avatar portrait kotak (112x112 px) yang tampak seperti kartu profil.
-  - Telah di-*generate* dan diproses 4 aset **Full-Body Battle Sprites** (pixel-art 16-bit JRPG dengan background transparan bersih via BFS exterior edge flood-fill):
+  - Telah di-*generate* dan diproses 5 aset **Full-Body Battle Sprites** (pixel-art 16-bit JRPG dengan background transparan bersih via BFS exterior edge flood-fill):
     1. **Bolu (Player):** Kucing putih pahlawan menghadap ke kanan, mengenakan bandana jubah merah, memegang pedang & perisai kayu (`assets/battle_sprites/battle_bolu.png`).
     2. **Oyen (Warrior):** Kucing oranye ksatria menghadap ke kiri, mengenakan zirah pelat perak lengkap, memegang pedang baja & tameng logam (`assets/battle_sprites/battle_warrior.png`).
-    3. **Kuro (Ranger):** Kucing hitam rogue menghadap ke kiri, mengenakan jubah bertudung hijau hutan dan zirah kulit, memegang busur panah tempur (`assets/battle_sprites/battle_ranger.png`).
+    3. **Kuro (Ranger):** Kucing hitam rogue pemanah menghadap ke kiri, mengenakan jubah bertudung hijau hutan dan zirah kulit, memegang busur panah tempur (`assets/battle_sprites/battle_ranger.png`).
     4. **Shiro (Mage):** Kucing putih penyihir menghadap ke kiri, mengenakan jubah & topi penyihir biru malam berbintang emas, memegang tongkat kristal bercahaya (`assets/battle_sprites/battle_mage.png`).
+    5. **Kage (Assassin):** Kucing ninja abu-gelap penyelinap menghadap ke kiri, mengenakan busana shinobi hitam & masker kain, mata ungu menyala, memegang belati kembar beracun (`assets/battle_sprites/battle_assassin.png`).
 - **Integrasi Arena Duel & Pre-Battle:**
   - Di **Battle Arena**, kedua karakter berdiri berhadapan secara proporsional (tinggi ~135 px) dengan efek getar hit reaksi yang dinamis.
   - Di **Pre-Battle Arena**, kartu Bolu dan setiap kartu anggota squad musuh menampilkan miniatur siluet petarung penuh (*full-body character thumbnail*).
 - **Perbaikan Ergonomi Battle Log:**
   - Kotak *Battle Log* diletakkan di bagian terbawah layar (`h - log_h - 14`) dengan tombol modal *Decision Tree* di atasnya, menghasilkan arena duel yang sangat luas, bersih, dan memanjakan mata.
+
+### 13.10 Keseimbangan Gauntlet Duel, Second Wind, & Rampasan Perang (Spoils of War) (Selesai Diterapkan ✅)
+- **Tantangan Permainan Gauntlet Squad:**
+  - Menghadapi 2–3 NPC berturut-turut dalam satu pertempuran menghadirkan tantangan ketahanan sumber daya (*attrition*). Tanpa mekanisme pemulihan, pemain hampir dipastikan kehabisan HP dan ramuan saat menghadapi lawan kedua atau ketiga.
+- **Mekanik 1: Second Wind (Pemulihan Ronde Tag-In):**
+  - Setiap kali pemain berhasil menumbangkan 1 anggota squad NPC:
+    - **HP Recovery:** Pulih sebesar **+45 HP** (dibatasi `max_hp`).
+    - **Potion Refill:** Stok Potion terisi ulang **+1 botol** (maksimal 3).
+    - **Cooldown Reset:** Cooldown *Heavy Attack* pemain di-reset menjadi **0 (Siap)**.
+    - **Visual Feedback:** Notifikasi teks aksi zamrud melayang `SECOND WIND! (+45 HP, +1 Pot)` dan efek partikel ramuan hijau di atas Bolu.
+- **Mekanik 2: Rampasan Perang (Spoils of War / Roguelike Boon):**
+  - Pemain yang menumbangkan NPC berhak merebut perlengkapan musuh untuk meningkatkan stat tempur melawan petarung berikutnya:
+    - **Warrior Tumbang:** Menjatuhkan *Pedang Ksatria Oyen* (**+4 ATK, +1 DEF**).
+    - **Ranger Tumbang:** Menjatuhkan *Busur Presisi Kuro* (**+3 ATK, +1 Potion**).
+    - **Assassin Tumbang:** Menjatuhkan *Belati Bayangan Kage* (**+5 ATK**).
+    - **Mage Tumbang:** Menjatuhkan *Tongkat Sihir Shiro* (**+3 ATK, +2 DEF**).
+  - **Tampilan UI:** Banner pop-up animasi elegan *“⚔️ RAMPASAN PERANG DIPEROLEH!”* berlatar gelap semi-transparan dengan border bercahaya sesuai warna kelas karakter.
+  - **Proyeksi Real-Time:** Angka damage terproyeksi pada tombol aksi pemain (`Attack (X)`, `Heavy (Y)`) langsung meningkat secara instan di layar.
+- **Kesesuaian Teoretis AI (CSP, Local Search, & Minimax):**
+  - **Terhadap CSP (Tahap 4):** Sama sekali **tidak melanggar CSP**. Aturan constraint C1–C8 mengatur pembentukan legalitas squad lawan pada fase Pre-Battle. Peningkatan stat internal pemain tidak memodifikasi batasan validitas squad yang telah sah.
+  - **Terhadap Local Search (Tahap 3):** Memperkuat **Dynamic Difficulty Adjustment (DDA)**. Stat ATK/DEF yang diraih pemain tersimpan secara persistent (`player.atk_bonus`, `player.def_bonus`). Pada pertempuran berikutnya di peta, modul `npc_config_optimizer.py` otomatis membaca stat pemain yang lebih tangguh melalui `player_context` dan mengadaptasikan target tingkat kesulitan squad baru yang seimbang.
+  - **Terhadap Minimax & Alpha-Beta (Tahap 2):** Algoritma *game tree search* pada NPC ronde berikutnya otomatis mengevaluasi `player_atk_bonus` yang baru ke dalam fungsi evaluasi daun (*leaf evaluation*). Akibatnya, AI musuh ronde berikutnya bertindak lebih waspada (lebih responsif menangkis/meminum potion) terhadap peningkatan kekuatan pemain.
+
+### 13.11 Modal Showcase Rampasan Perang Berlatar Gelap & Tag-In Terkendali (Selesai Diterapkan ✅)
+- **Latar Belakang & Masalah User Experience:**
+  - Sebelumnya, notifikasi rampasan perang hanya ditampilkan berupa banner mengambang kecil di bagian atas layar selama beberapa detik, sementara animasi kartu musuh berikutnya langsung meluncur. Pemain sering kali tidak sempat melihat senjata apa yang didapat dan berapa peningkatan stat yang diperoleh.
+- **Implementasi Modal Dialog Berlatar Gelap (Dimmed Backdrop):**
+  - **Layar Gelap Pekat (Dimmed Overlay):** Saat musuh tumbang, seluruh layar duel arena diselimuti bayangan gelap pekat (`(4, 6, 12, 225)`), memfokuskan 100% perhatian pemain ke artefak senjata yang diraih.
+  - **Kotak Modal Elegan di Tengah Layar (530x390 px):**
+    - **Header Badge:** `⚔️ RAMPASAN PERANG DIPEROLEH! ⚔️` dengan lis emas kemilau.
+    - **Keterangan Penumbangan:** Menampilkan nama musuh yang berhasil ditumbangkan (misal: *“Bolu berhasil menumbangkan Oyen!”*).
+    - **Frame Showcase Item (108x108 px):** Bingkai bercahaya di tengah menampilkan gambar aset item beresolusi tinggi (96x96 px) sesuai kelas lawan:
+      - *Pedang Ksatria Oyen* (`assets/items/item_sword.png`)
+      - *Busur Presisi Kuro* (`assets/items/item_bow.png`)
+      - *Belati Bayangan Kage* (`assets/items/item_dagger.png`)
+      - *Tongkat Sihir / Elixir Mana Shiro* (`assets/items/mega_potion.png`)
+      - *Perisai Tempur Tank* (`assets/items/item_shield.png`)
+    - **Nama Senjata & Lencana Efek Bonus:** Badge hijau zamrud bertuliskan `⚡ BONUS: +4 ATK, +1 DEF` (atau stat relevan lainnya) beserta deskripsi kegunaan senjata.
+    - **Tombol Konfirmasi Interaktif:** Tombol berdenyut `▶ Tekan [ENTER] / [SPASI] untuk Hadapi Lawan Berikutnya` (atau klik mouse di mana saja pada layar).
+- **Penundaan Animasi Tag-In (Deferred Summon Flow):**
+  - Animasi kartu musuh berikutnya yang meluncur ke arena (`_start_card_summon_anim`) ditahan sepenuhnya selama modal rampasan perang terbuka.
+  - Duel terkunci (`is_locked = True`), giliran NPC berhenti sejenak.
+  - Begitu pemain menekan tombol `[ENTER]`, `[SPASI]`, atau melakukan klik mouse:
+    1. Modal tertutup secara mulus.
+    2. Animasi kartu musuh berikutnya meluncur ke tengah arena, disusul dentuman ledakan partikel 360 derajat yang mengubah kartu menjadi karakter utuh.
+    3. Duel berlanjut dengan status stat baru pemain yang sudah diperkuat.
+
 
 
 

@@ -129,8 +129,15 @@ class NPCOptimizer:
                     # Otomatis sesuaikan jika unary constraint butuh penyesuaian dasar
                     if new_ctype == "tank" and cand["members"][idx]["hp"] < 90:
                         cand["members"][idx]["hp"] = 90
-                    if new_ctype == "assassin" and cand["members"][idx]["atk_bonus"] < 10:
-                        cand["members"][idx]["atk_bonus"] = 10
+                    if new_ctype == "ranger" and cand["members"][idx]["atk_bonus"] < 5:
+                        cand["members"][idx]["atk_bonus"] = 5
+                    if new_ctype == "assassin":
+                        if cand["members"][idx]["atk_bonus"] < 10:
+                            cand["members"][idx]["atk_bonus"] = 10
+                        if cand["members"][idx]["hp"] > 90:
+                            cand["members"][idx]["hp"] = 80
+                    if new_ctype == "mage" and cand["members"][idx]["hp"] > 90:
+                        cand["members"][idx]["hp"] = 80
                     if self.csp.validate_config(cand)[0]:
                         neighbours.append(cand)
 
@@ -143,11 +150,11 @@ class NPCOptimizer:
                 new_type = available_types[0]
                 new_member = {
                     "char_type": new_type,
-                    "hp": 90 if new_type == "tank" else 60,
+                    "hp": 90 if new_type == "tank" else (70 if new_type == "assassin" else 60),
                     "potions": 1,
-                    "atk_bonus": 10 if new_type == "assassin" else 0,
+                    "atk_bonus": 10 if new_type == "assassin" else (5 if new_type == "ranger" else 0),
                     "def_bonus": 0,
-                    "eval_profile": "DEFENSIVE" if new_type == "tank" else "BALANCED",
+                    "eval_profile": "DEFENSIVE" if new_type == "tank" else ("AGGRESSIVE" if new_type == "assassin" else "BALANCED"),
                 }
                 cand["members"].append(new_member)
                 cand["npc_count"] = len(cand["members"])

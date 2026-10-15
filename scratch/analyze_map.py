@@ -1,6 +1,8 @@
 import json
+import os
 
-with open("data/map.json", "r", encoding="utf-8") as f:
+map_path = "data/map_tubes.json" if os.path.exists("data/map_tubes.json") else "data/map.json"
+with open(map_path, "r", encoding="utf-8") as f:
     data = json.load(f)
 
 ground_coords = set()

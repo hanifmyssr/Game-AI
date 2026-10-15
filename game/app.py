@@ -18,6 +18,7 @@ from .npc_config_csp import NPCConfigCSP
 from .npc_config_optimizer import NPCOptimizer
 from .npc_squad import NPCSquad, NPCMember
 from .battle_vfx import BattleVFXManager
+from .pre_battle_visualizer import PreBattleVisualizerModal
 
 MOUSEWHEEL = getattr(pygame, "MOUSEWHEEL", 1027)
 K_EQUALS = getattr(pygame, "K_EQUALS", 61)
@@ -180,11 +181,14 @@ class App:
         self.btn_log_down = pygame.Rect(0, 0, 0, 0)
 
         # Tombol interaktif Pre-Battle & Battle
+        self.btn_pre_battle_inspect = pygame.Rect(0, 0, 0, 0)
         self.btn_pre_battle_start = pygame.Rect(0, 0, 0, 0)
         self.btn_pre_battle_reroll = pygame.Rect(0, 0, 0, 0)
         self.btn_pre_battle_cancel = pygame.Rect(0, 0, 0, 0)
         self.btn_tree_modal = pygame.Rect(0, 0, 0, 0)
         self.reroll_toast_timer = 0.0
+        self.pre_battle_visualizer = PreBattleVisualizerModal()
+        self.overlay.on_open_ai_inspector = self.pre_battle_visualizer.toggle
 
         self.player = Player(self.map, self.events)
 
@@ -253,11 +257,13 @@ class App:
     def _build_fonts(self):
         fonts = {}
         try:
+            fonts["tiny"] = pygame.font.SysFont(["consolas", "segoeui", "arial"], 11, bold=True)
             fonts["sm"] = pygame.font.SysFont(["consolas", "segoeui", "arial"], 14)
             fonts["bubble"] = pygame.font.SysFont(["consolas", "segoeui", "arial"], 14, bold=True)
             fonts["title"] = pygame.font.SysFont(["segoeui", "arial"], 17, bold=True)
             fonts["huge"] = pygame.font.SysFont(["segoeui", "arial"], 24, bold=True)
         except (OSError, RuntimeError):
+            fonts["tiny"] = pygame.font.Font(None, 16)
             fonts["sm"] = pygame.font.Font(None, 20)
             fonts["bubble"] = pygame.font.Font(None, 22)
             fonts["title"] = pygame.font.Font(None, 26)
@@ -357,6 +363,8 @@ class App:
             # State menunggu input player untuk mulai/re-roll
             if self.reroll_toast_timer > 0:
                 self.reroll_toast_timer = max(0.0, self.reroll_toast_timer - dt)
+            if self.pre_battle_visualizer.is_open:
+                self.pre_battle_visualizer.update(dt)
         else:
             # Mode Battle: Update animasi pemanggilan kartu (tag-in summon animation)
             if self.card_summon_anim:
@@ -454,13 +462,31 @@ class App:
             "player_atk_bonus": self.player.atk_bonus,
             "player_def_bonus": self.player.def_bonus,
         }
+        init_state = None if randomize else getattr(self.optimizer, "last_csp_initial_state", None)
         cfg, stats = self.optimizer.optimize(
-            self.selected_ls_algo, player_context=player_ctx, randomize_start=randomize
+            self.selected_ls_algo, initial_state=init_state, player_context=player_ctx, randomize_start=randomize
         )
         self.current_squad_config = cfg
         self.current_optimizer_stats = stats
         self.current_squad = NPCSquad.from_config(cfg)
         self.overlay.set_pre_battle_data(cfg, stats, self.selected_ls_algo)
+
+        # Sinkronisasi data ke modal visualizer AI
+        csp_solver = self.optimizer.csp
+        if randomize or not self.pre_battle_visualizer.csp_tree:
+            self.pre_battle_visualizer.set_csp_data(
+                csp_solver.search_tree,
+                csp_solver.timeline_steps,
+                csp_solver.solution_path_ids,
+                csp_solver.tree_width,
+                csp_solver.tree_height,
+            )
+        self.pre_battle_visualizer.set_ls_data(
+            self.optimizer.history,
+            self.selected_ls_algo,
+            self.optimizer.target_difficulty,
+        )
+
         if randomize:
             self.reroll_toast_timer = 1.4
 
@@ -585,7 +611,12 @@ class App:
                 self._apply_viewport()
             elif event.type == MOUSEWHEEL:
                 m_pos = pygame.mouse.get_pos()
-                if self.game_mode == "BATTLE":
+                if self.game_mode == "PRE_BATTLE":
+                    if self.pre_battle_visualizer.is_open:
+                        self.pre_battle_visualizer.handle_event(event)
+                    else:
+                        self.overlay.handle_event(event)
+                elif self.game_mode == "BATTLE":
                     # Scroll mousewheel pada Decision Tree Overlay (prioritas utama jika aktif)
                     if self.overlay.tree_overlay.visible and self.overlay.tree_overlay.panel_rect.collidepoint(m_pos):
                         self.overlay.tree_overlay.handle_event(event)
@@ -603,7 +634,12 @@ class App:
             elif event.type == MOUSEBUTTONDOWN:
                 pos = event.pos
                 if self.game_mode == "PRE_BATTLE":
-                    if self.btn_pre_battle_start.collidepoint(pos):
+                    if self.pre_battle_visualizer.is_open:
+                        if self.pre_battle_visualizer.handle_event(event):
+                            continue
+                    if self.btn_pre_battle_inspect.collidepoint(pos):
+                        self.pre_battle_visualizer.toggle()
+                    elif self.btn_pre_battle_start.collidepoint(pos):
                         self.enter_battle()
                     elif self.btn_pre_battle_reroll.collidepoint(pos):
                         self._run_optimization(randomize=True)
@@ -637,7 +673,10 @@ class App:
                         return
                     self.overlay.handle_event(event)
             elif event.type in (MOUSEBUTTONUP, MOUSEMOTION):
-                if self.game_mode == "BATTLE":
+                if self.game_mode == "PRE_BATTLE":
+                    if self.pre_battle_visualizer.is_open:
+                        self.pre_battle_visualizer.handle_event(event)
+                elif self.game_mode == "BATTLE":
                     self.overlay.tree_overlay.handle_event(event)
             elif event.type == KEYDOWN:
                 self._handle_key(event.key)
@@ -654,6 +693,9 @@ class App:
                 self.exit_battle()
                 return
             elif self.game_mode == "PRE_BATTLE":
+                if self.pre_battle_visualizer.is_open:
+                    self.pre_battle_visualizer.toggle()
+                    return
                 self.exit_battle()
                 return
             self.running = False
@@ -667,7 +709,31 @@ class App:
             return
 
         if self.game_mode == "PRE_BATTLE":
-            if key in (K_SPACE, K_RETURN):
+            if self.pre_battle_visualizer.is_open:
+                if key == K_t:
+                    self.pre_battle_visualizer.toggle()
+                    return
+                if key == K_SPACE:
+                    self.pre_battle_visualizer.toggle_play()
+                    return
+                if key == K_LEFT:
+                    self.pre_battle_visualizer.step_backward()
+                    return
+                if key == K_RIGHT:
+                    self.pre_battle_visualizer.step_forward()
+                    return
+                if key in (K_1, K_2):
+                    self.pre_battle_visualizer.active_tab = "CSP" if key == K_1 else "LOCAL_SEARCH"
+                    return
+                if key == K_r:
+                    self._run_optimization(randomize=True)
+                    return
+                return
+
+            if key == K_t:
+                self.pre_battle_visualizer.toggle()
+                return
+            elif key in (K_SPACE, K_RETURN):
                 self.enter_battle()
             elif key == K_r:
                 self._run_optimization(randomize=True)
@@ -791,6 +857,7 @@ class App:
             if self.player.call_bubble_visible:
                 self._draw_call_bubble()
             self._draw_npc_offscreen_indicator()
+            self._draw_obtained_items_hud()
             if self.gacha_active or getattr(self, "gacha_showcase", None) or self.gacha_message_timer > 0:
                 self._draw_gacha_popup()
         elif self.game_mode == "PRE_BATTLE":
@@ -812,6 +879,10 @@ class App:
         # 4. Gambar modal rampasan perang di paling atas (menutup seluruh layar dengan dramatis)
         if self.game_mode == "BATTLE" and getattr(self, "loot_modal", None):
             self._draw_loot_modal()
+
+        # 5. Gambar modal visualizer Pohon CSP & Local Search jika terbuka di mode PRE_BATTLE
+        if self.game_mode == "PRE_BATTLE" and self.pre_battle_visualizer.is_open:
+            self.pre_battle_visualizer.draw(self.screen, self.fonts)
 
         pygame.display.flip()
 
@@ -1769,25 +1840,39 @@ class App:
 
             m_y += member_card_h + gap
 
-        # Bagian Bawah: Tombol CTA Interaktif di Dasar Layar
-        btn_w = 210
-        self.btn_pre_battle_start = pygame.Rect(area_cx - btn_w - 115, btn_y, btn_w, btn_h)
-        self.btn_pre_battle_reroll = pygame.Rect(area_cx - btn_w // 2, btn_y, btn_w, btn_h)
-        self.btn_pre_battle_cancel = pygame.Rect(area_cx + btn_w // 2 + 15, btn_y, btn_w - 30, btn_h)
+        # Bagian Bawah: 4 Tombol CTA Interaktif di Dasar Layar
+        btn_w = 185
+        btn_gap = 12
+        total_w = 4 * btn_w + 3 * btn_gap
+        start_x = area_cx - total_w // 2
 
+        self.btn_pre_battle_inspect = pygame.Rect(start_x, btn_y, btn_w, btn_h)
+        self.btn_pre_battle_start = pygame.Rect(start_x + (btn_w + btn_gap), btn_y, btn_w, btn_h)
+        self.btn_pre_battle_reroll = pygame.Rect(start_x + 2 * (btn_w + btn_gap), btn_y, btn_w, btn_h)
+        self.btn_pre_battle_cancel = pygame.Rect(start_x + 3 * (btn_w + btn_gap), btn_y, btn_w, btn_h)
+
+        # 1. Tombol Buka Pohon CSP & Optimasi [T]
+        pygame.draw.rect(self.screen, (26, 75, 120), self.btn_pre_battle_inspect, border_radius=6)
+        pygame.draw.rect(self.screen, (60, 160, 235), self.btn_pre_battle_inspect, 1, border_radius=6)
+
+        # 2. Tombol Mulai Duel [SPASI]
         pygame.draw.rect(self.screen, (36, 135, 75), self.btn_pre_battle_start, border_radius=6)
         pygame.draw.rect(self.screen, (45, 160, 90), self.btn_pre_battle_start, 1, border_radius=6)
 
+        # 3. Tombol Acak Ulang [R]
         pygame.draw.rect(self.screen, (185, 95, 30), self.btn_pre_battle_reroll, border_radius=6)
         pygame.draw.rect(self.screen, (220, 125, 45), self.btn_pre_battle_reroll, 1, border_radius=6)
 
+        # 4. Tombol Batal [ESC]
         pygame.draw.rect(self.screen, (45, 54, 70), self.btn_pre_battle_cancel, border_radius=6)
         pygame.draw.rect(self.screen, (70, 84, 108), self.btn_pre_battle_cancel, 1, border_radius=6)
 
+        t_inspect = font_bubble.render("[T] 🌳 Pohon CSP & LS", True, (240, 250, 255))
         t_start = font_bubble.render("[SPASI] Mulai Duel", True, (255, 255, 255))
-        t_reroll = font_bubble.render("[R] Acak Ulang Skuad", True, (255, 255, 255))
-        t_cancel = font_bubble.render("[ESC] Kembali ke Peta", True, (220, 228, 240))
+        t_reroll = font_bubble.render("[R] Acak Ulang", True, (255, 255, 255))
+        t_cancel = font_bubble.render("[ESC] Kembali", True, (220, 228, 240))
 
+        self.screen.blit(t_inspect, (self.btn_pre_battle_inspect.centerx - t_inspect.get_width() // 2, self.btn_pre_battle_inspect.centery - t_inspect.get_height() // 2))
         self.screen.blit(t_start, (self.btn_pre_battle_start.centerx - t_start.get_width() // 2, self.btn_pre_battle_start.centery - t_start.get_height() // 2))
         self.screen.blit(t_reroll, (self.btn_pre_battle_reroll.centerx - t_reroll.get_width() // 2, self.btn_pre_battle_reroll.centery - t_reroll.get_height() // 2))
         self.screen.blit(t_cancel, (self.btn_pre_battle_cancel.centerx - t_cancel.get_width() // 2, self.btn_pre_battle_cancel.centery - t_cancel.get_height() // 2))
@@ -1828,6 +1913,240 @@ class App:
             else:
                 pygame.draw.rect(self.screen, (85, 75, 65), rect, border_radius=4)
                 pygame.draw.rect(self.screen, (120, 110, 100), rect, width=1, border_radius=4)
+
+    def _draw_obtained_items_hud(self):
+        """Menampilkan panel HUD item yang didapat di bagian bawah kiri layar map (mode searching)."""
+        w, h = self.screen.get_size()
+        panel_w = config.DEBUG_LEFT_PANEL_WIDTH
+        hud_x = panel_w + 14
+        hud_h = 78
+
+        font_tiny = self.fonts.get("tiny", self.fonts.get("sm"))
+        font_sm = self.fonts.get("sm", font_tiny)
+        font_bubble = self.fonts.get("bubble", font_sm)
+
+        inventory = self.player.inventory or []
+
+        name_to_meta = {
+            "health_potion": {
+                "key": "health_potion",
+                "name": "Health Potion",
+                "badge": "+1 Ramuan",
+                "badge_mini": f"x{self.player.persistent_potions}",
+                "desc": "Ramuan pemulih HP instan untuk duel pertarungan.",
+                "color": (65, 215, 120),
+            },
+            "mega_potion": {
+                "key": "mega_potion",
+                "name": "Mega Potion",
+                "badge": "+50 HP & +1 Pot",
+                "badge_mini": "MEGA",
+                "desc": "Ramuan sakti pemulih 50 HP seketika dan +1 ramuan.",
+                "color": (80, 225, 230),
+            },
+            "item_sword": {
+                "key": "item_sword",
+                "name": "Pedang Ksatria",
+                "badge": "+5 ATK Bonus",
+                "badge_mini": "+5",
+                "desc": "Menempa kekuatan hero, menaikkan damage serangan.",
+                "color": (255, 140, 50),
+            },
+            "item_shield": {
+                "key": "item_shield",
+                "name": "Perisai Baja",
+                "badge": "+4 DEF Flat",
+                "badge_mini": "+4",
+                "desc": "Pertahanan kokoh memangkas damage dari musuh.",
+                "color": (75, 160, 245),
+            },
+            "item_boots": {
+                "key": "item_boots",
+                "name": "Boots Lincah",
+                "badge": "+Kelincahan",
+                "badge_mini": "SPD",
+                "desc": "Sepatu pengembara legendaris penambah kelincahan.",
+                "color": (240, 200, 60),
+            },
+            "item_bow": {
+                "key": "item_bow",
+                "name": "Busur Pemburu",
+                "badge": "+4 ATK Jarak Jauh",
+                "badge_mini": "+4",
+                "desc": "Senjata jarak jauh presisi tinggi menembus musuh.",
+                "color": (160, 230, 70),
+            },
+            "item_dagger": {
+                "key": "item_dagger",
+                "name": "Belati Bayangan",
+                "badge": "+Crit Rate",
+                "badge_mini": "CRT",
+                "desc": "Belati ringan mematikan menembus titik lemah.",
+                "color": (210, 80, 240),
+            },
+            "Pedang Ksatria Oyen": {
+                "key": "item_sword",
+                "name": "Pedang Ksatria Oyen",
+                "badge": "+15 ATK Bonus",
+                "badge_mini": "+15",
+                "desc": "Rampasan perang dari Oyen sang Warrior.",
+                "color": (255, 140, 50),
+            },
+            "Busur Presisi Kuro": {
+                "key": "item_bow",
+                "name": "Busur Presisi Kuro",
+                "badge": "+10 ATK Bonus",
+                "badge_mini": "+10",
+                "desc": "Rampasan perang dari Kuro sang Ranger.",
+                "color": (160, 230, 70),
+            },
+            "Belati Bayangan Kage": {
+                "key": "item_dagger",
+                "name": "Belati Bayangan Kage",
+                "badge": "+12 ATK Bonus",
+                "badge_mini": "+12",
+                "desc": "Rampasan perang dari Kage sang Assassin.",
+                "color": (210, 80, 240),
+            },
+            "Tongkat Sihir Shiro": {
+                "key": "mega_potion",
+                "name": "Tongkat Sihir Shiro",
+                "badge": "+2 Ramuan & HP",
+                "badge_mini": "MEGA",
+                "desc": "Rampasan perang dari Shiro sang Mage.",
+                "color": (80, 225, 230),
+            },
+        }
+
+        slot_count = max(3, len(inventory))
+        slot_w, slot_h = 44, 44
+        slot_gap = 8
+        pad_x, pad_y = 12, 8
+
+        # Hitung kebutuhan lebar header
+        title_text = "ITEM DIDAPAT"
+        count_text = f"({len(inventory)}/3)" if len(inventory) <= 3 else f"({len(inventory)})"
+        t_surf = font_bubble.render(title_text, True, (245, 210, 85))
+        c_surf = font_sm.render(count_text, True, (170, 185, 205))
+
+        bonuses = []
+        if self.player.atk_bonus > 0:
+            bonuses.append(f"ATK +{self.player.atk_bonus}")
+        if self.player.def_bonus > 0:
+            bonuses.append(f"DEF +{self.player.def_bonus}")
+        b_surf = font_tiny.render(" • ".join(bonuses), True, (255, 185, 110)) if bonuses else None
+
+        header_req_w = t_surf.get_width() + c_surf.get_width() + 16
+        if b_surf:
+            header_req_w += b_surf.get_width() + 20
+
+        slots_total_w = slot_count * slot_w + (slot_count - 1) * slot_gap
+        min_hud_w = 260
+        hud_w = max(min_hud_w, slots_total_w + pad_x * 2, header_req_w + pad_x * 2)
+        hud_y = h - hud_h - 14
+
+        # 1. Background Container Card (Glassmorphic Dark Theme ~30% Transparan)
+        card_surf = pygame.Surface((hud_w, hud_h), SRCALPHA)
+        card_surf.fill((16, 20, 28, 165))
+        pygame.draw.rect(card_surf, (55, 70, 95, 180), card_surf.get_rect(), 1, border_radius=10)
+        pygame.draw.line(card_surf, (90, 120, 165, 110), (10, 1), (hud_w - 10, 1), 1)
+        self.screen.blit(card_surf, (hud_x, hud_y))
+
+        # 2. Header Bar
+        self.screen.blit(t_surf, (hud_x + pad_x, hud_y + 6))
+        self.screen.blit(c_surf, (hud_x + pad_x + t_surf.get_width() + 6, hud_y + 6))
+        if b_surf:
+            self.screen.blit(b_surf, (hud_x + hud_w - pad_x - b_surf.get_width(), hud_y + 8))
+
+        # 3. Item Slots
+        sy = hud_y + 26
+        mouse_pos = pygame.mouse.get_pos()
+        hovered_meta = None
+        hovered_rect = None
+
+        for i in range(slot_count):
+            sx = hud_x + pad_x + i * (slot_w + slot_gap)
+            slot_rect = pygame.Rect(sx, sy, slot_w, slot_h)
+
+            if i < len(inventory):
+                raw_item = inventory[i]
+                meta = name_to_meta.get(raw_item, {
+                    "key": raw_item,
+                    "name": raw_item.replace("item_", "").replace("_", " ").title(),
+                    "badge": "Artefak",
+                    "badge_mini": "",
+                    "desc": f"Item {raw_item} dalam inventori.",
+                    "color": (240, 200, 80),
+                })
+                item_key = meta["key"]
+
+                # Background slot terisi (transparan selaras)
+                s_bg = pygame.Surface((slot_w, slot_h), SRCALPHA)
+                s_bg.fill((24, 30, 44, 165))
+                self.screen.blit(s_bg, (sx, sy))
+
+                # Border bercahaya sesuai warna rarity item
+                pygame.draw.rect(self.screen, meta["color"], slot_rect, 1, border_radius=6)
+
+                # Icon Item
+                if item_key in self.item_images:
+                    icon = pygame.transform.smoothscale(self.item_images[item_key], (30, 30))
+                    ix = sx + (slot_w - 30) // 2
+                    iy = sy + (slot_h - 30) // 2
+                    self.screen.blit(icon, (ix, iy))
+
+                # Mini badge (misal x3 potion, +5 ATK)
+                mini_label = meta.get("badge_mini", "")
+                if mini_label:
+                    m_surf = font_tiny.render(mini_label, True, (255, 255, 255))
+                    m_pad = 3
+                    mw = m_surf.get_width() + m_pad * 2
+                    mh = m_surf.get_height() + 1
+                    m_rect = pygame.Rect(slot_rect.right - mw - 2, slot_rect.bottom - mh - 2, mw, mh)
+                    pygame.draw.rect(self.screen, (15, 20, 30, 190), m_rect, border_radius=3)
+                    pygame.draw.rect(self.screen, meta["color"], m_rect, 1, border_radius=3)
+                    self.screen.blit(m_surf, (m_rect.x + m_pad, m_rect.y))
+
+                # Cek hover jika tidak sedang gacha modal
+                if not self.gacha_active and not getattr(self, "gacha_showcase", None):
+                    if slot_rect.collidepoint(mouse_pos):
+                        hovered_meta = meta
+                        hovered_rect = slot_rect
+            else:
+                # Slot Kosong
+                s_bg = pygame.Surface((slot_w, slot_h), SRCALPHA)
+                s_bg.fill((20, 24, 34, 110))
+                self.screen.blit(s_bg, (sx, sy))
+                pygame.draw.rect(self.screen, (52, 64, 84, 130), slot_rect, 1, border_radius=6)
+                q_surf = font_sm.render("?", True, (75, 90, 115))
+                self.screen.blit(q_surf, (slot_rect.centerx - q_surf.get_width() // 2, slot_rect.centery - q_surf.get_height() // 2))
+
+        # Jika inventori masih kosong, tampilkan petunjuk
+        if len(inventory) == 0:
+            hint_surf = font_tiny.render("Buka Peti [E] di Map", True, (140, 155, 175))
+            hint_x = hud_x + pad_x + slot_count * (slot_w + slot_gap) + 8
+            if hint_x + hint_surf.get_width() <= hud_x + hud_w - pad_x:
+                self.screen.blit(hint_surf, (hint_x, sy + (slot_h - hint_surf.get_height()) // 2))
+
+        # 4. Tooltip saat mouse hover di atas slot
+        if hovered_meta and hovered_rect:
+            tt_title = font_bubble.render(hovered_meta["name"], True, hovered_meta["color"])
+            tt_badge = font_tiny.render(f"• {hovered_meta['badge']}", True, (255, 230, 120))
+            tt_desc = font_tiny.render(hovered_meta["desc"], True, (215, 225, 240))
+
+            tt_w = max(tt_title.get_width() + tt_badge.get_width() + 30, tt_desc.get_width() + 20)
+            tt_h = 44
+            tt_x = max(hud_x, min(w - tt_w - 10, hovered_rect.centerx - tt_w // 2))
+            tt_y = hud_y - tt_h - 8
+
+            tt_surf = pygame.Surface((tt_w, tt_h), SRCALPHA)
+            tt_surf.fill((14, 18, 26, 245))
+            pygame.draw.rect(tt_surf, hovered_meta["color"], tt_surf.get_rect(), 1, border_radius=6)
+            self.screen.blit(tt_surf, (tt_x, tt_y))
+
+            self.screen.blit(tt_title, (tt_x + 8, tt_y + 5))
+            self.screen.blit(tt_badge, (tt_x + 14 + tt_title.get_width(), tt_y + 6))
+            self.screen.blit(tt_desc, (tt_x + 8, tt_y + 24))
 
     def _draw_gacha_popup(self):
         w, h = self.screen.get_size()
@@ -2122,19 +2441,27 @@ class App:
 
         if item == "health_potion":
             self.player.persistent_potions += 1
+            if "health_potion" not in self.player.inventory:
+                self.player.inventory.append("health_potion")
         elif item == "mega_potion":
             self.player.persistent_hp = min(100, self.player.persistent_hp + 50)
             self.player.persistent_potions += 1
+            if "mega_potion" not in self.player.inventory:
+                self.player.inventory.append("mega_potion")
         elif item == "item_sword":
             self.player.atk_bonus += 5
-            self.player.inventory.append("item_sword")
+            if "item_sword" not in self.player.inventory:
+                self.player.inventory.append("item_sword")
         elif item == "item_shield":
             self.player.def_bonus += 4
-            self.player.inventory.append("item_shield")
+            if "item_shield" not in self.player.inventory:
+                self.player.inventory.append("item_shield")
         elif item == "item_boots":
-            self.player.inventory.append("item_boots")
+            if "item_boots" not in self.player.inventory:
+                self.player.inventory.append("item_boots")
         else:
-            self.player.inventory.append(item)
+            if item not in self.player.inventory:
+                self.player.inventory.append(item)
 
         self.gacha_showcase = {
             "item_key": item,

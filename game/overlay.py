@@ -680,15 +680,21 @@ class DebugOverlay:
             surface.blit(font_sm.render(ctext, True, col), (row_rect.x + 8, cy + 2))
             cy += 21
 
-        # 5. Card: Komposisi Skuad Terbentuk (tiap member dalam container sendiri)
-        card_roster = pygame.Rect(px, self.panel_y + 400, pw, 142)
+        # 5. Tombol Pintas: Buka Inspeksi Visual Pohon CSP & Optimasi
+        self.btn_inspect_ai = pygame.Rect(px, self.panel_y + 400, pw, 32)
+        draw_card(surface, self.btn_inspect_ai, (230, 242, 255), border_color=(75, 145, 235), border_radius=6)
+        t_btn_ai = self.fonts.get("bubble", font_sm).render("🌳 BUKA POHON CSP & OPTIMASI [T]", True, (15, 85, 185))
+        surface.blit(t_btn_ai, (self.btn_inspect_ai.centerx - t_btn_ai.get_width() // 2, self.btn_inspect_ai.centery - t_btn_ai.get_height() // 2))
+
+        # 6. Card: Komposisi Skuad Terbentuk (tiap member dalam container sendiri)
+        card_roster = pygame.Rect(px, self.panel_y + 438, pw, 116)
         draw_card(surface, card_roster, config.DEBUG_CARD_BG, border_color=config.DEBUG_CARD_BORDER, border_radius=8)
 
         r_title = font_sm.render("── ANGGOTA TIM LAWAN ──", True, config.DEBUG_TEXT_SECONDARY)
-        surface.blit(r_title, (px + (pw - r_title.get_width()) // 2, card_roster.y + 6))
+        surface.blit(r_title, (px + (pw - r_title.get_width()) // 2, card_roster.y + 4))
 
-        ry = card_roster.y + 24
-        for idx, m in enumerate(members[:3]):
+        ry = card_roster.y + 20
+        for idx, m in enumerate(members[:2]):
             ctype = m.get("char_type", "warrior").capitalize()
             if ctype.lower() == "warrior":
                 n_name = "Oyen"
@@ -708,24 +714,25 @@ class DebugOverlay:
             prof_map = {"BALANCED": "BAL", "AGGRESSIVE": "AGGR", "DEFENSIVE": "DEF"}
             ev = prof_map.get(m.get("eval_profile", "BALANCED"), "BAL")
 
-            m_box = pygame.Rect(px + 8, ry, pw - 16, 34)
+            m_box = pygame.Rect(px + 8, ry, pw - 16, 32)
             draw_card(surface, m_box, config.DEBUG_CARD_ROW_BG, border_color=config.DEBUG_CARD_ROW_BORDER, border_radius=5)
             # Baris 1: Nama & Job
             l1 = f"{idx+1}. {n_name} ({ctype}) [{ev}]"
-            surface.blit(self.fonts.get("bubble", font_sm).render(l1, True, config.DEBUG_TEXT_HIGHLIGHT), (m_box.x + 6, ry + 2))
+            surface.blit(self.fonts.get("bubble", font_sm).render(l1, True, config.DEBUG_TEXT_HIGHLIGHT), (m_box.x + 6, ry + 1))
             # Baris 2: Rincian Stat
             l2 = f"HP:{hp}  Pot:{pot}  +{atk}ATK  +{df}DEF"
-            surface.blit(font_sm.render(l2, True, config.DEBUG_TEXT_PRIMARY), (m_box.x + 6, ry + 16))
-            ry += 38
+            surface.blit(font_sm.render(l2, True, config.DEBUG_TEXT_PRIMARY), (m_box.x + 6, ry + 15))
+            ry += 35
 
-        # 6. Card: Panduan Kontrol & Tombol Aksi
-        card_ctrl = pygame.Rect(px, self.panel_y + 548, pw, 114)
+        # 7. Card: Panduan Kontrol & Tombol Aksi
+        card_ctrl = pygame.Rect(px, self.panel_y + 560, pw, 134)
         draw_card(surface, card_ctrl, config.DEBUG_CARD_BG, border_color=config.DEBUG_CARD_BORDER, border_radius=8)
 
         ctrl_title = font_sm.render("── KONTROL PRE-BATTLE ──", True, config.DEBUG_TEXT_SECONDARY)
         surface.blit(ctrl_title, (px + (pw - ctrl_title.get_width()) // 2, card_ctrl.y + 6))
 
         shortcuts = [
+            ("[T]", "Buka Pohon CSP & Trajectory", (20, 110, 215)),
             ("[SPASI]", "Mulai Duel", config.DEBUG_TEXT_HIGHLIGHT),
             ("[R]", "Re-Roll AI Skuad", (215, 95, 20)),
             ("[1 - 5]", "Ganti Algo Local Search", config.DEBUG_TEXT_PRIMARY),
@@ -733,11 +740,11 @@ class DebugOverlay:
         ]
         sc_y = card_ctrl.y + 24
         for s_key, s_desc, s_col in shortcuts:
-            row_rect = pygame.Rect(px + 8, sc_y, pw - 16, 20)
+            row_rect = pygame.Rect(px + 8, sc_y, pw - 16, 19)
             draw_card(surface, row_rect, config.DEBUG_CARD_ROW_BG, border_color=config.DEBUG_CARD_ROW_BORDER, border_radius=4)
-            surface.blit(font_sm.render(f"• {s_key:<8}", True, s_col), (row_rect.x + 6, sc_y + 2))
-            surface.blit(font_sm.render(f": {s_desc}", True, config.DEBUG_TEXT_PRIMARY), (row_rect.x + 95, sc_y + 2))
-            sc_y += 22
+            surface.blit(font_sm.render(f"• {s_key:<8}", True, s_col), (row_rect.x + 6, sc_y + 1))
+            surface.blit(font_sm.render(f": {s_desc}", True, config.DEBUG_TEXT_PRIMARY), (row_rect.x + 95, sc_y + 1))
+            sc_y += 21
 
         # Gambar dropdown local search di atas elemen lainnya
         self.dropdown_ls_algo.draw(surface, self.fonts)
@@ -1158,6 +1165,11 @@ class DebugOverlay:
         if self.mode == "PRE_BATTLE":
             if self.dropdown_ls_algo.handle_event(event):
                 return True
+            if event.type == MOUSEBUTTONDOWN and getattr(event, "button", 1) == 1:
+                if getattr(self, "btn_inspect_ai", None) and self.btn_inspect_ai.collidepoint(event.pos):
+                    if callable(getattr(self, "on_open_ai_inspector", None)):
+                        self.on_open_ai_inspector()
+                        return True
             return False
 
         # Mode BATTLE

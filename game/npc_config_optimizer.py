@@ -36,13 +36,17 @@ class NPCOptimizer:
 
     def __init__(
         self,
-        target_difficulty: float = config.TARGET_DIFFICULTY_DEFAULT,
+        target_difficulty: Any = config.TARGET_DIFFICULTY_DEFAULT,
         weights: Optional[Dict[str, float]] = None,
         csp_solver: Optional[NPCConfigCSP] = None,
     ):
-        self.target_difficulty = target_difficulty
+        if isinstance(target_difficulty, NPCConfigCSP):
+            self.csp = target_difficulty
+            self.target_difficulty = config.TARGET_DIFFICULTY_DEFAULT
+        else:
+            self.target_difficulty = float(target_difficulty)
+            self.csp = csp_solver or NPCConfigCSP()
         self.weights = weights or config.DEFAULT_DIFFICULTY_WEIGHTS
-        self.csp = csp_solver or NPCConfigCSP()
 
         # Riwayat iterasi & metrik
         self.history: List[Dict[str, Any]] = []
@@ -179,22 +183,53 @@ class NPCOptimizer:
         """Hill Climbing murni (berhenti jika tidak ada tetangga dengan fitness strictly > current)."""
         current = copy.deepcopy(initial_state)
         current_fit = self.evaluate(current)
-        self.history = [{"step": 0, "fitness": current_fit, "diff": self.get_difficulty(current)}]
+        self.history = [{
+            "step": 0,
+            "event": "START",
+            "fitness": current_fit,
+            "diff": self.get_difficulty(current),
+            "state": copy.deepcopy(current),
+            "detail": "State awal legal dari solusi CSP",
+        }]
 
         for step in range(1, max_iterations + 1):
             neighbours = self.generate_legal_neighbours(current)
             if not neighbours:
+                self.history.append({
+                    "step": step,
+                    "event": "NO_NEIGHBOURS",
+                    "fitness": current_fit,
+                    "diff": self.get_difficulty(current),
+                    "state": copy.deepcopy(current),
+                    "detail": "Tidak ada neighbour legal lagi yang dapat digenerate",
+                })
                 break
 
             best_neighbour = max(neighbours, key=self.evaluate)
             best_fit = self.evaluate(best_neighbour)
 
             if best_fit > current_fit:
+                delta = best_fit - current_fit
                 current = best_neighbour
                 current_fit = best_fit
-                self.history.append({"step": step, "fitness": current_fit, "diff": self.get_difficulty(current)})
+                self.history.append({
+                    "step": step,
+                    "event": "MOVE",
+                    "fitness": current_fit,
+                    "diff": self.get_difficulty(current),
+                    "state": copy.deepcopy(current),
+                    "detail": f"Iterasi {step}: Melangkah ke tetangga terbaik (Fitness +{delta:.4f})",
+                })
             else:
                 # Local optimum tercapai
+                self.history.append({
+                    "step": step,
+                    "event": "LOCAL_MAXIMUM",
+                    "fitness": current_fit,
+                    "diff": self.get_difficulty(current),
+                    "state": copy.deepcopy(current),
+                    "detail": f"Iterasi {step}: Berhenti di Local Maximum (seluruh {len(neighbours)} tetangga bernilai <= saat ini)",
+                })
                 break
 
         return current
@@ -212,7 +247,14 @@ class NPCOptimizer:
         current = copy.deepcopy(initial_state)
         current_fit = self.evaluate(current)
         sideways_count = 0
-        self.history = [{"step": 0, "fitness": current_fit, "diff": self.get_difficulty(current)}]
+        self.history = [{
+            "step": 0,
+            "event": "START",
+            "fitness": current_fit,
+            "diff": self.get_difficulty(current),
+            "state": copy.deepcopy(current),
+            "detail": "State awal legal dari solusi CSP",
+        }]
 
         for step in range(1, max_iterations + 1):
             neighbours = self.generate_legal_neighbours(current)
@@ -225,15 +267,49 @@ class NPCOptimizer:
             best_fit = self.evaluate(best_neighbour)
 
             if best_fit > current_fit:
+                delta = best_fit - current_fit
                 current = best_neighbour
                 current_fit = best_fit
                 sideways_count = 0
-                self.history.append({"step": step, "fitness": current_fit, "diff": self.get_difficulty(current)})
+                self.history.append({
+                    "step": step,
+                    "event": "MOVE",
+                    "fitness": current_fit,
+                    "diff": self.get_difficulty(current),
+                    "state": copy.deepcopy(current),
+                    "detail": f"Iterasi {step}: Menemukan lereng naik (Fitness +{delta:.4f})",
+                })
             elif math.isclose(best_fit, current_fit, abs_tol=1e-5) and sideways_count < max_sideways:
                 current = best_neighbour
                 sideways_count += 1
-                self.history.append({"step": step, "fitness": current_fit, "diff": self.get_difficulty(current), "sideways": True})
+                self.history.append({
+                    "step": step,
+                    "event": "SIDEWAYS",
+                    "fitness": current_fit,
+                    "diff": self.get_difficulty(current),
+                    "state": copy.deepcopy(current),
+                    "sideways": True,
+                    "detail": f"Iterasi {step}: Sideways move #{sideways_count}/{max_sideways} menelusuri bidang datar (Plateau)",
+                })
             else:
+                if sideways_count >= max_sideways:
+                    self.history.append({
+                        "step": step,
+                        "event": "PLATEAU_STOP",
+                        "fitness": current_fit,
+                        "diff": self.get_difficulty(current),
+                        "state": copy.deepcopy(current),
+                        "detail": f"Iterasi {step}: Batas toleransi sideways ({max_sideways}) tercapai di Plateau, berhenti",
+                    })
+                else:
+                    self.history.append({
+                        "step": step,
+                        "event": "LOCAL_MAXIMUM",
+                        "fitness": current_fit,
+                        "diff": self.get_difficulty(current),
+                        "state": copy.deepcopy(current),
+                        "detail": f"Iterasi {step}: Berhenti di Local Peak (tidak ada kenaikan)",
+                    })
                 break
 
         self.stats["sideways_count"] = sideways_count
@@ -244,33 +320,64 @@ class NPCOptimizer:
     # ----------------------------------------------------------------------- #
     def hill_climbing_random_restart(
         self,
-        max_restarts: int = 5,
-        max_iterations_per_run: int = 30
+        max_restarts: int = 4,
+        max_iterations_per_run: int = 15
     ) -> Dict[str, Any]:
         """Hill Climbing dengan restart dari solusi acak legal CSP untuk menghindari local optima."""
         best_overall = None
         best_overall_fit = -float("inf")
         self.history = []
+        global_step = 0
 
         for r in range(max_restarts):
             # Dapatkan solusi awal legal dari CSP secara acak
-            count = random.choice([1, 2, 3])
+            count = random.choice([2, 3, 1])
             candidates = self.csp.solve(npc_count=count, max_solutions=1, shuffle=True)
             if not candidates:
                 continue
             init_s = candidates[0]
+            curr_fit = self.evaluate(init_s)
 
-            sol = self.hill_climbing_sideways(init_s, max_iterations=max_iterations_per_run, max_sideways=5)
-            fit = self.evaluate(sol)
+            global_step += 1
+            self.history.append({
+                "step": global_step,
+                "event": "RESTART",
+                "fitness": curr_fit,
+                "diff": self.get_difficulty(init_s),
+                "state": copy.deepcopy(init_s),
+                "restart_idx": r + 1,
+                "detail": f"Restart #{r+1}: Inisialisasi seed legal CSP baru ({count} NPC)",
+            })
 
-            if fit > best_overall_fit:
-                best_overall = sol
-                best_overall_fit = fit
+            curr = copy.deepcopy(init_s)
+            for sub_s in range(1, max_iterations_per_run + 1):
+                neighs = self.generate_legal_neighbours(curr)
+                if not neighs:
+                    break
+                best_n = max(neighs, key=self.evaluate)
+                best_f = self.evaluate(best_n)
+                if best_f > curr_fit:
+                    curr = best_n
+                    curr_fit = best_f
+                    global_step += 1
+                    self.history.append({
+                        "step": global_step,
+                        "event": "MOVE",
+                        "fitness": curr_fit,
+                        "diff": self.get_difficulty(curr),
+                        "state": copy.deepcopy(curr),
+                        "restart_idx": r + 1,
+                        "detail": f"Restart #{r+1} Langkah {sub_s}: Kenaikan fitness ke {curr_fit:.4f}",
+                    })
+                else:
+                    break
 
-            self.history.append({"restart": r + 1, "fitness": fit, "diff": self.get_difficulty(sol)})
+            if curr_fit > best_overall_fit:
+                best_overall = curr
+                best_overall_fit = curr_fit
 
         self.stats["restarts"] = max_restarts
-        return best_overall or candidates[0]
+        return best_overall if best_overall else init_s
 
     # ----------------------------------------------------------------------- #
     # 4. Simulated Annealing
@@ -281,7 +388,7 @@ class NPCOptimizer:
         initial_temp: float = config.SA_INITIAL_TEMP,
         cooling_rate: float = config.SA_COOLING_RATE,
         min_temp: float = config.SA_MIN_TEMP,
-        max_iterations: int = 150
+        max_iterations: int = 60
     ) -> Dict[str, Any]:
         """Simulated Annealing: Menerima gerakan buruk dengan probabilitas P = exp(delta / T)."""
         current = copy.deepcopy(initial_state)
@@ -291,7 +398,15 @@ class NPCOptimizer:
 
         T = initial_temp
         step = 0
-        self.history = [{"step": 0, "fitness": current_fit, "diff": self.get_difficulty(current), "temp": T}]
+        self.history = [{
+            "step": 0,
+            "event": "START",
+            "fitness": current_fit,
+            "diff": self.get_difficulty(current),
+            "state": copy.deepcopy(current),
+            "temp": T,
+            "detail": f"Suhu awal T={T:.1f}: Pencarian stokastik dengan probabilitas penerimaan P=exp(Δ/T)",
+        }]
 
         while T > min_temp and step < max_iterations:
             step += 1
@@ -303,22 +418,44 @@ class NPCOptimizer:
             candidate_fit = self.evaluate(candidate)
             delta = candidate_fit - current_fit
 
+            accepted = False
+            event_type = "SA_COOL"
+            prob_val = 1.0
+
             # Jika lebih baik, terima selalu. Jika lebih buruk, terima dengan peluang exp(delta / T)
             if delta > 0:
                 current = candidate
                 current_fit = candidate_fit
+                accepted = True
+                event_type = "SA_ACCEPT_BETTER"
+                detail_msg = f"Suhu T={T:.1f}: Menerima perbaikan state (+{delta:.4f})"
             else:
-                prob = math.exp(delta / max(0.001, T))
-                if random.random() < prob:
+                prob_val = math.exp(delta / max(0.001, T * 0.05))
+                if random.random() < prob_val:
                     current = candidate
                     current_fit = candidate_fit
+                    accepted = True
+                    event_type = "SA_ACCEPT_WORSE"
+                    detail_msg = f"Suhu T={T:.1f}: Menerima state lebih buruk (P={prob_val*100:.1f}%) untuk melompati local optimum"
+                else:
+                    detail_msg = f"Suhu T={T:.1f}: Menolak state lebih buruk (P={prob_val*100:.1f}%)"
 
             if current_fit > best_fit:
                 best = copy.deepcopy(current)
                 best_fit = current_fit
 
             T *= cooling_rate
-            self.history.append({"step": step, "fitness": current_fit, "diff": self.get_difficulty(current), "temp": round(T, 3)})
+            self.history.append({
+                "step": step,
+                "event": event_type,
+                "fitness": current_fit,
+                "diff": self.get_difficulty(current),
+                "state": copy.deepcopy(current),
+                "temp": round(T, 2),
+                "prob": round(prob_val, 3),
+                "accepted": accepted,
+                "detail": detail_msg,
+            })
 
         return best
 
@@ -328,17 +465,16 @@ class NPCOptimizer:
     def genetic_algorithm(
         self,
         population_size: int = config.GA_POPULATION_SIZE,
-        generations: int = config.GA_GENERATIONS,
+        generations: int = 15,
         mutation_rate: float = config.GA_MUTATION_RATE,
     ) -> Dict[str, Any]:
         """Algoritma Genetika dengan seleksi turnamen, crossover anggota tim, dan perbaikan CSP."""
         # 1. Inisialisasi populasi acak legal
         population = []
         for _ in range(population_size):
-            cnt = random.choice([1, 2, 3])
+            cnt = random.choice([2, 3, 1])
             sols = self.csp.solve(npc_count=cnt, max_solutions=1)
             if sols:
-                # Buat variasi awal dengan mutasi neighbour acak
                 indiv = sols[0]
                 neighs = self.generate_legal_neighbours(indiv)
                 if neighs and random.random() < 0.7:
@@ -346,7 +482,6 @@ class NPCOptimizer:
                 population.append(indiv)
 
         if not population:
-            # Fallback
             population = [self.csp.solve(npc_count=2, max_solutions=1)[0]]
 
         self.history = []
@@ -355,10 +490,18 @@ class NPCOptimizer:
             # Urutkan berdasarkan fitness
             population.sort(key=self.evaluate, reverse=True)
             best_gen = population[0]
+            avg_fit = sum(self.evaluate(ind) for ind in population) / float(len(population))
+            best_fit = self.evaluate(best_gen)
+
             self.history.append({
-                "gen": gen + 1,
-                "best_fitness": self.evaluate(best_gen),
-                "best_diff": self.get_difficulty(best_gen),
+                "step": gen + 1,
+                "event": "GA_GENERATION",
+                "fitness": best_fit,
+                "avg_fitness": round(avg_fit, 4),
+                "diff": self.get_difficulty(best_gen),
+                "state": copy.deepcopy(best_gen),
+                "generation": gen + 1,
+                "detail": f"Generasi {gen+1}: Evaluasi populasi (Best Fitness: {best_fit:.4f}, Rata-rata: {avg_fit:.4f})",
             })
 
             # Buat generasi baru (Elitisme: simpan 2 terbaik)
@@ -453,6 +596,9 @@ class NPCOptimizer:
                 "npc_count": 1,
                 "members": [{"char_type": "warrior", "hp": 100, "potions": 2, "atk_bonus": 0, "def_bonus": 0, "eval_profile": "BALANCED"}]
             }
+            self.last_csp_initial_state = copy.deepcopy(initial_state)
+        else:
+            self.last_csp_initial_state = copy.deepcopy(initial_state)
 
         algo = algorithm.upper()
         if algo == "HILL_CLIMBING":

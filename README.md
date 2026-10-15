@@ -11,7 +11,7 @@ Program Studi Ilmu Komputer, Universitas Pendidikan Indonesia.
 - **Mata Kuliah**: Kecerdasan Buatan
 - **Kelompok**: 7 (Tubes AI)
 - **Anggota Kelompok**:
-  1. **Hanif Muyassar**
+  1. **Muhammad Hanif Muyassar**
   2. **Moch Fadillah Pratama**
   3. **Muhammad Zidan Mirza Fedrieka**
 
@@ -515,4 +515,4 @@ python main.py
    python scratch/test_optimizer.py
    ```
 
----
+---

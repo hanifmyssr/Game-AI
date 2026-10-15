@@ -36,6 +36,14 @@ class NPCConfigCSP:
             "solution_found": False,
         }
 
+        # Data Search Tree & Timeline untuk visualisasi akademis
+        self.search_tree: Dict[int, Dict[str, Any]] = {}
+        self.timeline_steps: List[Dict[str, Any]] = []
+        self.solution_path_ids: Set[int] = set()
+        self.root_node_id: int = 0
+        self.tree_width: int = 0
+        self.tree_height: int = 0
+
     # ----------------------------------------------------------------------- #
     # Validator Constraint Independen (Digunakan juga oleh Local Search)
     # ----------------------------------------------------------------------- #
@@ -245,6 +253,68 @@ class NPCConfigCSP:
     # ----------------------------------------------------------------------- #
     # Konsistensi Parsial Saat Pencarian Backtracking
     # ----------------------------------------------------------------------- #
+    def check_consistency_with_reason(
+        self,
+        var: str,
+        val: Any,
+        assignment: Dict[str, Any],
+        npc_count: int
+    ) -> Tuple[bool, Optional[str]]:
+        """Cek apakah pemberian nilai val pada var melanggar constraint, beserta alasan spesifiknya."""
+        tentative = dict(assignment)
+        tentative[var] = val
+
+        # 1. C5: Cek char_type unik jika npc_count >= 2
+        if "char_type" in var and npc_count >= 2:
+            assigned_types = [tentative[f"char_type_{i}"] for i in range(npc_count) if f"char_type_{i}" in tentative]
+            if len(assigned_types) != len(set(assigned_types)):
+                return False, f"C5: Tipe '{val}' duplikat di skuad"
+
+        # 2. C1: Budget HP
+        hp_sum = sum(tentative[f"hp_{i}"] for i in range(npc_count) if f"hp_{i}" in tentative)
+        if hp_sum > self.budget_hp:
+            return False, f"C1: Total HP ({hp_sum}) > budget ({self.budget_hp})"
+
+        # 3. C2: Budget Potions
+        pot_sum = sum(tentative[f"potions_{i}"] for i in range(npc_count) if f"potions_{i}" in tentative)
+        if pot_sum > self.budget_potions:
+            return False, f"C2: Total Pot ({pot_sum}) > budget ({self.budget_potions})"
+
+        # 4. C8: Budget Atk Bonus
+        atk_sum = sum(tentative[f"atk_bonus_{i}"] for i in range(npc_count) if f"atk_bonus_{i}" in tentative)
+        if atk_sum > self.budget_atk:
+            return False, f"C8: Total ATK ({atk_sum}) > budget ({self.budget_atk})"
+
+        # 5. C3, C4, C6, C7: Karakteristik Class
+        for i in range(npc_count):
+            ctype = tentative.get(f"char_type_{i}")
+            if ctype:
+                hp = tentative.get(f"hp_{i}")
+                if hp is not None and ctype == "tank" and hp < 90:
+                    return False, f"C3: Tank HP ({hp}) < 90"
+
+                atk = tentative.get(f"atk_bonus_{i}")
+                if atk is not None and ctype == "ranger" and atk < 5:
+                    return False, f"C4: Ranger ATK ({atk}) < 5"
+                if atk is not None and ctype == "assassin" and atk < 10:
+                    return False, f"C8: Assassin ATK ({atk}) < 10"
+                if hp is not None and ctype == "assassin" and hp > 90:
+                    return False, f"C8: Assassin HP ({hp}) > 90"
+
+                if hp is not None and ctype == "mage" and hp > 90:
+                    return False, f"C6: Mage HP ({hp}) > 90"
+
+                eval_p = tentative.get(f"eval_profile_{i}")
+                if eval_p is not None:
+                    if ctype == "mage" and eval_p not in {"BALANCED", "AGGRESSIVE"}:
+                        return False, f"C6: Mage profile {eval_p} dilarang"
+                    if ctype in ("ranger", "assassin") and eval_p not in {"BALANCED", "AGGRESSIVE"}:
+                        return False, f"C8: {ctype.title()} profile {eval_p} dilarang"
+                    if ctype == "tank" and eval_p not in {"BALANCED", "DEFENSIVE"}:
+                        return False, f"C7: Tank profile {eval_p} dilarang"
+
+        return True, None
+
     def is_partially_consistent(
         self,
         var: str,
@@ -253,62 +323,11 @@ class NPCConfigCSP:
         npc_count: int
     ) -> bool:
         """Cek apakah pemberian nilai val pada var melanggar constraint dengan assignment saat ini."""
-        tentative = dict(assignment)
-        tentative[var] = val
-
-        # 1. C5: Cek char_type unik jika npc_count >= 2
-        if "char_type" in var and npc_count >= 2:
-            assigned_types = [tentative[f"char_type_{i}"] for i in range(npc_count) if f"char_type_{i}" in tentative]
-            if len(assigned_types) != len(set(assigned_types)):
-                return False
-
-        # 2. C1: Budget HP
-        hp_sum = sum(tentative[f"hp_{i}"] for i in range(npc_count) if f"hp_{i}" in tentative)
-        if hp_sum > self.budget_hp:
-            return False
-
-        # 3. C2: Budget Potions
-        pot_sum = sum(tentative[f"potions_{i}"] for i in range(npc_count) if f"potions_{i}" in tentative)
-        if pot_sum > self.budget_potions:
-            return False
-
-        # 4. C8: Budget Atk Bonus
-        atk_sum = sum(tentative[f"atk_bonus_{i}"] for i in range(npc_count) if f"atk_bonus_{i}" in tentative)
-        if atk_sum > self.budget_atk:
-            return False
-
-        # 5. C3, C4, C6, C7: Karakteristik Class
-        for i in range(npc_count):
-            ctype = tentative.get(f"char_type_{i}")
-            if ctype:
-                hp = tentative.get(f"hp_{i}")
-                if hp is not None and ctype == "tank" and hp < 90:
-                    return False
-
-                atk = tentative.get(f"atk_bonus_{i}")
-                if atk is not None and ctype == "ranger" and atk < 5:
-                    return False
-                if atk is not None and ctype == "assassin" and atk < 10:
-                    return False
-                if hp is not None and ctype == "assassin" and hp > 90:
-                    return False
-
-                if hp is not None and ctype == "mage" and hp > 90:
-                    return False
-
-                eval_p = tentative.get(f"eval_profile_{i}")
-                if eval_p is not None:
-                    if ctype == "mage" and eval_p not in {"BALANCED", "AGGRESSIVE"}:
-                        return False
-                    if ctype in ("ranger", "assassin") and eval_p not in {"BALANCED", "AGGRESSIVE"}:
-                        return False
-                    if ctype == "tank" and eval_p not in {"BALANCED", "DEFENSIVE"}:
-                        return False
-
-        return True
+        ok, _ = self.check_consistency_with_reason(var, val, assignment, npc_count)
+        return ok
 
     # ----------------------------------------------------------------------- #
-    # Backtracking Search Rekursif
+    # Backtracking Search Rekursif dengan Pencatatan Tree Visualisasi
     # ----------------------------------------------------------------------- #
     def _backtrack(
         self,
@@ -316,12 +335,34 @@ class NPCConfigCSP:
         domains: Dict[str, List[Any]],
         npc_count: int,
         solutions: List[Dict[str, Any]],
-        max_solutions: int
+        max_solutions: int,
+        parent_node_id: int = 0,
+        depth: int = 0
     ) -> bool:
         if len(assignment) == len(domains):
             # Solusi lengkap ditemukan
             config_dict = self._assignment_to_config(assignment, npc_count)
             solutions.append(config_dict)
+
+            # Tandai jalur solusi dari parent_node_id kembali ke root
+            curr = parent_node_id
+            while curr is not None:
+                self.solution_path_ids.add(curr)
+                if curr in self.search_tree:
+                    self.search_tree[curr]["status"] = "SOLUTION"
+                    curr = self.search_tree[curr].get("parent_id")
+                else:
+                    break
+
+            self.timeline_steps.append({
+                "step": len(self.timeline_steps),
+                "type": "SOLUTION",
+                "node_id": parent_node_id,
+                "desc": f"Solusi lengkap & konsisten (C1-C8) tercapai untuk {npc_count} NPC!",
+                "assignment": dict(assignment),
+                "stats": dict(self.stats),
+            })
+
             if len(solutions) >= max_solutions:
                 return True
             return False
@@ -330,20 +371,90 @@ class NPCConfigCSP:
         if var is None:
             return False
 
-        for val in self.order_domain_values_lcv(var, assignment, domains, npc_count):
+        # Urutkan nilai domain via LCV
+        ordered_values = self.order_domain_values_lcv(var, assignment, domains, npc_count)
+
+        for val in ordered_values:
             self.stats["assignments_tried"] += 1
-            if self.is_partially_consistent(var, val, assignment, npc_count):
-                assignment[var] = val
+            is_consistent, prune_reason = self.check_consistency_with_reason(var, val, assignment, npc_count)
 
-                # Forward Checking / Domain pruning lokal
-                new_domains = {k: list(v) for k, v in domains.items()}
-                new_domains[var] = [val]
+            assign_reason = "Konsisten C1-C8 | LCV 0 konflik" if is_consistent else prune_reason
 
-                if self._backtrack(assignment, new_domains, npc_count, solutions, max_solutions):
-                    return True
+            # Buat node baru di Search Tree
+            node_id = len(self.search_tree)
+            node_data = {
+                "id": node_id,
+                "parent_id": parent_node_id,
+                "var": var,
+                "val": val,
+                "depth": depth + 1,
+                "status": "ASSIGN" if is_consistent else "PRUNED",
+                "reason": assign_reason,
+                "assignment": dict(assignment),
+                "children": [],
+                "x": 0,
+                "y": 0,
+            }
+            self.search_tree[node_id] = node_data
+            if parent_node_id in self.search_tree:
+                self.search_tree[parent_node_id]["children"].append(node_id)
 
-                del assignment[var]
-                self.stats["backtracks"] += 1
+            if not is_consistent:
+                # Rekam event pruning
+                self.timeline_steps.append({
+                    "step": len(self.timeline_steps),
+                    "type": "PRUNE",
+                    "node_id": node_id,
+                    "var": var,
+                    "val": val,
+                    "reason": prune_reason,
+                    "desc": f"Pruning: Cabang '{var} = {val}' ditolak ({prune_reason})",
+                    "assignment": dict(assignment),
+                    "stats": dict(self.stats),
+                })
+                continue
+
+            # Jika konsisten: lakukan penugasan (assign)
+            assignment[var] = val
+            node_data["assignment"] = dict(assignment)
+
+            self.timeline_steps.append({
+                "step": len(self.timeline_steps),
+                "type": "ASSIGN",
+                "node_id": node_id,
+                "var": var,
+                "val": val,
+                "reason": assign_reason,
+                "desc": f"MRV pilih '{var}' (sisa {len(domains[var])} opsi), LCV assign '{val}' (konsisten C1-C8)",
+                "assignment": dict(assignment),
+                "stats": dict(self.stats),
+            })
+
+            # Forward Checking / Domain pruning lokal
+            new_domains = {k: list(v) for k, v in domains.items()}
+            new_domains[var] = [val]
+
+            # Eksplorasi rekursif ke level berikutnya
+            if self._backtrack(assignment, new_domains, npc_count, solutions, max_solutions, parent_node_id=node_id, depth=depth + 1):
+                return True
+
+            # Gagal mencapai solusi lengkap dari cabang ini -> Backtrack
+            del assignment[var]
+            self.stats["backtracks"] += 1
+            if node_data["status"] != "SOLUTION":
+                node_data["status"] = "BACKTRACK"
+
+            self.timeline_steps.append({
+                "step": len(self.timeline_steps),
+                "type": "BACKTRACK",
+                "node_id": node_id,
+                "parent_id": parent_node_id,
+                "var": var,
+                "val": val,
+                "desc": f"Dead End! Cabang '{var} = {val}' gagal penuhi seluruh constraint, backtrack ke node atas",
+                "assignment": dict(assignment),
+                "stats": dict(self.stats),
+            })
 
         return False
 
@@ -386,6 +497,11 @@ class NPCConfigCSP:
             "solution_found": False,
         }
 
+        # Reset pohon pencarian & timeline
+        self.search_tree = {}
+        self.timeline_steps = []
+        self.solution_path_ids = set()
+
         counts_to_try = [npc_count] if npc_count is not None else [2, 3, 1]
         if shuffle and npc_count is None:
             random.shuffle(counts_to_try)
@@ -395,8 +511,36 @@ class NPCConfigCSP:
             domains = self.get_initial_domains(count, shuffle=shuffle)
             self.stats["ac3_pruned"] += self.apply_ac3_unary(domains, count)
 
+            # Inisialisasi Root Node
+            self.root_node_id = 0
+            self.search_tree = {
+                0: {
+                    "id": 0,
+                    "parent_id": None,
+                    "var": "ROOT",
+                    "val": f"{count} Anggota",
+                    "depth": 0,
+                    "status": "ROOT",
+                    "reason": None,
+                    "assignment": {},
+                    "children": [],
+                    "x": 0,
+                    "y": 0,
+                }
+            }
+            self.timeline_steps = [
+                {
+                    "step": 0,
+                    "type": "ROOT",
+                    "node_id": 0,
+                    "desc": f"Inisialisasi CSP: Persiapan variabel & pemangkasan unary domain AC-3 untuk {count} NPC",
+                    "assignment": {},
+                    "stats": dict(self.stats),
+                }
+            ]
+
             assignment = {}
-            self._backtrack(assignment, domains, count, solutions, max_solutions)
+            self._backtrack(assignment, domains, count, solutions, max_solutions, parent_node_id=0, depth=0)
 
             if len(solutions) >= max_solutions:
                 break
@@ -405,4 +549,76 @@ class NPCConfigCSP:
         self.stats["duration_ms"] = round(elapsed, 2)
         self.stats["solution_found"] = len(solutions) > 0
 
+        # Hitung tata letak visual pohon (agar rapi dan tidak tumpang tindih)
+        self.tree_width, self.tree_height = compute_tree_layout(self.search_tree, self.root_node_id)
+
         return solutions
+
+
+# --------------------------------------------------------------------------- #
+# Algoritma Tata Letak Pohon Anti-Overlap Horizontal (Kiri ke Kanan)
+# --------------------------------------------------------------------------- #
+def compute_tree_layout(
+    tree: Dict[int, Dict[str, Any]],
+    root_id: int = 0,
+    node_w: int = 310,
+    node_h: int = 86,
+    gap_x: int = 90,
+    gap_y: int = 30
+) -> Tuple[int, int]:
+    """Menghitung tata letak pohon secara horizontal (kiri ke kanan) anti-tumpang tindih.
+    
+    Level kedalaman bertambah ke kanan (sumbu X), dan cabang alternatif tersusun vertikal (sumbu Y).
+    Mengembalikan (total_width, total_height) bounding box pohon.
+    """
+    if root_id not in tree or not tree:
+        return 0, 0
+
+    # 1. Hitung jumlah daun di setiap subtree untuk proporsi ruang vertikal
+    subtree_leaves: Dict[int, int] = {}
+
+    def count_leaves(nid: int) -> int:
+        children = tree[nid].get("children", [])
+        if not children:
+            subtree_leaves[nid] = 1
+            return 1
+        tot = sum(count_leaves(c) for c in children)
+        subtree_leaves[nid] = max(1, tot)
+        return subtree_leaves[nid]
+
+    count_leaves(root_id)
+
+    max_x = 0
+    max_y = 0
+
+    # 2. Rekursi posisi X dan Y
+    def layout_node(nid: int, top_y: float, depth: int) -> float:
+        nonlocal max_x, max_y
+        node = tree[nid]
+        node["depth"] = depth
+        node["x"] = depth * (node_w + gap_x) + 40.0
+        max_x = max(max_x, node["x"] + node_w)
+
+        children = node.get("children", [])
+        slot_h = node_h + gap_y
+
+        if not children:
+            # Daun: posisikan di tengah slot vertikalnya
+            node["y"] = top_y + (slot_h - node_h) / 2.0
+            max_y = max(max_y, node["y"] + node_h)
+            return top_y + slot_h
+        else:
+            curr_y = top_y
+            child_centers = []
+            for c in children:
+                curr_y = layout_node(c, curr_y, depth + 1)
+                child_centers.append(tree[c]["y"])
+
+            # Parent diletakkan persis di tengah vertikal antara anak pertama dan anak terakhir
+            node["y"] = (child_centers[0] + child_centers[-1]) / 2.0
+            max_y = max(max_y, node["y"] + node_h)
+            return curr_y
+
+    layout_node(root_id, 40.0, 0)
+    return int(max_x + 80), int(max_y + 80)
+

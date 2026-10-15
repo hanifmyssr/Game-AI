@@ -1,4 +1,4 @@
-# 🎮 Bakekok - Dokumentasi Lengkap Sistem Game AI (Tahap 1 - 4)
+# Bakekok - Dokumentasi Lengkap Sistem Game AI (Tahap 1 - 4)
 
 > **Tugas Besar Mata Kuliah Kecerdasan Buatan**  
 > Program Studi Ilmu Komputer — Universitas Pendidikan Indonesia  
@@ -6,7 +6,7 @@
 
 ---
 
-## 👥 Identitas Anggota Kelompok 7
+## 1. Identitas Anggota Kelompok 7
 
 | No | Nama Anggota | Peran / Fokus Pengembangan |
 |:---:|:---|:---|
@@ -16,7 +16,7 @@
 
 ---
 
-## 🚀 Panduan Cepat: Cara Mencoba & Memainkan Game
+## 2. Panduan Cepat: Cara Mencoba & Memainkan Game
 
 Bagian ini dirancang agar Dosen Penguji atau Evaluator dapat langsung menjalankan dan menguji seluruh modul kecerdasan buatan di dalam game dalam hitungan menit.
 
@@ -39,7 +39,7 @@ python main.py
 
 ---
 
-## 🧭 Skenario Panduan Uji Coba Fitur AI untuk Dosen / Evaluator
+## 3. Skenario Panduan Uji Coba Fitur AI untuk Dosen / Evaluator
 
 Ikuti 5 langkah demonstrasi berikut untuk melihat seluruh modul materi kuliah bekerja secara nyata:
 
@@ -100,7 +100,7 @@ flowchart LR
 
 ---
 
-## ⌨️ Ringkasan Kontrol Permainan (Keybindings Cheat-Sheet)
+## 4. Ringkasan Kontrol Permainan (Keybindings Cheat-Sheet)
 
 | Mode Permainan | Tombol Keyboard | Aksi / Fungsi |
 |:---|:---|:---|
@@ -131,7 +131,7 @@ flowchart LR
 
 ---
 
-## 🏗️ Arsitektur Sistem & Struktur Direktori
+## 5. Arsitektur Sistem & Struktur Direktori
 
 Kode program dibangun secara modular menggunakan Python 3.10+ berbasis pustaka `pygame-ce`:
 
@@ -173,7 +173,7 @@ Game-AI/
 
 ---
 
-## 🧠 Landasan Teori & Pemetaan Materi Kuliah
+## 6. Landasan Teori & Pemetaan Materi Kuliah
 
 Sistem AI di dalam game ini mengimplementasikan 4 pilar materi perkuliahan secara terintegrasi:
 
@@ -229,7 +229,7 @@ CSP merumuskan pembentukan skuad sebagai masalah kepatuhan batasan:
 
 ---
 
-## 📊 Hasil Eksperimen & Analisis Benchmark
+## 7. Hasil Eksperimen & Analisis Benchmark
 
 Seluruh eksperimen dapat direproduksi secara instan menggunakan skrip di folder `scratch/`.
 
@@ -260,7 +260,7 @@ Seluruh eksperimen dapat direproduksi secara instan menggunakan skrip di folder 
 
 ---
 
-## 🧪 Skrip Pengujian Otomatis & Benchmark
+## 8. Skrip Pengujian Otomatis & Benchmark
 
 Anda dapat menjalankan skrip pengujian mandiri tanpa membuka jendela grafis game:
 
@@ -287,5 +287,5 @@ Anda dapat menjalankan skrip pengujian mandiri tanpa membuka jendela grafis game
 
 ---
 
-## 📚 Dokumen Pendukung Lainnya
+## 9. Dokumen Pendukung Lainnya
 * Untuk panduan penyusunan laporan akademik, silakan merujuk ke [`template_laporan.md`](file:///c:/Users/Pavilion/Documents/DOKUMEN%20TUGAS/Kuliah/Tubes_ai_kel7/Fix_nya/Game-AI/template_laporan.md) yang memuat tinjauan pustaka matematis, pseudocode lengkap Russell & Norvig, metodologi pengujian, dan analisis empiris komprehensif.

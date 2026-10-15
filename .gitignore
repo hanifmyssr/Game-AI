@@ -1,20 +1,44 @@
-# Python bytecode
+# Python bytecode & cache
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+.pytest_cache/
 
-# Virtual Environment (jika ada di dalam proyek)
+# Virtual Environment
 venv/
 .venv/
 env/
+ENV/
 
-# Folder hasil compile / distribusi
+# Distribution & Build
 build/
 develop-eggs/
 dist/
 downloads/
 eggs/
 .eggs/
+*.egg-info/
 
-.LAPORAN_TAHAP_2.md
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# File Catatan Internal & Task Planning (Tidak perlu di-push)
+plan.md
+masalah.md
+poin_materi.md
+Penjelasan_game.md
+05_Local_Search_and_Optimization.md
+06_Constraint_Satisfaction_Problem.md
 .check.md
+.LAPORAN_TAHAP_2.md
+
+# Scratch temporary screenshots & helper scripts
+scratch/*.png
+scratch/*.ps1

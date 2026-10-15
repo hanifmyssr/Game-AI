@@ -50,19 +50,19 @@ flowchart LR
   * Anda akan melihat visualisasi petak yang di-expand (*closed set*), jalur terpendek (*path*), metrik waktu eksekusi (ms), serta perbandingan algoritma **Uniform Cost Search (UCS)** vs **A\*** dengan berbagai heuristik (*Manhattan*, *Euclidean*, *Chebyshev*).
 
 ### Langkah 2: Interaksi Item & Mini-Game Gacha
-* Dekati salah satu peti harta karun di peta (berjarak $\le 1$ langkah ubin), lalu tekan **`[E]`**.
+* Dekati salah satu peti harta karun di peta (berjarak <= 1 langkah ubin), lalu tekan **`[E]`**.
 * Akan muncul roda *roulette* gacha item yang memberikan buff serangan (**ATK**), pertahanan (**DEF**), atau ramuan (**Potion**) kepada Bolu. Buff ini nantinya akan memicu sistem **Dynamic Difficulty Adjustment (DDA)** saat skuad musuh dibentuk!
 
 ### Langkah 3: Masuk ke Fase Pre-Battle (Materi Tahap 3)
 * Tabrak / dekati NPC musuh atau tekan tombol **`[B]`** dari mana saja untuk langsung memicu fase **Pre-Battle**.
 * Di fase ini, sistem AI di balik layar secara otomatis menjalankan:
-  1. **CSP Solver (Backtracking + MRV + LCV + AC-3)** untuk memastikan komposisi tim musuh mematuhi 8 batasan legalitas ($C_1 - C_8$).
-  2. **Local Search Optimizer** untuk menyesuaikan tingkat kesulitan skuad musuh agar seimbang dengan status Bolu (Target Difficulty $\approx 0.55$).
+  1. **CSP Solver (Backtracking + MRV + LCV + AC-3)** untuk memastikan komposisi tim musuh mematuhi 8 batasan legalitas (C1 - C8).
+  2. **Local Search Optimizer** untuk menyesuaikan tingkat kesulitan skuad musuh agar seimbang dengan status Bolu (Target Difficulty sekitar 0.55).
 * Anda dapat mencoba mengganti algoritma optimasi secara instan dengan menekan tombol angka **`[1]` s/d `[5]`**:
   * `[1]`: *Hill Climbing (Steepest-Ascent)*
   * `[2]`: *Hill Climbing with Sideways Move* (mengatasi Plateau)
   * `[3]`: *Random Restart Hill Climbing* (mengatasi Local Maximum)
-  * `[4]`: *Simulated Annealing* (probabilitas langkah downhill $e^{\Delta E / T}$)
+  * `[4]`: *Simulated Annealing* (probabilitas langkah downhill exp(delta / T))
   * `[5]`: *Genetic Algorithm* (crossover skuad & mutasi)
 * Tekan **`[R]`** untuk me-*reroll* skuad dengan seed acak baru.
 
@@ -169,49 +169,61 @@ Game-AI/
 Sistem AI di dalam game ini mengimplementasikan 4 pilar materi perkuliahan secara terintegrasi:
 
 ### 1. Tahap 1: Informed Search & Navigasi Grid
-* **Uniform Cost Search (UCS)**: Menemukan jalur terpendek berdasarkan akumulasi biaya riil $g(n)$ dengan $h(n) = 0$.
-* **A\* Search**: Mengarahkan pencarian menggunakan fungsi evaluasi:
-  $$f(n) = g(n) + h(n)$$
+* **Uniform Cost Search (UCS)**: Menemukan jalur terpendek berdasarkan akumulasi biaya riil `g(n)` dengan `h(n) = 0`.
+* **A* Search**: Mengarahkan pencarian menggunakan fungsi evaluasi:
+  ```
+  f(n) = g(n) + h(n)
+  ```
 * **Fungsi Heuristik Terverifikasi**:
   * *Manhattan Distance* (Grid 4-connected, terbukti *admissible* & *consistent*):
-    $$h(n) = |x_n - x_{\text{goal}}| + |y_n - y_{\text{goal}}|$$
+    ```
+    h(n) = |x_n - x_goal| + |y_n - y_goal|
+    ```
   * *Euclidean Distance* (Garis lurus, *admissible*):
-    $$h(n) = \sqrt{(x_n - x_{\text{goal}})^2 + (y_n - y_{\text{goal}})^2}$$
+    ```
+    h(n) = sqrt((x_n - x_goal)^2 + (y_n - y_goal)^2)
+    ```
   * *Chebyshev Distance*:
-    $$h(n) = \max(|x_n - x_{\text{goal}}|, |y_n - y_{\text{goal}}|)$$
-* **Weighted Terrain Cost**: Langkah di jalan tanah/jembatan memiliki biaya $c = 1.0$, sedangkan medan berumput berbiaya $c = 2.0$.
+    ```
+    h(n) = max(|x_n - x_goal|, |y_n - y_goal|)
+    ```
+* **Weighted Terrain Cost**: Langkah di jalan tanah/jembatan memiliki biaya `c = 1.0`, sedangkan medan berumput berbiaya `c = 2.0`.
 
 ### 2. Tahap 2: Adversarial Search Turn-Based Battle
 * **Minimax**: Mengevaluasi seluruh kemungkinan langkah pemain dan musuh untuk memaksimalkan utilitas giliran.
-* **Alpha-Beta Pruning**: Memangkas cabang-cabang pohon permainan yang terbukti tidak akan dipilih oleh pemain rasional, menurunkan kompleksitas dari $O(b^d)$ menjadi mendekati $O(b^{d/2})$.
+* **Alpha-Beta Pruning**: Memangkas cabang-cabang pohon permainan yang terbukti tidak akan dipilih oleh pemain rasional, menurunkan kompleksitas dari `O(b^d)` menjadi mendekati `O(b^(d/2))`.
 * **Expectimax**: Memodelkan ketidakpastian aksi jika pemain dianggap tidak selalu bermain optimal (*bounded rationality*).
 * **Tag-Team Battle**: Jika frontline NPC tumbang, sistem mengaktifkan anggota berikutnya dari *bench*, menjaga kesinambungan duel.
 
 ### 3. Tahap 3.1: Local Search
-Local search mencari konfigurasi akhir optimal di mana lintasan (*path*) tidak penting dengan konsumsi memori konstan $O(1)$.
+Local search mencari konfigurasi akhir optimal di mana lintasan (*path*) tidak penting dengan konsumsi memori konstan `O(1)`.
 * **Fungsi Objektif (Fitness Function)**:
-  $$\text{Fitness}(s) = -|\text{Difficulty}(s) - \text{TargetDifficulty}|$$
+  ```
+  Fitness(s) = -|Difficulty(s) - TargetDifficulty|
+  ```
 * **5 Algoritma yang Disediakan**:
   1. **Hill Climbing (Steepest-Ascent)**: Memilih tetangga dengan kenaikan fitness terbesar.
   2. **Hill Climbing with Sideways Move**: Mengizinkan transisi antar-tetangga bernilai sama hingga 15 langkah untuk melintasi area datar (*plateau* & *shoulder*).
   3. **Random Restart Hill Climbing**: Menjalankan ulang pendakian bukit dari *seed* awal legal CSP yang berbeda untuk meloloskan diri dari *local optimum*.
   4. **Simulated Annealing (SA)**: Mengadopsi prinsip termodinamika metalurgi; gerakan yang memperburuk fitness tetap dapat diterima dengan probabilitas Boltzmann:
-     $$P(\text{accept}) = e^{\frac{\Delta E}{T}}, \quad T \leftarrow T \times \text{cooling\_rate}$$
+     ```
+     P(accept) = exp(delta_E / T), dengan pendinginan T = T * cooling_rate
+     ```
   5. **Genetic Algorithm (GA)**: Mengoperasikan populasi konfigurasi skuad melalui seleksi turnamen, rekombinasi (*crossover*), dan mutasi acak.
 
 ### 4. Tahap 3.2: Constraint Satisfaction Problem (CSP)
 CSP merumuskan pembentukan skuad sebagai masalah kepatuhan batasan:
-* **Himpunan Variabel ($X$)**: Atribut setiap anggota skuad ($\text{Role}_i, \text{HP}_i, \text{Potion}_i, \text{ATK\_Bonus}_i, \text{Eval\_Profile}_i$).
-* **Himpunan Domain ($D$)**: Nilai diskret stat game (HP $\in [70, 110]$, Potion $\in [0, 2]$, dsb).
-* **8 Batasan Konsistensi ($C_1 - C_8$)**:
-  * **$C_1$ (Budget HP)**: $\sum \text{HP} \le 200$ (atau 260 untuk 3 NPC).
-  * **$C_2$ (Budget Potion)**: $\sum \text{Potion} \le 2$ (atau 3 untuk 3 NPC).
-  * **$C_3$ (Syarat Tank)**: Jika Role = Tank, maka $\text{HP} \ge 90$.
-  * **$C_4$ (Syarat Ranger)**: Jika Role = Ranger, maka $\text{ATK\_Bonus} \ge 5$.
-  * **$C_5$ (Keunikan Role)**: Tidak boleh ada role kembar jika jumlah anggota $\ge 2$.
-  * **$C_6$ (Mage Sinergi)**: $\text{HP} \le 90$, profil AI $\in \{\text{BALANCED}, \text{AGGRESSIVE}\}$.
-  * **$C_7$ (Tank Sinergi)**: Profil AI $\in \{\text{BALANCED}, \text{DEFENSIVE}\}$.
-  * **$C_8$ (Assassin Sinergi)**: $\text{ATK\_Bonus} \ge 10$, $\text{HP} \le 90$, total budget $\text{ATK} \le 12$.
+* **Himpunan Variabel (X)**: Atribut setiap anggota skuad (`Role`, `HP`, `Potion`, `ATK`, `Profile`).
+* **Himpunan Domain (D)**: Nilai diskret stat game (HP dalam `[70, 110]`, Potion dalam `[0, 2]`, dsb).
+* **8 Batasan Konsistensi (C1 - C8)**:
+  * **C1 (Budget HP)**: Total HP <= 200 (atau 260 untuk 3 NPC).
+  * **C2 (Budget Potion)**: Total Potion <= 2 (atau 3 untuk 3 NPC).
+  * **C3 (Syarat Tank)**: Jika Role = Tank, maka HP >= 90.
+  * **C4 (Syarat Ranger)**: Jika Role = Ranger, maka ATK >= 5.
+  * **C5 (Keunikan Role)**: Tidak boleh ada role kembar jika jumlah anggota >= 2.
+  * **C6 (Mage Sinergi)**: HP <= 90, profil AI = BALANCED atau AGGRESSIVE.
+  * **C7 (Tank Sinergi)**: Profil AI = BALANCED atau DEFENSIVE.
+  * **C8 (Assassin Sinergi)**: ATK >= 10, HP <= 90, total budget ATK <= 12.
 * **Mekanisme Penyelesaian**:
   * **AC-3 Filtering**: Menyaring domain *unary* sebelum pencarian dimulai.
   * **MRV (Minimum Remaining Values)**: Memilih variabel paling kritis (*fail-first*) yang memiliki sisa domain tersedikit.
@@ -231,7 +243,7 @@ Seluruh eksperimen dapat direproduksi secara instan menggunakan skrip di folder 
 | **Waktu AC-3 Preprocessing** | **0.005 ms** | Pemangkasan apriori berlangsung sub-milidetik |
 | **Waktu Solve 2 Anggota NPC** | **0.175 ms** | Backtracking + MRV + LCV |
 | **Waktu Solve 3 Anggota NPC** | **0.299 ms** | Menemukan solusi lengkap instan |
-| **Tingkat Kepatuhan Aturan $C_1 - C_8$** | **100% (0 Pelanggaran)** | Seluruh solusi terbukti konsisten |
+| **Tingkat Kepatuhan Aturan C1 - C8** | **100% (0 Pelanggaran)** | Seluruh solusi terbukti konsisten |
 | **Komposisi Default 3 NPC** | Warrior + Tank + Assassin | Komposisi kelas sinergis dan seimbang |
 
 ### 2. Perbandingan 5 Algoritma Local Search (Target Difficulty = 0.55)

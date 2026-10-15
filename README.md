@@ -1,4 +1,4 @@
-# Bakekok - Dokumentasi Lengkap Sistem Game AI (Tahap 1 - 4)
+# Bakekok - Dokumentasi Sistem Game Tahap 3
 
 > **Tugas Besar Mata Kuliah Kecerdasan Buatan**  
 > Program Studi Ilmu Komputer — Universitas Pendidikan Indonesia  
@@ -7,18 +7,12 @@
 ---
 
 ## 1. Identitas Anggota Kelompok 7
-
-| No | Nama Anggota | Peran / Fokus Pengembangan |
-|:---:|:---|:---|
-| 1 | **Muhammad Hanif Muyassar** | Integrasi Sistem, Engine AI & Algoritma Search |
-| 2 | **Moch Fadillah Pratama** | Desain Antarmuka, Visualizer AI & Interaksi Game |
-| 3 | **Muhammad Zidan Mirza Fedrieka** | Logika Pertarungan, Constraint Solver & Analisis Data |
-
+1. **Muhammad Hanif Muyassar**
+2. **Moch Fadillah Pratama**
+3. **Muhammad Zidan Mirza Fedrieka**
 ---
 
-## 2. Panduan Cepat: Cara Mencoba & Memainkan Game
-
-Bagian ini dirancang agar Dosen Penguji atau Evaluator dapat langsung menjalankan dan menguji seluruh modul kecerdasan buatan di dalam game dalam hitungan menit.
+## 2. Panduan Menjalankan Game
 
 ### 1. Prasyarat Sistem
 * **Python**: Versi `3.10` atau lebih baru (direkomendasikan `3.11` / `3.12` / `3.14`).
@@ -39,9 +33,7 @@ python main.py
 
 ---
 
-## 3. Skenario Panduan Uji Coba Fitur AI untuk Dosen / Evaluator
-
-Ikuti 5 langkah demonstrasi berikut untuk melihat seluruh modul materi kuliah bekerja secara nyata:
+## 3. Skenario Panduan Fitur AI 
 
 ```mermaid
 flowchart LR
@@ -53,7 +45,7 @@ flowchart LR
 
 ### Langkah 1: Eksplorasi Peta & Pathfinding (Materi Tahap 1)
 * Gerakkan karakter utama (**Bolu**) menggunakan tombol **`W, A, S, D`** atau **Tombol Panah**.
-* Tekan tombol **`[Spasi]`** untuk memanggil NPC Kucing Oyen agar mengejar Bolu.
+* Tekan tombol **`[Spasi]`** untuk memanggil NPC.
 * Tekan tombol **`[Ctrl]`** untuk menampilkan **Debug Overlay Pathfinding**:
   * Anda akan melihat visualisasi petak yang di-expand (*closed set*), jalur terpendek (*path*), metrik waktu eksekusi (ms), serta perbandingan algoritma **Uniform Cost Search (UCS)** vs **A\*** dengan berbagai heuristik (*Manhattan*, *Euclidean*, *Chebyshev*).
 
@@ -61,7 +53,7 @@ flowchart LR
 * Dekati salah satu peti harta karun di peta (berjarak $\le 1$ langkah ubin), lalu tekan **`[E]`**.
 * Akan muncul roda *roulette* gacha item yang memberikan buff serangan (**ATK**), pertahanan (**DEF**), atau ramuan (**Potion**) kepada Bolu. Buff ini nantinya akan memicu sistem **Dynamic Difficulty Adjustment (DDA)** saat skuad musuh dibentuk!
 
-### Langkah 3: Masuk ke Fase Pre-Battle (Materi Tahap 3 & 4)
+### Langkah 3: Masuk ke Fase Pre-Battle (Materi Tahap 3)
 * Tabrak / dekati NPC musuh atau tekan tombol **`[B]`** dari mana saja untuk langsung memicu fase **Pre-Battle**.
 * Di fase ini, sistem AI di balik layar secara otomatis menjalankan:
   1. **CSP Solver (Backtracking + MRV + LCV + AC-3)** untuk memastikan komposisi tim musuh mematuhi 8 batasan legalitas ($C_1 - C_8$).
@@ -140,7 +132,6 @@ Game-AI/
 ├── main.py                     # Entry point utama aplikasi
 ├── requirements.txt            # Dependensi pustaka (pygame-ce)
 ├── README.md                   # Dokumentasi teknis & panduan permainan
-├── template_laporan.md         # Template acuan penyusunan laporan akademik lengkap
 ├── assets/                     # Spritesheet karakter, potret NPC, dan atlas ubin
 ├── data/
 │   └── map_tubes.json          # Peta ubin 2D, koordinat, layer medan, dan collision
@@ -177,7 +168,7 @@ Game-AI/
 
 Sistem AI di dalam game ini mengimplementasikan 4 pilar materi perkuliahan secara terintegrasi:
 
-### 1. Tahap 1: Informed Search & Navigasi Grid (Modul 2 & Slide 03)
+### 1. Tahap 1: Informed Search & Navigasi Grid
 * **Uniform Cost Search (UCS)**: Menemukan jalur terpendek berdasarkan akumulasi biaya riil $g(n)$ dengan $h(n) = 0$.
 * **A\* Search**: Mengarahkan pencarian menggunakan fungsi evaluasi:
   $$f(n) = g(n) + h(n)$$
@@ -190,13 +181,13 @@ Sistem AI di dalam game ini mengimplementasikan 4 pilar materi perkuliahan secar
     $$h(n) = \max(|x_n - x_{\text{goal}}|, |y_n - y_{\text{goal}}|)$$
 * **Weighted Terrain Cost**: Langkah di jalan tanah/jembatan memiliki biaya $c = 1.0$, sedangkan medan berumput berbiaya $c = 2.0$.
 
-### 2. Tahap 2: Adversarial Search Turn-Based Battle (Slide Review & Modul 1)
+### 2. Tahap 2: Adversarial Search Turn-Based Battle
 * **Minimax**: Mengevaluasi seluruh kemungkinan langkah pemain dan musuh untuk memaksimalkan utilitas giliran.
 * **Alpha-Beta Pruning**: Memangkas cabang-cabang pohon permainan yang terbukti tidak akan dipilih oleh pemain rasional, menurunkan kompleksitas dari $O(b^d)$ menjadi mendekati $O(b^{d/2})$.
 * **Expectimax**: Memodelkan ketidakpastian aksi jika pemain dianggap tidak selalu bermain optimal (*bounded rationality*).
 * **Tag-Team Battle**: Jika frontline NPC tumbang, sistem mengaktifkan anggota berikutnya dari *bench*, menjaga kesinambungan duel.
 
-### 3. Tahap 3: Local Search & Dynamic Difficulty Adjustment (Slide 05)
+### 3. Tahap 3.1: Local Search
 Local search mencari konfigurasi akhir optimal di mana lintasan (*path*) tidak penting dengan konsumsi memori konstan $O(1)$.
 * **Fungsi Objektif (Fitness Function)**:
   $$\text{Fitness}(s) = -|\text{Difficulty}(s) - \text{TargetDifficulty}|$$
@@ -208,7 +199,7 @@ Local search mencari konfigurasi akhir optimal di mana lintasan (*path*) tidak p
      $$P(\text{accept}) = e^{\frac{\Delta E}{T}}, \quad T \leftarrow T \times \text{cooling\_rate}$$
   5. **Genetic Algorithm (GA)**: Mengoperasikan populasi konfigurasi skuad melalui seleksi turnamen, rekombinasi (*crossover*), dan mutasi acak.
 
-### 4. Tahap 4: Constraint Satisfaction Problem (CSP) (Slide 06)
+### 4. Tahap 3.2: Constraint Satisfaction Problem (CSP)
 CSP merumuskan pembentukan skuad sebagai masalah kepatuhan batasan:
 * **Himpunan Variabel ($X$)**: Atribut setiap anggota skuad ($\text{Role}_i, \text{HP}_i, \text{Potion}_i, \text{ATK\_Bonus}_i, \text{Eval\_Profile}_i$).
 * **Himpunan Domain ($D$)**: Nilai diskret stat game (HP $\in [70, 110]$, Potion $\in [0, 2]$, dsb).
@@ -264,7 +255,7 @@ Seluruh eksperimen dapat direproduksi secara instan menggunakan skrip di folder 
 
 Anda dapat menjalankan skrip pengujian mandiri tanpa membuka jendela grafis game:
 
-1. **Benchmark Lengkap Tahap 3 & 4 (CSP + 5 Local Search)**:
+1. **Benchmark Lengkap Tahap 3 (CSP + 5 Local Search)**:
    ```bash
    python scratch/run_tahap3_experiments.py
    ```
@@ -286,6 +277,3 @@ Anda dapat menjalankan skrip pengujian mandiri tanpa membuka jendela grafis game
    ```
 
 ---
-
-## 9. Dokumen Pendukung Lainnya
-* Untuk panduan penyusunan laporan akademik, silakan merujuk ke [`template_laporan.md`](file:///c:/Users/Pavilion/Documents/DOKUMEN%20TUGAS/Kuliah/Tubes_ai_kel7/Fix_nya/Game-AI/template_laporan.md) yang memuat tinjauan pustaka matematis, pseudocode lengkap Russell & Norvig, metodologi pengujian, dan analisis empiris komprehensif.

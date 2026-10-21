@@ -12,7 +12,7 @@ import os
 import pygame
 from typing import List, Dict, Any, Optional, Tuple
 
-from . import config
+from ..core import config
 
 SRCALPHA = getattr(pygame, "SRCALPHA", 0x00010000)
 

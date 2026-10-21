@@ -6,19 +6,19 @@ import os
 from typing import Optional, Dict, Any, List, Tuple
 import pygame
 
-from . import config
-from .events import GameManager
-from .mapdata import MapData
-from .overlay import DebugOverlay
-from .player import Player
-from .npc import NPC
-from .battle_system import BattleSystem
-from .battle_ai import ACTION_ATTACK, ACTION_HEAVY, ACTION_DEFEND, ACTION_POTION
-from .npc_config_csp import NPCConfigCSP
-from .npc_config_optimizer import NPCOptimizer
-from .npc_squad import NPCSquad, NPCMember
-from .battle_vfx import BattleVFXManager
-from .pre_battle_visualizer import PreBattleVisualizerModal
+from .core import config
+from .core.events import GameManager
+from .world.mapdata import MapData
+from .ui.overlay import DebugOverlay
+from .world.player import Player
+from .world.npc import NPC
+from .battle.battle_system import BattleSystem
+from .ai.battle_ai import ACTION_ATTACK, ACTION_HEAVY, ACTION_DEFEND, ACTION_POTION
+from .ai.npc_config_csp import NPCConfigCSP
+from .ai.npc_config_optimizer import NPCOptimizer
+from .battle.npc_squad import NPCSquad, NPCMember
+from .battle.battle_vfx import BattleVFXManager
+from .ui.pre_battle_visualizer import PreBattleVisualizerModal
 
 MOUSEWHEEL = getattr(pygame, "MOUSEWHEEL", 1027)
 K_EQUALS = getattr(pygame, "K_EQUALS", 61)

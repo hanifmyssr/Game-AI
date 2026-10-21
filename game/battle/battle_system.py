@@ -4,7 +4,7 @@
 import time
 from typing import List, Dict, Any, Optional
 
-from .battle_ai import (
+from ..ai.battle_ai import (
     BattleState,
     BattleAISolver,
     ACTION_ATTACK,

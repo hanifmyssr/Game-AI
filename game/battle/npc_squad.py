@@ -4,7 +4,7 @@ import os
 from typing import Dict, List, Any, Optional
 import pygame
 
-from . import config
+from ..core import config
 
 
 # Pemetaan nama & warna ikon untuk anggota tim NPC

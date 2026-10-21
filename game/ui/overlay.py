@@ -5,10 +5,11 @@
 """
 
 import math
+from typing import Optional, Callable, Any
 import pygame
 
-from . import config
-from .battle_ai import (
+from ..core import config
+from ..ai.battle_ai import (
     ACTION_ATTACK,
     ACTION_HEAVY,
     ACTION_DEFEND,
@@ -19,7 +20,7 @@ from .battle_ai import (
     HEAVY_DEFENDED_DAMAGE,
     calc_damage,
 )
-from .battle_ai import MOVE_ORDERING_MODES, MOVE_ORDERING_OFF, MOVE_ORDERING_HEURISTIC, MOVE_ORDERING_REVERSED
+from ..ai.battle_ai import MOVE_ORDERING_MODES, MOVE_ORDERING_OFF, MOVE_ORDERING_HEURISTIC, MOVE_ORDERING_REVERSED
 from .tree_overlay import TreeOverlay
 
 MOUSEBUTTONDOWN = getattr(pygame, "MOUSEBUTTONDOWN", 1025)
@@ -67,7 +68,7 @@ def draw_metric_tile(
 
 
 class Dropdown:
-    def __init__(self, rect, labels, on_select, initial_idx=0, placeholder="-- Pilih Algoritma --"):
+    def __init__(self, rect, labels, on_select, initial_idx: Optional[int] = 0, placeholder="-- Pilih Algoritma --"):
         self.rect = pygame.Rect(rect)
         self.labels = labels
         self.on_select = on_select
@@ -195,7 +196,9 @@ class DebugOverlay:
         self.pre_battle_config = None
         self.pre_battle_stats = None
         self.pre_battle_algo = "HILL_CLIMBING"
-        self.on_ls_algo_changed = None
+        self.on_ls_algo_changed: Optional[Callable[[Any], None]] = None
+        self.on_open_ai_inspector: Optional[Callable[[], Any]] = None
+        self.btn_inspect_ai: Optional[pygame.Rect] = None
         self._init_pre_battle_ui()
 
         # --- Decision Tree Overlay ---
@@ -1166,8 +1169,8 @@ class DebugOverlay:
             if self.dropdown_ls_algo.handle_event(event):
                 return True
             if event.type == MOUSEBUTTONDOWN and getattr(event, "button", 1) == 1:
-                if getattr(self, "btn_inspect_ai", None) and self.btn_inspect_ai.collidepoint(event.pos):
-                    if callable(getattr(self, "on_open_ai_inspector", None)):
+                if self.btn_inspect_ai and self.btn_inspect_ai.collidepoint(event.pos):
+                    if callable(self.on_open_ai_inspector):
                         self.on_open_ai_inspector()
                         return True
             return False

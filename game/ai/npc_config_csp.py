@@ -11,7 +11,7 @@ Mengimplementasikan:
 import random
 import time
 from typing import Dict, List, Tuple, Any, Optional, Set
-from . import config
+from ..core import config
 
 
 class NPCConfigCSP:

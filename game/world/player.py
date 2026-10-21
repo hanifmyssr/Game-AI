@@ -8,8 +8,8 @@ movement di bawah tidak berubah, movement hanya "*memberi tahu* sprite
 arah dan kondisi gerak lewat update_direction() dan sprite.update()".
 """
 
-from . import config
-from .animation import AnimatedSprite
+from ..core import config
+from ..core.animation import AnimatedSprite
 
 
 class Player:

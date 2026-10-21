@@ -5,7 +5,7 @@ dari konfigurasi tim NPC, serta fitness function untuk Local Search.
 """
 
 from typing import Dict, Any, Optional
-from . import config
+from ..core import config
 
 
 def get_default_weights() -> Dict[str, float]:

@@ -16,7 +16,7 @@ import random
 import time
 from typing import Dict, List, Tuple, Any, Optional
 
-from . import config
+from ..core import config
 from .difficulty import calculate_difficulty_score, calculate_fitness
 from .npc_config_csp import NPCConfigCSP
 

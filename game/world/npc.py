@@ -4,9 +4,9 @@ Menghitung ulang rute setiap kali player berpindah ubin atau algoritma
 diganti, lalu mengejar player selangkah demi selangkah selama mode chase.
 """
 
-from . import config
-from .animation import AnimatedSprite
-from .search import AStarAlgorithm, UCS, GridManager, HEURISTICS
+from ..core import config
+from ..core.animation import AnimatedSprite
+from ..ai.search import AStarAlgorithm, UCS, GridManager, HEURISTICS
 
 ALGO_TO_SEARCH = None
 

@@ -9,7 +9,7 @@ import os
 
 import pygame
 
-from . import config
+from ..core import config
 
 
 def _is_dirt_road_cell(cell_info):

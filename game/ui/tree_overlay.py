@@ -7,8 +7,8 @@ tanpa ada node yang menumpuk bahkan hingga depth 8.
 
 import math
 import pygame
-from . import config
-from .battle_ai import TreeNode
+from ..core import config
+from ..ai.battle_ai import TreeNode
 
 SRCALPHA = getattr(pygame, "SRCALPHA", 0x00010000)
 

@@ -155,6 +155,7 @@ Game-AI/
 │   ├── tree_overlay.py         # Visualizer Decision Tree Minimax/Alpha-Beta Battle
 │   └── overlay.py              # In-game HUD & Debug Overlay Pathfinding / Battle
 └── scratch/
+    ├── benchmark_csp_mrv_lcv.py  # Skrip benchmark komparatif CSP (30 run dengan & tanpa MRV/LCV)
     ├── run_tahap3_experiments.py # Skrip benchmark otomatis CSP Solver & 5 Algoritma Local Search
     ├── run_experiments.py        # Skrip benchmark otomatis Minimax, Alpha-Beta, & Expectimax
     ├── test_app_integration.py   # Headless end-to-end integration test
@@ -212,18 +213,30 @@ Local search mencari konfigurasi akhir optimal di mana lintasan (*path*) tidak p
   5. **Genetic Algorithm (GA)**: Mengoperasikan populasi konfigurasi skuad melalui seleksi turnamen, rekombinasi (*crossover*), dan mutasi acak.
 
 ### 4. Tahap 3.2: Constraint Satisfaction Problem (CSP)
-CSP merumuskan pembentukan skuad sebagai masalah kepatuhan batasan:
-* **Himpunan Variabel (X)**: Atribut setiap anggota skuad (`Role`, `HP`, `Potion`, `ATK`, `Profile`).
-* **Himpunan Domain (D)**: Nilai diskret stat game (HP dalam `[70, 110]`, Potion dalam `[0, 2]`, dsb).
+CSP merumuskan pembentukan skuad sebagai masalah kepatuhan batasan formal:
+* **Himpunan Variabel (X)**: $6 \times N$ atribut untuk $N$ anggota skuad ($N \in \{1, 2, 3\}$):
+  * `char_type_i`: Kelas karakter NPC ke-$i$.
+  * `hp_i`: Poin darah maksimal.
+  * `potions_i`: Jumlah ramuan pemulihan.
+  * `atk_bonus_i`: Bonus serangan flat.
+  * `def_bonus_i`: Bonus pertahanan flat (reduksi damage).
+  * `eval_profile_i`: Karakteristik fungsi evaluasi AI minimax.
+* **Himpunan Domain Diskret (D)**:
+  * `char_type` $\in$ `{"warrior", "ranger", "mage", "assassin"}`
+  * `hp` $\in$ `{60, 70, 80, 90, 100, 110, 120}`
+  * `potions` $\in$ `{0, 1, 2, 3}`
+  * `atk_bonus` $\in$ `{0, 5, 10, 15}`
+  * `def_bonus` $\in$ `{0, 2, 4, 6}`
+  * `eval_profile` $\in$ `{"BALANCED", "AGGRESSIVE", "DEFENSIVE"}`
 * **8 Batasan Konsistensi (C1 - C8)**:
-  * **C1 (Budget HP)**: Total HP <= 200 (atau 260 untuk 3 NPC).
-  * **C2 (Budget Potion)**: Total Potion <= 2 (atau 3 untuk 3 NPC).
-  * **C3 (Syarat Tank)**: Jika Role = Tank, maka HP >= 90.
-  * **C4 (Syarat Ranger)**: Jika Role = Ranger, maka ATK >= 5.
-  * **C5 (Keunikan Role)**: Tidak boleh ada role kembar jika jumlah anggota >= 2.
-  * **C6 (Mage Sinergi)**: HP <= 90, profil AI = BALANCED atau AGGRESSIVE.
-  * **C7 (Tank Sinergi)**: Profil AI = BALANCED atau DEFENSIVE.
-  * **C8 (Assassin Sinergi)**: ATK >= 10, HP <= 90, total budget ATK <= 12.
+  * **C1 (Budget HP)**: Total HP seluruh anggota skuad $\le 250$.
+  * **C2 (Budget Potion)**: Total Potion seluruh anggota skuad $\le 5$.
+  * **C3 (Syarat Tank)**: Jika `char_type = "tank"`, maka $HP \ge 90$.
+  * **C4 (Syarat Ranger)**: Jika `char_type = "ranger"`, maka $ATK \ge 5$.
+  * **C5 (Keunikan Role)**: Tidak boleh ada role kembar jika jumlah anggota skuad $\ge 2$.
+  * **C6 (Mage Glass Cannon)**: Jika `char_type = "mage"`, maka $HP \le 90$ dan profil AI $\in$ `{"BALANCED", "AGGRESSIVE"}`.
+  * **C7 (Tank Sinergi)**: Jika `char_type = "tank"`, maka profil AI $\in$ `{"BALANCED", "DEFENSIVE"}`.
+  * **C8 (Assassin Burst & Budget ATK)**: Total akumulasi $ATK \le 25$; jika `char_type = "assassin"`, maka $ATK \ge 10$, $HP \le 90$, dan profil AI $\in$ `{"BALANCED", "AGGRESSIVE"}`.
 * **Mekanisme Penyelesaian**:
   * **AC-3 Filtering**: Menyaring domain *unary* sebelum pencarian dimulai.
   * **MRV (Minimum Remaining Values)**: Memilih variabel paling kritis (*fail-first*) yang memiliki sisa domain tersedikit.
@@ -244,7 +257,7 @@ Seluruh eksperimen dapat direproduksi secara instan menggunakan skrip di folder 
 | **Waktu Solve 2 Anggota NPC** | **0.175 ms** | Backtracking + MRV + LCV |
 | **Waktu Solve 3 Anggota NPC** | **0.299 ms** | Menemukan solusi lengkap instan |
 | **Tingkat Kepatuhan Aturan C1 - C8** | **100% (0 Pelanggaran)** | Seluruh solusi terbukti konsisten |
-| **Komposisi Default 3 NPC** | Warrior + Tank + Assassin | Komposisi kelas sinergis dan seimbang |
+| **Komposisi Default 3 NPC** | Warrior + Ranger + Mage | Komposisi kelas sinergis dan seimbang |
 
 ### 2. Perbandingan 5 Algoritma Local Search (Target Difficulty = 0.55)
 
@@ -261,29 +274,43 @@ Seluruh eksperimen dapat direproduksi secara instan menggunakan skrip di folder 
 > * **Random Restart HC** menghasilkan solusi paling presisi mendekati target ($0.5516$, deviasi hanya $0.0016$).
 > * Integrasi CSP sebagai validator menghasilkan tingkat kepatuhan **100% legal** pada seluruh algoritma.
 
+### 3. Adaptabilitas Dinamis Skuad terhadap Kondisi Pemain (DDA)
+
+Sistem secara otomatis menyesuaikan *target difficulty* berdasarkan inventaris item, status HP pemain, dan buff gacha peti harta karun:
+
+| Skenario Pengujian | Kondisi Pemain (Bolu) | Target Difficulty | Difficulty Tercapai | Deviasi | Komposisi Skuad Musuh yang Dihasilkan |
+|:---|:---|:---:|:---:|:---:|:---|
+| **Skenario A (Standar)** | HP 100, Potion 2, ATK +0, DEF +0 | 0.5500 | 0.5472 | 0.0028 | Assassin (BAL) + Ranger (BAL) + Mage (BAL) |
+| **Skenario B (Terluka)** | HP 35, Potion 0, ATK +0, DEF +0 | 0.4000 | 0.3972 | 0.0028 | Warrior (BAL) + Ranger (BAL) + Mage (BAL) |
+| **Skenario C (Buff Peti)**| HP 100, Potion 4, ATK +6, DEF +4 | 0.6500 | 0.6500 | **0.0000** | Ranger (BAL) + Mage (AGG) + Assassin (BAL) |
+
 ---
 
 ## 8. Skrip Pengujian Otomatis & Benchmark
 
 Anda dapat menjalankan skrip pengujian mandiri tanpa membuka jendela grafis game:
 
-1. **Benchmark Lengkap Tahap 3 (CSP + 5 Local Search)**:
+1. **Benchmark Lengkap Tahap 3 (CSP + 5 Local Search + DDA)**:
    ```bash
    python scratch/run_tahap3_experiments.py
    ```
-2. **Benchmark AI Battle Tahap 2 (Minimax vs Alpha-Beta vs Expectimax)**:
+2. **Benchmark Komparasi Heuristik CSP (30 Run dengan & tanpa MRV/LCV)**:
+   ```bash
+   python scratch/benchmark_csp_mrv_lcv.py
+   ```
+3. **Benchmark AI Battle Tahap 2 (Minimax vs Alpha-Beta vs Expectimax)**:
    ```bash
    python scratch/run_experiments.py
    ```
-3. **Pengujian Integrasi End-to-End Game Loop**:
+4. **Pengujian Integrasi End-to-End Game Loop (Headless)**:
    ```bash
    python scratch/test_app_integration.py
    ```
-4. **Unit Test Aturan CSP & Validator**:
+5. **Unit Test Aturan CSP & Validator**:
    ```bash
    python scratch/test_csp.py
    ```
-5. **Unit Test Local Search Optimizer**:
+6. **Unit Test Local Search Optimizer**:
    ```bash
    python scratch/test_optimizer.py
    ```

@@ -337,7 +337,9 @@ class NPCConfigCSP:
         solutions: List[Dict[str, Any]],
         max_solutions: int,
         parent_node_id: int = 0,
-        depth: int = 0
+        depth: int = 0,
+        use_mrv: bool = True,
+        use_lcv: bool = True,
     ) -> bool:
         if len(assignment) == len(domains):
             # Solusi lengkap ditemukan
@@ -367,12 +369,20 @@ class NPCConfigCSP:
                 return True
             return False
 
-        var = self.select_unassigned_variable_mrv(assignment, domains)
+        if use_mrv:
+            var = self.select_unassigned_variable_mrv(assignment, domains)
+        else:
+            unassigned = [v for v in domains if v not in assignment]
+            var = unassigned[0] if unassigned else None
+
         if var is None:
             return False
 
-        # Urutkan nilai domain via LCV
-        ordered_values = self.order_domain_values_lcv(var, assignment, domains, npc_count)
+        # Urutkan nilai domain via LCV jika diaktifkan
+        if use_lcv:
+            ordered_values = self.order_domain_values_lcv(var, assignment, domains, npc_count)
+        else:
+            ordered_values = list(domains[var])
 
         for val in ordered_values:
             self.stats["assignments_tried"] += 1
@@ -425,7 +435,7 @@ class NPCConfigCSP:
                 "var": var,
                 "val": val,
                 "reason": assign_reason,
-                "desc": f"MRV pilih '{var}' (sisa {len(domains[var])} opsi), LCV assign '{val}' (konsisten C1-C8)",
+                "desc": f"{'MRV' if use_mrv else 'Static'} pilih '{var}' (sisa {len(domains[var])} opsi), {'LCV' if use_lcv else 'Natural'} assign '{val}' (konsisten C1-C8)",
                 "assignment": dict(assignment),
                 "stats": dict(self.stats),
             })
@@ -435,7 +445,17 @@ class NPCConfigCSP:
             new_domains[var] = [val]
 
             # Eksplorasi rekursif ke level berikutnya
-            if self._backtrack(assignment, new_domains, npc_count, solutions, max_solutions, parent_node_id=node_id, depth=depth + 1):
+            if self._backtrack(
+                assignment,
+                new_domains,
+                npc_count,
+                solutions,
+                max_solutions,
+                parent_node_id=node_id,
+                depth=depth + 1,
+                use_mrv=use_mrv,
+                use_lcv=use_lcv,
+            ):
                 return True
 
             # Gagal mencapai solusi lengkap dari cabang ini -> Backtrack
@@ -481,7 +501,9 @@ class NPCConfigCSP:
         self,
         npc_count: Optional[int] = None,
         max_solutions: int = 1,
-        shuffle: bool = False
+        shuffle: bool = False,
+        use_mrv: bool = True,
+        use_lcv: bool = True,
     ) -> List[Dict[str, Any]]:
         """Mencari solusi konfigurasi legal.
         
@@ -540,7 +562,17 @@ class NPCConfigCSP:
             ]
 
             assignment = {}
-            self._backtrack(assignment, domains, count, solutions, max_solutions, parent_node_id=0, depth=0)
+            self._backtrack(
+                assignment,
+                domains,
+                count,
+                solutions,
+                max_solutions,
+                parent_node_id=0,
+                depth=0,
+                use_mrv=use_mrv,
+                use_lcv=use_lcv,
+            )
 
             if len(solutions) >= max_solutions:
                 break

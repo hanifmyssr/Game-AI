@@ -38,7 +38,22 @@ Penjelasan_game.md
 06_Constraint_Satisfaction_Problem.md
 .check.md
 .LAPORAN_TAHAP_2.md
+.ide_tahap_4.md
+ide_tahap_4.md
+template_laporan.md
+
 
 # Scratch temporary screenshots & helper scripts
 scratch/*.png
 scratch/*.ps1
+
+# Dokumen Laporan & Benchmark (Word & PDF)
+*.docx
+*.pdf
+~$*.docx
+Data_Benchmark*.docx
+Laporan*.pdf
+
+# Aset Tambahan Khusus Laporan
+assets/lampiran_c/
+assets/logo_upi.png

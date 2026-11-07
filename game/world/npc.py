@@ -83,7 +83,7 @@ class NPC:
     # ------------------------------------------------------------------ #
     def _spawn(self):
         if self.waypoints:
-            self.grid = self.waypoints[0]
+            self.grid = self.map.get_valid_spawn_point(self.waypoints[0])
         else:
             target_preferred = (
                 self.player.grid[0] + 4,

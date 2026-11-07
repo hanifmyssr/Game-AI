@@ -8,6 +8,7 @@ import pygame
 
 from .core import config
 from .core.events import GameManager
+from .core.audio import AudioManager
 from .world.mapdata import MapData
 from .ui.overlay import DebugOverlay
 from .world.player import Player
@@ -18,6 +19,7 @@ from .ai.npc_config_csp import NPCConfigCSP
 from .ai.npc_config_optimizer import NPCOptimizer
 from .battle.npc_squad import NPCSquad, NPCMember
 from .battle.battle_vfx import BattleVFXManager
+from .battle.battle_background import BattleArenaBackground
 from .ui.pre_battle_visualizer import PreBattleVisualizerModal
 
 MOUSEWHEEL = getattr(pygame, "MOUSEWHEEL", 1027)
@@ -59,10 +61,10 @@ K_t = getattr(pygame, "K_t", 116)
 
 
 class Camera:
-    """Kamera yang mengikuti player dengan zoom yang dapat diubah."""
+    """Kamera yang mengikuti player dengan zoom yang dapat diubah dan peredam halus (smooth lerp)."""
 
     def __init__(self, win_w, win_h, map_w, map_h, margin=0.02):
-        self.zoom = 1.0
+        self.zoom = 2.8
         self.fit_zoom = 1.0
         self.map_w = map_w
         self.map_h = map_h
@@ -81,7 +83,8 @@ class Camera:
         self.left_panel_w = left_panel_w or config.DEBUG_LEFT_PANEL_WIDTH
         usable_w = max(100.0, win_w - self.left_panel_w)
         self.fit_zoom = min(usable_w / map_w, win_h / map_h) * (1.0 - margin)
-        self.zoom = self.fit_zoom * 1.2
+        # Kamera dekat (close-up) default 2.8x bebas burik
+        self.zoom = 2.8
         self._center_map()
 
     def _center_map(self):
@@ -93,8 +96,8 @@ class Camera:
 
     def zoom_by(self, factor, focus_screen=None):
         old_zoom = self.zoom
-        min_zoom = self.fit_zoom * 0.75
-        max_zoom = self.fit_zoom * 2.5
+        min_zoom = max(1.2, self.fit_zoom * 0.8)
+        max_zoom = 4.5
         if focus_screen is None:
             usable_w = max(100.0, self.win_w - self.left_panel_w)
             focus_screen = (self.left_panel_w + usable_w / 2.0, self.win_h / 2.0)
@@ -125,12 +128,19 @@ class Camera:
             min_offset_y = self.win_h - scaled_h
             self.offset_y = max(min_offset_y, min(self.offset_y, 0.0))
 
-    def follow(self, world_pos):
+    def follow(self, world_pos, smooth=False, dt=0.016):
         usable_w = max(100.0, self.win_w - self.left_panel_w)
         viewport_center_x = self.left_panel_w + usable_w / 2.0
         viewport_center_y = self.win_h / 2.0
-        self.offset_x = viewport_center_x - world_pos[0] * self.zoom
-        self.offset_y = viewport_center_y - world_pos[1] * self.zoom
+        target_x = viewport_center_x - world_pos[0] * self.zoom
+        target_y = viewport_center_y - world_pos[1] * self.zoom
+        if smooth:
+            factor = min(1.0, 10.0 * dt)
+            self.offset_x += (target_x - self.offset_x) * factor
+            self.offset_y += (target_y - self.offset_y) * factor
+        else:
+            self.offset_x = target_x
+            self.offset_y = target_y
         self._clamp_offset()
 
     def world_to_screen(self, wx, wy):
@@ -155,6 +165,7 @@ class App:
         # Sistem Pertarungan Turn-Based (Minimax AI)
         self.battle_system = BattleSystem()
         self.vfx = BattleVFXManager(self.fonts)
+        self.battle_bg = BattleArenaBackground()
         self.battle_system.on_action_callback = self._on_battle_action_executed
         self.battle_system.on_tag_in = self._on_npc_tag_in
         self.card_summon_anim = None
@@ -195,7 +206,7 @@ class App:
         # 3 NPC di Peta (Opsi B: 1 Pengejar Utama + 2 Patroli Waypoint)
         # NPC 1: Bolu (Pengejar Utama pada [SPACE])
         self.npc = NPC(self.map, self.events, self.player, name="Bolu")
-        # NPC 2: Kuro (Patroli Wilayah Barat/Utara - Warna Gelap)
+        # NPC 2: Kuro (Patroli Wilayah Barat/Utara di tebing/gua)
         self.npc_kuro = NPC(
             self.map,
             self.events,
@@ -203,9 +214,9 @@ class App:
             name="Kuro",
             tint_color=(45, 45, 55),
             is_patrol=True,
-            waypoints=[(10, 8), (16, 8), (16, 16), (10, 16)],
+            waypoints=[(11, 4), (16, 4), (16, 7), (12, 5)],
         )
-        # NPC 3: Shiro (Patroli Wilayah Timur/Selatan - Warna Putih/Silver)
+        # NPC 3: Shiro (Patroli Wilayah Timur/Selatan di dermaga/pulau)
         self.npc_shiro = NPC(
             self.map,
             self.events,
@@ -213,18 +224,33 @@ class App:
             name="Shiro",
             tint_color=(195, 205, 220),
             is_patrol=True,
-            waypoints=[(28, 14), (34, 14), (35, 24), (26, 21)],
+            waypoints=[(35, 20), (37, 20), (37, 23), (34, 23)],
         )
 
         self.events.subscribe_player_moved(self.npc.on_player_moved)
+        self.events.subscribe_player_moved(self._on_player_moved_sound)
         self.events.subscribe_algorithm_changed(self.npc.set_algorithm)
 
+        # Audio Manager & BGM (Musik Latar)
+        self.audio = AudioManager()
+        self.audio.play_bgm(volume=0.15)
+        self.was_near_chest = False
+
         # Peti Harta Interaktif & Tas Inventory (Tahap 3 & 4)
-        self.chests = [
-            {"pos": (6, 20), "opened": False, "item": "health_potion"},
-            {"pos": (22, 10), "opened": False, "item": "item_sword"},
-            {"pos": (32, 27), "opened": False, "item": "item_shield"},
-        ]
+        map_chests = getattr(self.map, "chests_data", [])
+        if map_chests:
+            self.chests = [
+                {"pos": (c["x"], c["y"]), "opened": False, "item": c.get("item", "health_potion")}
+                for c in map_chests
+            ]
+        else:
+            self.chests = [
+                {"pos": (27, 2), "opened": False, "item": "health_potion"},
+                {"pos": (11, 3), "opened": False, "item": "item_sword"},
+                {"pos": (41, 24), "opened": False, "item": "item_shield"},
+                {"pos": (10, 28), "opened": False, "item": "health_potion"},
+            ]
+        self._init_chickens()
         self.item_images = self._load_item_images()
         self.item_images_large = self._load_item_images_large()
         self.battle_sprites = self._load_battle_sprites()
@@ -244,7 +270,27 @@ class App:
 
         self.map_surface = None
         self.scaled_map = None
+        self.scaled_maps = []
         self.map_w, self.map_h = self.map.map_px_size()
+
+        # State Animasi Lingkungan Hidup (Living World)
+        self.wind_timer = 0.0
+        self.chicken_timer = 0.0
+        self.water_anim_timer = 0.0
+        self.water_frame = 0
+        self.sparkles = []
+        self.sparkle_spawn_timer = 0.0
+
+        # Foliage & Partikel Debu Langkah Kaki
+        self.foliage_tree_canopy = None
+        self.foliage_bush = None
+        self.foliage_flower = None
+        self.dust_frames = []
+        self.dust_particles = []
+        self._last_player_moving = False
+        self._step_dust_timer = 0.0
+        self._scaled_foliage = {}
+        self._load_visual_effects()
 
         # Timer jeda aksi NPC dalam battle agar animasi/pembacaan terasa wajar
         self.npc_battle_turn_timer = 0.0
@@ -273,24 +319,224 @@ class App:
     def _apply_viewport(self):
         w, h = self.screen.get_size()
         self.camera = Camera(w, h, self.map_w, self.map_h)
-        if self.map_surface is None:
-            combined = pygame.Surface((self.map_w, self.map_h))
-            ground_surface = self.map.ground_surface
-            obstacle_surface = self.map.obstacle_surface
-            assert ground_surface is not None
-            assert obstacle_surface is not None
-            combined.blit(ground_surface, (0, 0))
-            combined.blit(obstacle_surface, (0, 0))
-            self.map_surface = combined
+        self.water_anim_timer = 0.0
+        self.water_frame = 0
+        self._refresh_scaled_map()
         self.camera.follow((self.player.px, self.player.py))
         self._last_camera_target = (self.player.px, self.player.py)
-        self._refresh_scaled_map()
+
+    def _load_visual_effects(self):
+        try:
+            biom_path = os.path.join(config.ASSET_DIR, "sprout", "Basic_Grass_Biom_things.png")
+            biom_sheet = pygame.image.load(biom_path).convert_alpha()
+            # Tree canopy: kanopi hijau 2x1 di kolom 1..2, baris 0 (16, 0, 32, 16)
+            self.foliage_tree_canopy = biom_sheet.subsurface((16, 0, 32, 16))
+            # Tree canopy pink: kanopi pink di kolom 3..4, baris 0 (48, 0, 32, 16)
+            self.foliage_tree_canopy_pink = biom_sheet.subsurface((48, 0, 32, 16))
+            # Tree canopy small: kanopi pohon ramping di kolom 0, baris 0 (0, 0, 16, 16)
+            self.foliage_tree_small = biom_sheet.subsurface((0, 0, 16, 16))
+            # Ambush: semak hijau di kolom 1, baris 3 (16, 48, 16, 16)
+            self.foliage_ambush_green = biom_sheet.subsurface((16, 48, 16, 16))
+            # Ambush: semak berry di kolom 0, baris 3 (0, 48, 16, 16)
+            self.foliage_ambush_berry = biom_sheet.subsurface((0, 48, 16, 16))
+            # Sunflower: kepala bunga matahari di kolom 8, baris 2 (128, 32, 16, 16)
+            self.foliage_sunflower = biom_sheet.subsurface((128, 32, 16, 16))
+            # Flower liar: ubin bunga di kolom 7, baris 3 (112, 48, 16, 16)
+            self.foliage_flower = biom_sheet.subsurface((112, 48, 16, 16))
+            # Flower kuning: ubin bunga kuning di kolom 6, baris 2 (96, 32, 16, 16)
+            self.foliage_flower_yellow = biom_sheet.subsurface((96, 32, 16, 16))
+        except Exception as e:
+            self.foliage_tree_canopy = None
+            self.foliage_tree_canopy_pink = None
+            self.foliage_tree_small = None
+            self.foliage_ambush_green = None
+            self.foliage_ambush_berry = None
+            self.foliage_sunflower = None
+            self.foliage_flower = None
+            self.foliage_flower_yellow = None
+
+        try:
+            grass_path = os.path.join(config.ASSET_DIR, "sprout", "Grass.png")
+            grass_sheet = pygame.image.load(grass_path).convert_alpha()
+            self.foliage_grass_flower1 = grass_sheet.subsurface((112, 80, 16, 16))
+            self.foliage_grass_flower2 = grass_sheet.subsurface((112, 96, 16, 16))
+            self.foliage_grass_tuft = grass_sheet.subsurface((144, 80, 16, 16))
+        except Exception as e:
+            self.foliage_grass_flower1 = None
+            self.foliage_grass_flower2 = None
+            self.foliage_grass_tuft = None
+
+        # Ayam / Chicken Animation Frames
+        try:
+            ch_path = os.path.join(config.ASSET_DIR, "sprout", "Free Chicken Sprites.png")
+            if not os.path.exists(ch_path):
+                ch_path = os.path.join(config.ASSET_DIR, "Sprout Lands - Sprites - Basic pack", "Sprout Lands - Sprites - Basic pack", "Characters", "Free Chicken Sprites.png")
+            ch_sheet = pygame.image.load(ch_path).convert_alpha()
+            self.chicken_frames = [
+                ch_sheet.subsurface((0, 0, 16, 16)),    # 0: idle 1
+                ch_sheet.subsurface((16, 0, 16, 16)),   # 1: idle 2
+                ch_sheet.subsurface((32, 0, 16, 16)),   # 2: walk 1
+                ch_sheet.subsurface((48, 0, 16, 16)),   # 3: walk 2
+                ch_sheet.subsurface((0, 16, 16, 16)),   # 4: peck 1
+                ch_sheet.subsurface((16, 16, 16, 16)),  # 5: peck 2 (ground)
+                ch_sheet.subsurface((32, 16, 16, 16)),  # 6: peck 3 (chew)
+                ch_sheet.subsurface((48, 16, 16, 16)),  # 7: peck 4 (head up)
+            ]
+        except Exception as e:
+            self.chicken_frames = []
+
+        try:
+            dust_path = os.path.join(config.ASSET_DIR, "sprout", "Dust_particles.png")
+            dust_sheet = pygame.image.load(dust_path).convert_alpha()
+            self.dust_frames = [dust_sheet.subsurface((i * 16, 0, 16, 16)) for i in range(4)]
+        except Exception as e:
+            self.dust_frames = []
+
+        # Peti Harta (Chest _01.png)
+        try:
+            chest_path = os.path.join(config.ASSET_DIR, "Shining Fields_free_v1.1", "Shining Fields_free_v1.1", "Sprites", "Objects", "Chest _01.png")
+            if not os.path.exists(chest_path):
+                chest_path = os.path.join(config.ASSET_DIR, "tubes", "Chest.png")
+            chest_sheet = pygame.image.load(chest_path).convert_alpha()
+            self.chest_closed_surf = chest_sheet.subsurface((0, 0, 16, 16))
+            self.chest_opened_surf = chest_sheet.subsurface((48, 0, 16, 16))
+        except Exception as e:
+            self.chest_closed_surf = None
+            self.chest_opened_surf = None
+
+        self._foliage_slice_cache = {}
+        self._foliage_sheets = {}
+
+    def _get_foliage_slice(self, src, ax, ay):
+        cache_key = (src, ax, ay)
+        if cache_key in self._foliage_slice_cache:
+            return self._foliage_slice_cache[cache_key]
+        sheet = self._foliage_sheets.get(src)
+        if sheet is None:
+            full_path = os.path.join(config.ASSET_DIR, src.replace("/", os.sep))
+            if os.path.exists(full_path):
+                try:
+                    sheet = pygame.image.load(full_path).convert_alpha()
+                    self._foliage_sheets[src] = sheet
+                except Exception:
+                    self._foliage_sheets[src] = False
+            else:
+                self._foliage_sheets[src] = False
+        if sheet:
+            px = ax * 16
+            py = ay * 16
+            if px + 16 <= sheet.get_width() and py + 16 <= sheet.get_height():
+                surf = sheet.subsurface((px, py, 16, 16)).copy()
+                # Jika berasal dari Grass.png Sprout Lands, ubah background hijau (192, 212, 112) menjadi transparan
+                # agar hanya helai rumput, bunga, dan tanda rumput yang bergoyang di atas peta
+                if "grass" in src.lower() and "biom" not in src.lower():
+                    surf.set_colorkey((192, 212, 112))
+                self._foliage_slice_cache[cache_key] = surf
+                return surf
+        return None
+
+    def _refresh_scaled_foliage(self):
+        zoom = self.camera.zoom
+        self._scaled_foliage = {}
+        if getattr(self, "foliage_tree_canopy", None):
+            tw = max(1, int(round(32 * zoom)))
+            th = max(1, int(round(16 * zoom)))
+            self._scaled_foliage["tree"] = pygame.transform.scale(self.foliage_tree_canopy, (tw, th))
+        if getattr(self, "foliage_tree_canopy_pink", None):
+            tw = max(1, int(round(32 * zoom)))
+            th = max(1, int(round(16 * zoom)))
+            self._scaled_foliage["tree_pink"] = pygame.transform.scale(self.foliage_tree_canopy_pink, (tw, th))
+        if getattr(self, "foliage_tree_small", None):
+            sw = max(1, int(round(16 * zoom)))
+            sh = max(1, int(round(16 * zoom)))
+            self._scaled_foliage["tree_small"] = pygame.transform.scale(self.foliage_tree_small, (sw, sh))
+        if getattr(self, "foliage_ambush_green", None):
+            bw = max(1, int(round(16 * zoom)))
+            bh = max(1, int(round(16 * zoom)))
+            self._scaled_foliage["ambush_green"] = pygame.transform.scale(self.foliage_ambush_green, (bw, bh))
+        if getattr(self, "foliage_ambush_berry", None):
+            bw = max(1, int(round(16 * zoom)))
+            bh = max(1, int(round(16 * zoom)))
+            self._scaled_foliage["ambush_berry"] = pygame.transform.scale(self.foliage_ambush_berry, (bw, bh))
+        if getattr(self, "foliage_flower", None):
+            fw = max(1, int(round(16 * zoom)))
+            fh = max(1, int(round(16 * zoom)))
+            self._scaled_foliage["flower"] = pygame.transform.scale(self.foliage_flower, (fw, fh))
+        if getattr(self, "foliage_flower_yellow", None):
+            fw = max(1, int(round(16 * zoom)))
+            fh = max(1, int(round(16 * zoom)))
+            self._scaled_foliage["flower_yellow"] = pygame.transform.scale(self.foliage_flower_yellow, (fw, fh))
+        if getattr(self, "foliage_sunflower", None):
+            sw = max(1, int(round(16 * zoom)))
+            sh = max(1, int(round(16 * zoom)))
+            self._scaled_foliage["sunflower"] = pygame.transform.scale(self.foliage_sunflower, (sw, sh))
+        if getattr(self, "foliage_grass_flower1", None):
+            gw = max(1, int(round(16 * zoom)))
+            gh = max(1, int(round(16 * zoom)))
+            self._scaled_foliage["grass_flower1"] = pygame.transform.scale(self.foliage_grass_flower1, (gw, gh))
+        if getattr(self, "foliage_grass_flower2", None):
+            gw = max(1, int(round(16 * zoom)))
+            gh = max(1, int(round(16 * zoom)))
+            self._scaled_foliage["grass_flower2"] = pygame.transform.scale(self.foliage_grass_flower2, (gw, gh))
+        if getattr(self, "foliage_grass_tuft", None):
+            gw = max(1, int(round(16 * zoom)))
+            gh = max(1, int(round(16 * zoom)))
+            self._scaled_foliage["grass_tuft"] = pygame.transform.scale(self.foliage_grass_tuft, (gw, gh))
+        if getattr(self, "chicken_frames", None):
+            cw = max(1, int(round(16 * zoom)))
+            ch = max(1, int(round(16 * zoom)))
+            self._scaled_foliage["chickens"] = [
+                pygame.transform.scale(f, (cw, ch)) for f in self.chicken_frames
+            ]
+        if self.dust_frames:
+            dw = max(1, int(round(16 * zoom)))
+            dh = max(1, int(round(16 * zoom)))
+            self._scaled_foliage["dust"] = [
+                pygame.transform.scale(f, (dw, dh)) for f in self.dust_frames
+            ]
+        if getattr(self, "chest_closed_surf", None):
+            cw = max(1, int(round(16 * zoom)))
+            ch = max(1, int(round(16 * zoom)))
+            self._scaled_foliage["chest_closed"] = pygame.transform.scale(self.chest_closed_surf, (cw, ch))
+        if getattr(self, "chest_opened_surf", None):
+            cw = max(1, int(round(16 * zoom)))
+            ch = max(1, int(round(16 * zoom)))
+            self._scaled_foliage["chest_opened"] = pygame.transform.scale(self.chest_opened_surf, (cw, ch))
+
+        # Pre-scale dynamic foliage tiles dari map data
+        self._scaled_foliage_tiles = {}
+        tw = max(1, int(round(16 * zoom)))
+        th = max(1, int(round(16 * zoom)))
+        fol = getattr(self.map, "foliage", {})
+        all_fol_items = fol.get("grass_tufts", []) + fol.get("flowers", []) + fol.get("ambushes", [])
+        for item in all_fol_items:
+            if isinstance(item, dict):
+                src = item.get("src")
+                ax = item.get("atlas_x")
+                ay = item.get("atlas_y")
+                if src and ax is not None and ay is not None:
+                    k = (src, ax, ay)
+                    if k not in self._scaled_foliage_tiles:
+                        surf = self._get_foliage_slice(src, ax, ay)
+                        if surf:
+                            self._scaled_foliage_tiles[k] = pygame.transform.scale(surf, (tw, th))
 
     def _refresh_scaled_map(self):
-        assert self.map_surface is not None
-        self.scaled_map = pygame.transform.smoothscale(
-            self.map_surface, (int(self.map_w * self.camera.zoom), int(self.map_h * self.camera.zoom))
-        )
+        # Pre-scale 4 frame animasi air sungai dengan Nearest-Neighbor scale (anti-burik)
+        self.scaled_maps = []
+        target_w = max(1, int(self.map_w * self.camera.zoom))
+        target_h = max(1, int(self.map_h * self.camera.zoom))
+        target_sz = (target_w, target_h)
+        for f in range(4):
+            base_surf = self.map.get_ground_surface(f).copy()
+            if self.map.obstacle_surface is not None:
+                base_surf.blit(self.map.obstacle_surface, (0, 0))
+            # Nearest-Neighbor scaling: menjaga grafis 16x16 pixel-perfect tajam dan bebas burik
+            scaled = pygame.transform.scale(base_surf, target_sz)
+            self.scaled_maps.append(scaled)
+        self.scaled_map = self.scaled_maps[self.water_frame % len(self.scaled_maps)]
+        self.map_surface = self.map.ground_surface
+        self._refresh_scaled_foliage()
 
     def _zoom_camera(self, factor, focus_screen=None):
         self.overlay.on_camera_zoom()
@@ -334,10 +580,82 @@ class App:
             elif self.gacha_message_timer > 0:
                 self.gacha_message_timer -= dt
 
+            # Animasi riak air sungai (ganti frame tiap 0.2 detik)
+            self.water_anim_timer += dt
+            new_wf = int(self.water_anim_timer / 0.2) % 4
+            if new_wf != self.water_frame:
+                self.water_frame = new_wf
+                if hasattr(self, "scaled_maps") and self.scaled_maps:
+                    self.scaled_map = self.scaled_maps[self.water_frame % len(self.scaled_maps)]
+
+            # Animasi angin, ayam & partikel kilau padang rumput
+            self.wind_timer += dt
+            self.chicken_timer += dt
+            self._update_chickens(dt)
+
+            # Efek suara denting prompt [E] Buka Peti saat pemain mendekat ke peti tertutup
+            near_unopened_chest = False
+            for ch in self.chests:
+                if not ch.get("opened", False):
+                    dx = abs(self.player.grid[0] - ch["pos"][0])
+                    dy = abs(self.player.grid[1] - ch["pos"][1])
+                    if max(dx, dy) <= 1:
+                        near_unopened_chest = True
+                        break
+
+            if near_unopened_chest and not getattr(self, "was_near_chest", False):
+                self.audio.play_chest_prompt()
+
+            self.was_near_chest = near_unopened_chest
+            self.sparkle_spawn_timer += dt
+            if self.sparkle_spawn_timer >= 0.35 and len(self.sparkles) < 18:
+                self.sparkle_spawn_timer = 0.0
+                import random
+                gx = random.randint(2, self.map.width - 3)
+                gy = random.randint(3, self.map.height - 3)
+                if self.map.is_walkable((gx, gy)) and not self.map.is_dirt_road((gx, gy)):
+                    self.sparkles.append({
+                        "wx": gx * 16 + 8,
+                        "wy": gy * 16 + 8,
+                        "t": 0.0,
+                        "max_t": random.uniform(1.2, 2.2),
+                        "size": random.choice([3, 4, 5]),
+                    })
+            for sp in self.sparkles[:]:
+                sp["t"] += dt
+                if sp["t"] >= sp["max_t"]:
+                    self.sparkles.remove(sp)
+
+            # Debu langkah kaki pemain (Footstep Dust)
+            if self.player.moving:
+                if not self._last_player_moving:
+                    self.dust_particles.append({
+                        "wx": self.player.px,
+                        "wy": self.player.py + 6,
+                        "t": 0.0,
+                        "max_t": 0.25,
+                    })
+                    self._step_dust_timer = 0.0
+                else:
+                    self._step_dust_timer += dt
+                    if self._step_dust_timer >= 0.14:
+                        self.dust_particles.append({
+                            "wx": self.player.px,
+                            "wy": self.player.py + 6,
+                            "t": 0.0,
+                            "max_t": 0.25,
+                        })
+                        self._step_dust_timer = 0.0
+            self._last_player_moving = self.player.moving
+
+            for dp in self.dust_particles[:]:
+                dp["t"] += dt
+                if dp["t"] >= dp["max_t"]:
+                    self.dust_particles.remove(dp)
+
             camera_target = (self.player.px, self.player.py)
-            if camera_target != self._last_camera_target:
-                self.camera.follow(camera_target)
-                self._last_camera_target = camera_target
+            self.camera.follow(camera_target, smooth=True, dt=dt)
+            self._last_camera_target = camera_target
 
             # Cek jarak kedekatan (Manhattan distance <= 1) dengan NPC mana pun di peta
             all_npcs = [self.npc, self.npc_kuro, self.npc_shiro]
@@ -433,6 +751,11 @@ class App:
                 if self.npc_battle_turn_timer >= 0.5:
                     self.npc_battle_turn_timer = 0.0
                     self.battle_system.execute_npc_turn()
+
+    def _on_player_moved_sound(self, pos):
+        if self.game_mode == "EXPLORATION":
+            surface = self.map.get_surface_type(pos)
+            self.audio.play_step(surface)
 
     def _process_continuous_player_movement(self):
         keys = pygame.key.get_pressed()
@@ -809,11 +1132,12 @@ class App:
                 return
 
             if key == K_e:
-                # Buka peti harta jika berjarak <= 1 langkah ubin
+                # Buka peti harta jika berjarak <= 1 langkah ubin (termasuk diagonal)
                 for ch in self.chests:
                     if not ch["opened"]:
-                        d = abs(self.player.grid[0] - ch["pos"][0]) + abs(self.player.grid[1] - ch["pos"][1])
-                        if d <= 1:
+                        dx = abs(self.player.grid[0] - ch["pos"][0])
+                        dy = abs(self.player.grid[1] - ch["pos"][1])
+                        if max(dx, dy) <= 1:
                             self._open_chest(ch)
                             break
                 return
@@ -843,17 +1167,23 @@ class App:
     def _draw(self):
         self.screen.fill(config.BG_COLOR)
 
-        # 1. Gambar peta di sisi kanan
+        # 1. Gambar peta di sisi kanan (khusus mode eksplorasi)
         assert self.scaled_map is not None
-        self.screen.blit(self.scaled_map, (int(self.camera.offset_x), int(self.camera.offset_y)))
+        if self.game_mode == "EXPLORATION":
+            self.screen.blit(self.scaled_map, (int(self.camera.offset_x), int(self.camera.offset_y)))
 
         if self.game_mode == "EXPLORATION":
             self.overlay.draw_world(self.screen, self.camera, self.map, self.npc, self.player)
+            self._draw_sparkles()
+            self._draw_dust_particles()
+            self._draw_swaying_ground_foliage()
             self._draw_chests()
+            self._draw_chickens()
             self._draw_sprite(self.player.sprite.current_image, self.player.px, self.player.py)
             self._draw_sprite(self.npc.sprite.current_image, self.npc.px, self.npc.py)
             self._draw_sprite(self.npc_kuro.sprite.current_image, self.npc_kuro.px, self.npc_kuro.py)
             self._draw_sprite(self.npc_shiro.sprite.current_image, self.npc_shiro.px, self.npc_shiro.py)
+            self._draw_swaying_tree_canopies()
             if self.player.call_bubble_visible:
                 self._draw_call_bubble()
             self._draw_npc_offscreen_indicator()
@@ -974,10 +1304,8 @@ class App:
         arena_w = w - panel_w
         area_x = panel_w + arena_w // 2
 
-        # Gelapkan latar peta agar arena pertempuran menonjol
-        dark_surf = pygame.Surface((arena_w, h), SRCALPHA)
-        dark_surf.fill((10, 12, 18, 180))
-        self.screen.blit(dark_surf, (panel_w, 0))
+        # Latar belakang arena hutan lebat soft-focus (statis & cinematic blur)
+        self.battle_bg.draw(self.screen, panel_w, arena_w, h)
 
         # Posisi Player (Kiri) dan NPC (Kanan) di arena (sinkron dengan target VFX)
         (player_arena_x, char_y), (npc_arena_x, _) = self._get_battle_char_positions()
@@ -1649,9 +1977,10 @@ class App:
         arena_w = w - panel_w
         area_cx = panel_w + arena_w // 2
 
-        # Latar belakang gelap transparan
+        # Latar belakang arena hutan lebat tertutup lapisan gelap transparan untuk menjaga kejelasan teks
+        self.battle_bg.draw(self.screen, panel_w, arena_w, h)
         dark_surf = pygame.Surface((arena_w, h), SRCALPHA)
-        dark_surf.fill((10, 14, 22, 235))
+        dark_surf.fill((10, 14, 22, 210))
         self.screen.blit(dark_surf, (panel_w, 0))
 
         font_huge = self.fonts.get("huge", self.fonts["title"])
@@ -1889,20 +2218,32 @@ class App:
             self.screen.blit(toast_surf, (toast_rect.centerx - toast_surf.get_width() // 2, toast_rect.centery - toast_surf.get_height() // 2))
 
     def _draw_chests(self):
+        sf = getattr(self, "_scaled_foliage", {})
+        closed_surf = sf.get("chest_closed")
+        opened_surf = sf.get("chest_opened")
+        sz = int(self.map.cell_size * self.camera.zoom)
+
         for chest in self.chests:
             cx, cy = self.map.world_to_px(chest["pos"])
             sx, sy = self.camera.world_to_screen(cx, cy)
-            sz = int(self.map.cell_size * self.camera.zoom)
             rect = pygame.Rect(int(sx - sz // 2), int(sy - sz // 2), sz, sz)
 
-            if not chest["opened"]:
-                pygame.draw.rect(self.screen, (160, 95, 25), rect, border_radius=4)
-                pygame.draw.rect(self.screen, (245, 200, 60), rect, width=max(1, int(2 * self.camera.zoom)), border_radius=4)
-                k_rect = pygame.Rect(rect.centerx - 3, rect.centery - 2, 6, 6)
-                pygame.draw.rect(self.screen, (255, 240, 120), k_rect, border_radius=1)
+            if chest["opened"]:
+                if opened_surf:
+                    self.screen.blit(opened_surf, (rect.x, rect.y))
+                else:
+                    pygame.draw.rect(self.screen, (85, 75, 65), rect, border_radius=4)
+                    pygame.draw.rect(self.screen, (120, 110, 100), rect, width=1, border_radius=4)
+            else:
+                if closed_surf:
+                    self.screen.blit(closed_surf, (rect.x, rect.y))
+                else:
+                    pygame.draw.rect(self.screen, (160, 95, 25), rect, border_radius=4)
+                    pygame.draw.rect(self.screen, (245, 200, 60), rect, width=max(1, int(2 * self.camera.zoom)), border_radius=4)
 
-                dist = abs(self.player.grid[0] - chest["pos"][0]) + abs(self.player.grid[1] - chest["pos"][1])
-                if dist <= 1:
+                dx = abs(self.player.grid[0] - chest["pos"][0])
+                dy = abs(self.player.grid[1] - chest["pos"][1])
+                if max(dx, dy) <= 1:
                     prompt = self.fonts.get("bubble", self.fonts["sm"]).render("[E] Buka Peti", True, (255, 255, 255))
                     p_box = prompt.get_rect(center=(rect.centerx, rect.top - 16))
                     card = pygame.Surface((p_box.width + 12, p_box.height + 6), SRCALPHA)
@@ -1910,9 +2251,6 @@ class App:
                     pygame.draw.rect(card, (255, 205, 50), card.get_rect(), 1, border_radius=4)
                     self.screen.blit(card, card.get_rect(center=p_box.center))
                     self.screen.blit(prompt, p_box)
-            else:
-                pygame.draw.rect(self.screen, (85, 75, 65), rect, border_radius=4)
-                pygame.draw.rect(self.screen, (120, 110, 100), rect, width=1, border_radius=4)
 
     def _draw_obtained_items_hud(self):
         """Menampilkan panel HUD item yang didapat di bagian bawah kiri layar map (mode searching)."""
@@ -2475,6 +2813,7 @@ class App:
         }
         self.gacha_message = f"Mendapatkan {meta['name']}!"
         self.gacha_message_timer = 0.0
+        self.audio.play_chest_win()
 
     def _draw_action_text(self, action_data, cx, cy):
         """Gambar teks aksi melayang di atas karakter (floating + fade effect)."""
@@ -2523,10 +2862,18 @@ class App:
         bar_h = 16
         rect_bg = pygame.Rect(cx - bar_w // 2, cy, bar_w, bar_h)
 
-        # Label Nama & Defend Status
+        # Label Nama & Defend Status dengan badge kontras tinggi
         def_str = " [DEFENDING]" if is_defending else ""
-        name_surf = self.fonts.get("bubble", self.fonts["sm"]).render(f"{name}{def_str}", True, (255, 230, 100) if is_defending else (255, 255, 255))
-        self.screen.blit(name_surf, (cx - bar_w // 2, cy - 22))
+        name_font = self.fonts.get("bubble", self.fonts["sm"])
+        name_color = (255, 230, 100) if is_defending else (255, 255, 255)
+        name_surf = name_font.render(f"{name}{def_str}", True, name_color)
+        name_rect = name_surf.get_rect(midbottom=(cx, cy - 6))
+        pill_rect = name_rect.inflate(14, 6)
+        pill_surf = pygame.Surface(pill_rect.size, SRCALPHA)
+        pill_surf.fill((16, 20, 30, 200))
+        pygame.draw.rect(pill_surf, (55, 65, 85, 220), pill_surf.get_rect(), 1, border_radius=4)
+        self.screen.blit(pill_surf, pill_rect.topleft)
+        self.screen.blit(name_surf, name_rect.topleft)
 
         # Background bar
         pygame.draw.rect(self.screen, (35, 38, 48), rect_bg, border_radius=4)
@@ -2541,18 +2888,289 @@ class App:
 
         pygame.draw.rect(self.screen, (100, 110, 130), rect_bg, 1, border_radius=4)
 
-        # Teks Angka HP + Cooldown info
+        # Teks Angka HP + Cooldown info dengan badge kontras tinggi
         hp_text = f"{hp} / {max_hp} HP  │  Pot: {potions}{cd_text}"
-        ts_hp = self.fonts["sm"].render(hp_text, True, (240, 240, 240))
-        self.screen.blit(ts_hp, (cx - ts_hp.get_width() // 2, cy + bar_h + 4))
+        ts_hp = self.fonts["sm"].render(hp_text, True, (240, 245, 255))
+        hp_rect = ts_hp.get_rect(midtop=(cx, cy + bar_h + 5))
+        hp_pill = hp_rect.inflate(14, 6)
+        hp_pill_surf = pygame.Surface(hp_pill.size, SRCALPHA)
+        hp_pill_surf.fill((16, 20, 30, 200))
+        pygame.draw.rect(hp_pill_surf, (55, 65, 85, 220), hp_pill_surf.get_rect(), 1, border_radius=4)
+        self.screen.blit(hp_pill_surf, hp_pill.topleft)
+        self.screen.blit(ts_hp, hp_rect.topleft)
+
+    def _draw_sparkles(self):
+        for sp in self.sparkles:
+            sx, sy = self.camera.world_to_screen(sp["wx"], sp["wy"])
+            progress = sp["t"] / max(0.01, sp["max_t"])
+            alpha_factor = math.sin(progress * math.pi)
+            r = int(sp["size"] * self.camera.zoom * alpha_factor)
+            if r >= 2:
+                pygame.draw.line(self.screen, (255, 255, 240), (sx, sy - r), (sx, sy + r), 1)
+                pygame.draw.line(self.screen, (255, 255, 240), (sx - r, sy), (sx + r, sy), 1)
+                if r >= 4:
+                    pygame.draw.circle(self.screen, (255, 240, 180), (int(sx), int(sy)), max(1, r // 3))
+
+    def _draw_dust_particles(self):
+        scaled_dust = getattr(self, "_scaled_foliage", {}).get("dust")
+        if not scaled_dust:
+            return
+        for dp in self.dust_particles:
+            f_idx = min(len(scaled_dust) - 1, int((dp["t"] / max(0.01, dp["max_t"])) * len(scaled_dust)))
+            surf = scaled_dust[f_idx]
+            sx, sy = self.camera.world_to_screen(dp["wx"], dp["wy"])
+            rect = surf.get_rect(center=(int(sx), int(sy)))
+            self.screen.blit(surf, rect)
+
+    def _draw_swaying_ground_foliage(self):
+        """Menggambar rumput, bunga, dan semak yang bergoyang lembut tertiup angin."""
+        fol = getattr(self.map, "foliage", {})
+        zoom = self.camera.zoom
+        sf = getattr(self, "_scaled_foliage", {})
+        tile_cache = getattr(self, "_scaled_foliage_tiles", {})
+
+        # 1. Grass Tufts & Hiasan Rumput (termasuk tile biom_things & grass.tsx)
+        scaled_tuft_default = sf.get("grass_tuft")
+        for gt in fol.get("grass_tufts", []):
+            if isinstance(gt, dict):
+                gx, gy = gt["x"], gt["y"]
+                src, ax, ay = gt.get("src"), gt.get("atlas_x"), gt.get("atlas_y")
+                img = tile_cache.get((src, ax, ay)) if (src and ax is not None and ay is not None) else None
+                if not img:
+                    img = scaled_tuft_default
+            else:
+                gx, gy = gt[0], gt[1]
+                img = scaled_tuft_default
+            if img:
+                sway_x = math.sin(self.wind_timer * 3.2 + gx * 0.7 + gy * 0.5) * (0.8 * zoom)
+                wx, wy = gx * 16, gy * 16
+                sx, sy = self.camera.world_to_screen(wx, wy)
+                self.screen.blit(img, (int(sx + sway_x), int(sy)))
+
+        # 2. Bunga padang rumput
+        scaled_fl1 = sf.get("grass_flower1")
+        scaled_fl2 = sf.get("grass_flower2")
+        scaled_fl = sf.get("flower")
+        for fl in fol.get("flowers", []):
+            if isinstance(fl, dict):
+                fx, fy = fl["x"], fl["y"]
+                src, ax, ay = fl.get("src"), fl.get("atlas_x"), fl.get("atlas_y")
+                img = tile_cache.get((src, ax, ay)) if (src and ax is not None and ay is not None) else None
+                if not img:
+                    img = scaled_fl1 if (fx + fy) % 2 == 0 else (scaled_fl2 or scaled_fl)
+            else:
+                fx, fy = fl[0], fl[1]
+                img = scaled_fl1 if (fx + fy) % 2 == 0 else (scaled_fl2 or scaled_fl)
+            if img:
+                sway_x = math.sin(self.wind_timer * 3.4 + fx * 1.1 + fy * 0.4) * (1.0 * zoom)
+                wx, wy = fx * 16, fy * 16
+                sx, sy = self.camera.world_to_screen(wx, wy)
+                self.screen.blit(img, (int(sx + sway_x), int(sy)))
+
+        # 3. Kepala Bunga Matahari
+        scaled_sunflower = sf.get("sunflower")
+        if scaled_sunflower:
+            for sx_grid, sy_grid in fol.get("sunflowers", []):
+                sway_x = math.sin(self.wind_timer * 2.5 + sx_grid * 0.8) * (1.3 * zoom)
+                wx, wy = sx_grid * 16, sy_grid * 16
+                sx, sy = self.camera.world_to_screen(wx, wy)
+                self.screen.blit(scaled_sunflower, (int(sx + sway_x), int(sy)))
+
+        # 4. Ambush (Semak-semak lebat berdaun hijau, ada berry, atau semak lebar)
+        scaled_amb_green = sf.get("ambush_green")
+        scaled_amb_berry = sf.get("ambush_berry")
+        for amb in fol.get("ambushes", []):
+            if isinstance(amb, dict):
+                ax_grid, ay_grid = amb["x"], amb["y"]
+                src, ax, ay = amb.get("src"), amb.get("atlas_x"), amb.get("atlas_y")
+                atype = amb.get("type", "green")
+                img = tile_cache.get((src, ax, ay)) if (src and ax is not None and ay is not None) else None
+                if not img:
+                    img = scaled_amb_berry if atype == "berry" else scaled_amb_green
+            else:
+                ax_grid, ay_grid = amb[0], amb[1]
+                img = scaled_amb_green
+            if img:
+                sway_x = math.sin(self.wind_timer * 2.8 + ax_grid * 0.9 + ay_grid * 0.5) * (1.2 * zoom)
+                wx, wy = ax_grid * 16, ay_grid * 16
+                sx, sy = self.camera.world_to_screen(wx, wy)
+                self.screen.blit(img, (int(sx + sway_x), int(sy)))
+
+        # 5. Semak bulat (kompatibilitas map lama jika ada)
+        scaled_bush = sf.get("bush")
+        if scaled_bush:
+            for bx, by in fol.get("bushes", []):
+                sway_x = math.sin(self.wind_timer * 2.8 + bx * 0.9) * (1.0 * zoom)
+                wx, wy = bx * 16, by * 16
+                sx, sy = self.camera.world_to_screen(wx, wy)
+                self.screen.blit(scaled_bush, (int(sx + sway_x), int(sy)))
+
+    def _draw_swaying_tree_canopies(self):
+        """Menggambar kanopi daun pohon yang melambai tertiup angin (di atas batang pohon & karakter)."""
+        fol = getattr(self.map, "foliage", {})
+        zoom = self.camera.zoom
+        sf = getattr(self, "_scaled_foliage", {})
+
+        scaled_green = sf.get("tree")
+        scaled_pink = sf.get("tree_pink") or scaled_green
+        scaled_small = sf.get("tree_small")
+
+        if scaled_green:
+            for tx, ty in fol.get("trees", []):
+                sway_x = math.sin(self.wind_timer * 2.2 + tx * 0.6) * (1.5 * zoom)
+                wx = tx * 16
+                wy = ty * 16
+                sx, sy = self.camera.world_to_screen(wx, wy)
+                self.screen.blit(scaled_green, (int(sx + sway_x), int(sy)))
+
+        if scaled_pink:
+            for tx, ty in fol.get("trees_pink", []):
+                sway_x = math.sin(self.wind_timer * 2.2 + tx * 0.6) * (1.5 * zoom)
+                wx = tx * 16
+                wy = ty * 16
+                sx, sy = self.camera.world_to_screen(wx, wy)
+                self.screen.blit(scaled_pink, (int(sx + sway_x), int(sy)))
+
+        if scaled_small:
+            for tx, ty in fol.get("trees_small", []):
+                sway_x = math.sin(self.wind_timer * 2.4 + tx * 0.8) * (1.2 * zoom)
+                wx = tx * 16
+                wy = ty * 16
+                sx, sy = self.camera.world_to_screen(wx, wy)
+                self.screen.blit(scaled_small, (int(sx + sway_x), int(sy)))
+
+    def _init_chickens(self):
+        """Inisialisasi entitas ayam dengan status pergerakan lokal dan animasi masing-masing."""
+        chickens_raw = getattr(self.map, "chickens", [])
+        self.chicken_entities = []
+        import random
+        for ch in chickens_raw:
+            cx = ch.get("x", 0) if isinstance(ch, dict) else ch[0]
+            cy = ch.get("y", 0) if isinstance(ch, dict) else ch[1]
+            ox = float(cx * 16)
+            oy = float(cy * 16)
+            self.chicken_entities.append({
+                "origin_x": ox,
+                "origin_y": oy,
+                "x": ox,
+                "y": oy,
+                "target_x": ox,
+                "target_y": oy,
+                "state": random.choice(["idle", "peck"]),
+                "timer": random.uniform(1.0, 3.0),
+                "anim_timer": random.uniform(0.0, 1.5),
+                "facing_left": random.choice([True, False]),
+                "frame_idx": 0,
+                "hop": 0,
+                "speed": random.uniform(10.0, 14.0),
+            })
+
+    def _update_chickens(self, dt):
+        """Memperbarui pergerakan lokal (wander kecil) dan state animasi ayam."""
+        if not hasattr(self, "chicken_entities") or not self.chicken_entities:
+            self._init_chickens()
+            if not self.chicken_entities:
+                return
+
+        # Batasi delta time agar ayam tidak loncat saat FPS drop atau window drag
+        dt = min(dt, 0.05)
+        import math, random
+        for ch in self.chicken_entities:
+            ch["anim_timer"] += dt
+
+            if ch["state"] == "walk":
+                dx = ch["target_x"] - ch["x"]
+                dy = ch["target_y"] - ch["y"]
+                dist = math.hypot(dx, dy)
+                step = ch["speed"] * dt
+                if dist <= step or dist < 0.5:
+                    ch["x"] = ch["target_x"]
+                    ch["y"] = ch["target_y"]
+                    ch["hop"] = 0
+                    ch["state"] = random.choice(["idle", "peck"])
+                    ch["timer"] = random.uniform(1.5, 3.2) if ch["state"] == "idle" else 1.8
+                    ch["anim_timer"] = 0.0
+                else:
+                    ch["x"] += (dx / dist) * step
+                    ch["y"] += (dy / dist) * step
+                    ch["facing_left"] = (dx < 0)
+                    # Di Free Chicken Sprites, frame 0 & 1 adalah animasi gerak/waddle
+                    # (Frame 2 & 3 kosong/transparan, jangan dipakai agar ayam tidak hilang)
+                    step_idx = int(ch["anim_timer"] / 0.14) % 2
+                    ch["frame_idx"] = step_idx
+                    ch["hop"] = -1 if step_idx == 1 else 0
+
+            elif ch["state"] == "idle":
+                ch["timer"] -= dt
+                ch["hop"] = 0
+                ch["frame_idx"] = 0 if ((ch["anim_timer"] % 1.6) < 1.3) else 1
+                if ch["timer"] <= 0:
+                    action = random.choice(["walk", "peck", "idle"])
+                    if action == "walk":
+                        ch["state"] = "walk"
+                        angle = random.uniform(0, 2 * math.pi)
+                        rad = random.uniform(4.0, 10.0)
+                        ch["target_x"] = ch["origin_x"] + rad * math.cos(angle)
+                        ch["target_y"] = ch["origin_y"] + rad * math.sin(angle)
+                    elif action == "peck":
+                        ch["state"] = "peck"
+                        ch["timer"] = 1.8
+                        ch["anim_timer"] = 0.0
+                    else:
+                        ch["timer"] = random.uniform(1.0, 2.5)
+
+            elif ch["state"] == "peck":
+                ch["timer"] -= dt
+                ch["hop"] = 0
+                peck_seq = [4, 5, 5, 6, 5, 7]
+                step_idx = int(ch["anim_timer"] / 0.3) % len(peck_seq)
+                ch["frame_idx"] = peck_seq[step_idx]
+                if ch["timer"] <= 0:
+                    ch["state"] = random.choice(["idle", "walk"])
+                    if ch["state"] == "walk":
+                        angle = random.uniform(0, 2 * math.pi)
+                        rad = random.uniform(4.0, 10.0)
+                        ch["target_x"] = ch["origin_x"] + rad * math.cos(angle)
+                        ch["target_y"] = ch["origin_y"] + rad * math.sin(angle)
+                    else:
+                        ch["timer"] = random.uniform(1.5, 3.0)
+                    ch["anim_timer"] = 0.0
+
+            # Batasi agar jarak absolut ayam tidak pernah melebihi 12px dari sarang/asalnya
+            d_origin = math.hypot(ch["x"] - ch["origin_x"], ch["y"] - ch["origin_y"])
+            if d_origin > 12.0:
+                ch["x"] = ch["origin_x"] + (ch["x"] - ch["origin_x"]) / d_origin * 12.0
+                ch["y"] = ch["origin_y"] + (ch["y"] - ch["origin_y"]) / d_origin * 12.0
+
+    def _draw_chickens(self):
+        """Menggambar ayam-ayam yang beranimasi makan / mematuk tanah dan berjalan lokal di peta."""
+        if not hasattr(self, "chicken_entities") or not self.chicken_entities:
+            self._init_chickens()
+            if not self.chicken_entities:
+                return
+
+        sf = getattr(self, "_scaled_foliage", {})
+        c_frames = sf.get("chickens", [])
+        if not c_frames:
+            return
+
+        for ch in self.chicken_entities:
+            f_idx = min(len(c_frames) - 1, max(0, ch["frame_idx"]))
+            frame_surf = c_frames[f_idx]
+
+            if ch["facing_left"]:
+                frame_surf = pygame.transform.flip(frame_surf, True, False)
+
+            hop = ch.get("hop", 0) * self.camera.zoom
+            sx, sy = self.camera.world_to_screen(ch["x"], ch["y"] + hop)
+            self.screen.blit(frame_surf, (int(sx), int(sy)))
 
     def _draw_sprite(self, sprite, wx, wy):
         sx, sy = self.camera.world_to_screen(wx, wy)
-        zoom_scale = max(1.0, self.camera.zoom / self.camera.fit_zoom)
-        if zoom_scale != 1.0:
-            nw = max(1, int(round(sprite.get_width() * zoom_scale)))
-            nh = max(1, int(round(sprite.get_height() * zoom_scale)))
-            sprite = pygame.transform.smoothscale(sprite, (nw, nh))
+        nw = max(1, int(round(sprite.get_width() * self.camera.zoom)))
+        nh = max(1, int(round(sprite.get_height() * self.camera.zoom)))
+        # Nearest-Neighbor scaling untuk sprite karakter (bebas burik & tajam)
+        sprite = pygame.transform.scale(sprite, (nw, nh))
         rect = sprite.get_rect(center=(int(sx), int(sy)))
         self.screen.blit(sprite, rect)
 

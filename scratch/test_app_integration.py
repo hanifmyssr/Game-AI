@@ -16,7 +16,8 @@ def run_integration_test():
     app = App()
     print("1. App berhasil diinisialisasi.")
     assert app.game_mode == "EXPLORATION", f"Mode awal salah: {app.game_mode}"
-    assert len(app.chests) == 3, "Peti harus berjumlah 3"
+    assert len(app.chests) >= 3, f"Peti harus berjumlah minimal 3, didapat: {len(app.chests)}"
+    assert len(app.chicken_entities) > 0, f"Ayam harus terinisialisasi, didapat: {len(app.chicken_entities)}"
     assert app.npc_kuro is not None and app.npc_shiro is not None, "2 NPC patroli harus ada"
 
     # Test Chest interaction

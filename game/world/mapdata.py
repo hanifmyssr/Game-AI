@@ -6,18 +6,31 @@ Data asli (grid, tiles, obstacle) di-decode dari map.tscn Godot ke
 
 import json
 import os
+import sys
+from pathlib import Path
 
 import pygame
 
-from ..core import config
+try:
+    from ..core import config
+except (ImportError, ValueError):
+    # Fallback saat berkas dibuka/dijalankan langsung di luar konteks paket 'game'
+    _root = Path(__file__).resolve().parent.parent.parent
+    if str(_root) not in sys.path:
+        sys.path.insert(0, str(_root))
+    from game.core import config
 
 
 def _is_dirt_road_cell(cell_info):
     """Cek apakah ubin adalah jalan tanah/jembatan (cost 1.0) atau rumput/medan (cost 2.0)."""
     if not cell_info:
         return False
-    src, ax, ay = cell_info
-    if "Wood Bridge" in src:
+    src = cell_info[0]
+    ax = cell_info[1]
+    ay = cell_info[2]
+    if "Wood Bridge" in src or "Wood_Bridge" in src:
+        return True
+    if "Tilled_Dirt" in src or "Tilled Dirt" in src or "Paths" in src or "Wooden path" in src or "Wooden_path" in src:
         return True
     if "Ext_10a_DEMO" in src:
         if (ax, ay) == (11, 12) or (0 <= ax <= 11 and 2 <= ay <= 4):
@@ -29,8 +42,8 @@ def _is_bridge_cell(cell_info):
     """Cek apakah ubin adalah jembatan."""
     if not cell_info:
         return False
-    src, ax, ay = cell_info
-    return "Wood Bridge" in src
+    src = cell_info[0]
+    return "Wood Bridge" in src or "Wood_Bridge" in src
 
 
 class MapData:
@@ -47,12 +60,16 @@ class MapData:
         self.ground = {}        # (nx, ny) -> (src_name, atlas_x, atlas_y)
         self.decorations = {}
         self.obstacles = {}
+        self.ordered_layers = []
+        self.foliage = {"trees": [], "bushes": [], "flowers": []}
         self.ground_set = set()
         self.obstacle_set = set()
         self.walkable_set = set()
+        self.dirt_road_set = set()
 
         self._ground_surface = None
         self._obstacle_surface = None
+        self._ground_surfaces = []
 
         self.load_map_data()
 
@@ -80,6 +97,9 @@ class MapData:
         self._load_layer(doc.get("water", []), self.water)
         self._load_layer(doc.get("decorations", []), self.decorations)
         self._load_layer(doc.get("obstacles", []), self.obstacles)
+        self.foliage = doc.get("foliage", {"trees": [], "bushes": [], "flowers": []})
+        self.chickens = doc.get("chickens", [])
+        self.chests_data = doc.get("spawns", {}).get("chests", [])
 
         # Identifikasi sel jembatan dari seluruh layer
         bridge_set = set()
@@ -88,8 +108,37 @@ class MapData:
                 if _is_bridge_cell(cell_info):
                     bridge_set.add(key)
 
+        # Identifikasi seluruh sel jalan tanah & jembatan (bobot langkah 1.0)
+        self.dirt_road_set = set()
+        for layer_dict in (self.ground, self.decorations, self.water, self.obstacles):
+            for key, cell_info in layer_dict.items():
+                if _is_dirt_road_cell(cell_info):
+                    self.dirt_road_set.add(key)
+
+        # Urutan layer berlapis sesuai Tiled (Layer 1 -> Layer 2 -> Layer 3)
+        self.ordered_layers = []
+        if "layers" in doc:
+            for l_doc in doc["layers"]:
+                l_tiles = []
+                for item in l_doc.get("tiles", []):
+                    pos = (int(item["x"]), int(item["y"]))
+                    cell_tuple = (
+                        item.get("src", ""),
+                        int(item.get("atlas_x", 0)),
+                        int(item.get("atlas_y", 0)),
+                    )
+                    l_tiles.append((pos, cell_tuple))
+                    if _is_bridge_cell(cell_tuple):
+                        bridge_set.add(pos)
+                    if _is_dirt_road_cell(cell_tuple):
+                        self.dirt_road_set.add(pos)
+                    if cell_tuple[0] and "water" not in cell_tuple[0].lower():
+                        self.ground_set.add(pos)
+                self.ordered_layers.append(l_tiles)
+
         self.ground_set.update(self.ground)
         self.ground_set.update(bridge_set)
+        self.bridge_set = bridge_set
         self.obstacle_set.update(self.obstacles)
         # Sel jembatan dapat dilalui (bukan obstacle)
         self.obstacle_set.difference_update(bridge_set)
@@ -124,12 +173,20 @@ class MapData:
     def is_obstacle(self, pos):
         return not self.is_walkable(pos)
 
+    def is_dirt_road(self, pos):
+        return tuple(pos) in self.dirt_road_set
+
+    def get_surface_type(self, pos):
+        """Mengembalikan jenis permukaan pada posisi sel ('bridge', 'dirt', atau 'grass')."""
+        t = tuple(pos)
+        if hasattr(self, "bridge_set") and t in self.bridge_set:
+            return "bridge"
+        if t in self.dirt_road_set:
+            return "dirt"
+        return "grass"
+
     def get_step_cost(self, pos):
-        pos = tuple(pos)
-        for layer in (self.decorations, self.ground, self.water, self.obstacles):
-            if pos in layer and _is_dirt_road_cell(layer[pos]):
-                return 1.0
-        return 2.0
+        return 1.0 if tuple(pos) in self.dirt_road_set else 2.0
 
     def get_map_center(self):
         return (self.width // 2, self.height // 2)
@@ -203,33 +260,62 @@ class MapData:
     def build_surfaces(self):
         cs = self.cell_size
         size = (self.width * cs, self.height * cs)
+        has_display = pygame.display.get_surface() is not None
 
-        ground_surf = pygame.Surface(size).convert()
-        obstacle_surf = pygame.Surface(size, pygame.SRCALPHA).convert_alpha()
+        # Pre-render 4 frame animasi air untuk efisiensi instan (0.00 ms runtime)
+        self._ground_surfaces = []
+        for frame in range(4):
+            surf = pygame.Surface(size)
+            if has_display:
+                surf = surf.convert()
+            if self.ordered_layers:
+                for l_tiles in self.ordered_layers:
+                    self._blit_layer(surf, l_tiles, water_frame_override=frame)
+            else:
+                self._blit_layer(surf, self.water, water_frame_override=frame)
+                self._blit_layer(surf, self.ground)
+                self._blit_layer(surf, self.decorations)
+            self._ground_surfaces.append(surf)
 
-        self._blit_layer(ground_surf, self.water)
-        self._blit_layer(ground_surf, self.ground)
-        self._blit_layer(ground_surf, self.decorations)
-        self._blit_layer(obstacle_surf, self.obstacles)
+        obstacle_surf = pygame.Surface(size, pygame.SRCALPHA)
+        if has_display:
+            obstacle_surf = obstacle_surf.convert_alpha()
+        # Lewati ubin air pada obstacle surface agar tidak menimpa animasi riak air
+        self._blit_layer(obstacle_surf, self.obstacles, skip_water=True)
 
-        self._ground_surface = ground_surf
+        self._ground_surface = self._ground_surfaces[0]
         self._obstacle_surface = obstacle_surf
-        return ground_surf, obstacle_surf
+        return self._ground_surface, obstacle_surf
 
-    def _blit_layer(self, target, cells):
+    def get_ground_surface(self, frame=0):
+        if not self._ground_surfaces:
+            self.build_surfaces()
+        return self._ground_surfaces[frame % len(self._ground_surfaces)]
+
+    def _blit_layer(self, target, cells, water_frame_override=None, skip_water=False):
         cs = self.cell_size
+        has_display = pygame.display.get_surface() is not None
         cache = {}
-        for key, (src, atlas_x, atlas_y) in cells.items():
+        cell_items = cells.items() if isinstance(cells, dict) else cells
+        for key, (src, atlas_x, atlas_y) in cell_items:
+            if not src:
+                continue
+            if skip_water and "Water" in src:
+                continue
             image = cache.get(src)
             if image is None:
-                image = pygame.image.load(
-                    os.path.join(config.ASSET_DIR, src.replace("/", os.sep))
-                ).convert_alpha()
+                img_path = os.path.join(config.ASSET_DIR, src.replace("/", os.sep))
+                raw_img = pygame.image.load(img_path)
+                image = raw_img.convert_alpha() if has_display else raw_img
                 cache[src] = image
+            ax = atlas_x
+            ay = atlas_y
+            if water_frame_override is not None and "Water" in src:
+                ax = water_frame_override
             target.blit(
                 image,
                 (key[0] * cs, key[1] * cs),
-                (atlas_x * cs, atlas_y * cs, cs, cs),
+                (ax * cs, ay * cs, cs, cs),
             )
 
     @property

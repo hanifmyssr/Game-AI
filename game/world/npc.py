@@ -4,6 +4,7 @@ Menghitung ulang rute setiap kali player berpindah ubin atau algoritma
 diganti, lalu mengejar player selangkah demi selangkah selama mode chase.
 """
 
+import os
 from ..core import config
 from ..core.animation import AnimatedSprite
 from ..ai.search import AStarAlgorithm, UCS, GridManager, HEURISTICS
@@ -41,6 +42,7 @@ class NPC:
         tint_color=None,
         is_patrol=False,
         waypoints=None,
+        sprite_dir=None,
     ):
         self.map = map_data
         self.events = events
@@ -68,12 +70,22 @@ class NPC:
         self.chase_timer = 0.0
         self.current_path = []
 
+        # Deteksi otomatis aset sprite kustom terdedikasi
+        effective_dir = config.OYEN_DIR
+        effective_tint = self.tint_color
+        if sprite_dir and os.path.isdir(sprite_dir):
+            png_files = [f for f in os.listdir(sprite_dir) if f.lower().endswith(".png")]
+            if png_files:
+                effective_dir = sprite_dir
+                # Ketika aset asli kustom sudah tersedia, nonaktifkan tint warna agar visual asli keluar
+                effective_tint = None
+
         # 1 siklus walk (4 frame) pas 1 langkah ubin NPC
         self.sprite = AnimatedSprite(
-            config.OYEN_DIR,
+            effective_dir,
             target_height=config.CHARACTER_HEIGHT,
             frame_duration=config.NPC_WALK_FRAME_DURATION,
-            tint_color=self.tint_color,
+            tint_color=effective_tint,
         )
 
         self._spawn()
@@ -151,7 +163,7 @@ class NPC:
             self.find_path(self.player.grid)
 
     def on_player_moved(self, player_grid):
-        if self.is_patrol:
+        if self.is_patrol and not self.chasing:
             return
         result = self.find_path(player_grid)
         if self.chasing and not self.moving:

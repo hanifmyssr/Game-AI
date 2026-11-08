@@ -19,8 +19,10 @@ class BattleArenaBackground:
         self.cached_size = (0, 0)
         self.blur_radius = 0
 
-        # Path file gambar background
-        self.bg_path = os.path.join(config.ASSET_DIR, "battle_bg_meadow.jpg")
+        # Path file gambar background arena battle (Pixel Art Forest Landscape)
+        self.bg_path = os.path.join(config.ASSET_DIR, "battle_bg_forest.png")
+        if not os.path.exists(self.bg_path):
+            self.bg_path = os.path.join(config.ASSET_DIR, "battle_bg_meadow.jpg")
         self.raw_bg = None
         if os.path.exists(self.bg_path):
             self.raw_bg = pygame.image.load(self.bg_path).convert()

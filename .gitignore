@@ -57,3 +57,7 @@ Laporan*.pdf
 # Aset Tambahan Khusus Laporan
 assets/lampiran_c/
 assets/logo_upi.png
+
+# Agent & AI Assistant Workspace Configurations (Internal)
+.gemini/
+.agents/

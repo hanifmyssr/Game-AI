@@ -47,6 +47,18 @@ class NPCMember:
         self._load_battle_sprite()
 
     def _load_portrait(self):
+        # 1. Prioritaskan aset spesifik berdasarkan nama NPC (misal: portrait_kuro.png, portrait_shiro.png)
+        first_name = self.name.split()[0].lower() if self.name else ""
+        name_path = os.path.join(config.ASSET_DIR, "portraits", f"portrait_{first_name}.png")
+        if os.path.exists(name_path):
+            try:
+                img = pygame.image.load(name_path).convert_alpha()
+                self.portrait = pygame.transform.smoothscale(img, (96, 96))
+                return
+            except Exception:
+                pass
+
+        # 2. Fallback ke tipe role karakter (misal: portrait_ranger.png)
         portrait_map = {
             "warrior": "portrait_warrior.png",
             "tank": "portrait_warrior.png",
@@ -64,6 +76,17 @@ class NPCMember:
                 self.portrait = None
 
     def _load_battle_sprite(self):
+        # 1. Prioritaskan aset spesifik berdasarkan nama NPC (misal: battle_kuro.png, battle_shiro.png)
+        first_name = self.name.split()[0].lower() if self.name else ""
+        name_path = os.path.join(config.ASSET_DIR, "battle_sprites", f"battle_{first_name}.png")
+        if os.path.exists(name_path):
+            try:
+                self.battle_sprite = pygame.image.load(name_path).convert_alpha()
+                return
+            except Exception:
+                pass
+
+        # 2. Fallback ke tipe role karakter (misal: battle_ranger.png)
         filename = f"battle_{self.char_type}.png"
         path = os.path.join(config.ASSET_DIR, "battle_sprites", filename)
         if not os.path.exists(path):

@@ -13919,6 +13919,13 @@
           "atlas_y": 2
         },
         {
+          "x": 32,
+          "y": 1,
+          "src": "sprout/Basic_Grass_Biom_things.png",
+          "atlas_x": 4,
+          "atlas_y": 2
+        },
+        {
           "x": 36,
           "y": 1,
           "src": "sprout/Basic_Grass_Biom_things.png",
@@ -16255,6 +16262,13 @@
           "src": "sprout/Tilled_Dirt.png",
           "atlas_x": 2,
           "atlas_y": 5
+        },
+        {
+          "x": 2,
+          "y": 21,
+          "src": "sprout/Basic_Grass_Biom_things.png",
+          "atlas_x": 4,
+          "atlas_y": 2
         },
         {
           "x": 4,
@@ -31686,6 +31700,13 @@
       "atlas_y": 2
     },
     {
+      "x": 32,
+      "y": 1,
+      "src": "sprout/Basic_Grass_Biom_things.png",
+      "atlas_x": 4,
+      "atlas_y": 2
+    },
+    {
       "x": 36,
       "y": 1,
       "src": "sprout/Basic_Grass_Biom_things.png",
@@ -33980,6 +34001,13 @@
       "src": "sprout/Tilled_Dirt.png",
       "atlas_x": 2,
       "atlas_y": 5
+    },
+    {
+      "x": 2,
+      "y": 21,
+      "src": "sprout/Basic_Grass_Biom_things.png",
+      "atlas_x": 4,
+      "atlas_y": 2
     },
     {
       "x": 4,
@@ -39360,6 +39388,13 @@
       "atlas_y": 1
     },
     {
+      "x": 32,
+      "y": 1,
+      "src": "",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
       "x": 35,
       "y": 1,
       "src": "",
@@ -40718,6 +40753,13 @@
       "atlas_y": 0
     },
     {
+      "x": 7,
+      "y": 13,
+      "src": "",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
       "x": 10,
       "y": 13,
       "src": "",
@@ -40998,13 +41040,6 @@
       "atlas_y": 0
     },
     {
-      "x": 34,
-      "y": 14,
-      "src": "",
-      "atlas_x": 0,
-      "atlas_y": 1
-    },
-    {
       "x": 39,
       "y": 14,
       "src": "",
@@ -41131,13 +41166,6 @@
       "atlas_y": 0
     },
     {
-      "x": 34,
-      "y": 15,
-      "src": "",
-      "atlas_x": 0,
-      "atlas_y": 1
-    },
-    {
       "x": 39,
       "y": 15,
       "src": "",
@@ -41264,13 +41292,6 @@
       "atlas_y": 0
     },
     {
-      "x": 34,
-      "y": 16,
-      "src": "",
-      "atlas_x": 0,
-      "atlas_y": 1
-    },
-    {
       "x": 39,
       "y": 16,
       "src": "",
@@ -41374,13 +41395,6 @@
       "src": "",
       "atlas_x": 0,
       "atlas_y": 0
-    },
-    {
-      "x": 34,
-      "y": 17,
-      "src": "",
-      "atlas_x": 0,
-      "atlas_y": 1
     },
     {
       "x": 37,
@@ -41514,6 +41528,13 @@
       "src": "",
       "atlas_x": 0,
       "atlas_y": 0
+    },
+    {
+      "x": 2,
+      "y": 21,
+      "src": "",
+      "atlas_x": 0,
+      "atlas_y": 1
     },
     {
       "x": 13,
@@ -45629,14 +45650,6 @@
         "type": "grass"
       },
       {
-        "x": 7,
-        "y": 13,
-        "src": "sprout/Grass.png",
-        "atlas_x": 9,
-        "atlas_y": 5,
-        "type": "grass"
-      },
-      {
         "x": 8,
         "y": 13,
         "src": "sprout/Grass.png",
@@ -46445,14 +46458,6 @@
         "type": "grass"
       },
       {
-        "x": 2,
-        "y": 21,
-        "src": "sprout/Grass.png",
-        "atlas_x": 1,
-        "atlas_y": 6,
-        "type": "grass"
-      },
-      {
         "x": 3,
         "y": 21,
         "src": "sprout/Grass.png",
@@ -47094,14 +47099,6 @@
       },
       {
         "x": 5,
-        "y": 27,
-        "src": "sprout/Grass.png",
-        "atlas_x": 2,
-        "atlas_y": 5,
-        "type": "grass"
-      },
-      {
-        "x": 16,
         "y": 27,
         "src": "sprout/Grass.png",
         "atlas_x": 2,
@@ -47476,12 +47473,20 @@
       "y": 9
     },
     {
+      "x": 7,
+      "y": 13
+    },
+    {
       "x": 32,
       "y": 14
     },
     {
       "x": 40,
       "y": 22
+    },
+    {
+      "x": 16,
+      "y": 27
     },
     {
       "x": 13,

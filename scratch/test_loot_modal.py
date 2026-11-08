@@ -34,6 +34,9 @@ def test_loot_modal_flow():
     app.battle_system.state.npc_hp = 0
     app.battle_system._check_game_over()
     
+    # Run _update to complete defeat animation and pop loot modal
+    app._update(1.5)
+
     # Check that loot modal is active and battle is locked
     print("[3] After NPC 1 defeat:")
     assert app.loot_modal is not None, "loot_modal MUST be populated!"
@@ -72,8 +75,9 @@ def test_loot_modal_flow():
     assert app.battle_system.is_finished, "Battle must be finished!"
     assert app.battle_system.winner == "PLAYER", "Player must be winner!"
     
-    # Run _update to let victory trigger the modal
+    # Run _update to initiate final defeat anim and then complete it to show modal
     app._update(0.016)
+    app._update(1.5)
     assert app.loot_modal is not None, "Final victory loot modal must be active!"
     assert app.loot_modal["is_final"] is True, "is_final must be True for final victory modal!"
     print("    Final Victory Loot:", app.loot_modal["loot"]["name"])

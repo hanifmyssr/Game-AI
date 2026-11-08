@@ -57,16 +57,28 @@ class BattleSystem:
         self.on_action_callback = None
         # Callback saat NPC berganti (Tag-in summon animation)
         self.on_tag_in = None
+        # Callback saat perencanaan darurat PDDL dieksekusi (Materi 08)
+        self.on_tactical_plan = None
         self.is_locked = False
         self.player: Any = None
         self.last_second_wind_heal: int = 45
         self.last_loot: Optional[Dict[str, Any]] = None
+
+        # Automated Planning PDDL (Materi 08: Tag-Team Tactical Emergency Rotation & Bench Heal)
+        self.tactical_plan_executed: bool = False
+        self.last_tactical_plan: Optional[Any] = None
+        self.tactical_banner_timer: float = 0.0
+        self.tactical_banner_info: Optional[Dict[str, Any]] = None
 
         self.reset()
 
     def reset(self):
         self.squad = NPCSquad([NPCMember("Oyen the Warrior", "warrior", 100, 2, 0, 0, "BALANCED")])
         self.eval_mode = "BALANCED"
+        self.tactical_plan_executed = False
+        self.last_tactical_plan = None
+        self.tactical_banner_timer = 0.0
+        self.tactical_banner_info = None
         self.state = BattleState(
             player_hp=100,
             npc_hp=100,
@@ -87,6 +99,10 @@ class BattleSystem:
         self.winner = None
         self.player_action_text = None
         self.npc_action_text = None
+        self.tactical_plan_executed = False
+        self.last_tactical_plan = None
+        self.tactical_banner_timer = 0.0
+        self.tactical_banner_info = None
         self.last_loot = None
 
     def _get_spoils_of_war(self, npc_member: Optional[NPCMember]) -> Dict[str, Any]:
@@ -215,6 +231,10 @@ class BattleSystem:
         self.last_loot = None
         self.player_action_text = None
         self.npc_action_text = None
+        self.tactical_plan_executed = False
+        self.last_tactical_plan = None
+        self.tactical_banner_timer = 0.0
+        self.tactical_banner_info = None
 
     def reset_with_config(
         self,
@@ -230,11 +250,11 @@ class BattleSystem:
 
     def update_ai_preview(self):
         """Kalkulasi ulang preview AI stats untuk tampilan debug overlay saat pengaturan diubah."""
-        if self.is_finished or not self.last_ai_stats:
+        if self.is_finished:
             return
         calc_state = self.state.clone()
         calc_state.is_npc_turn = True
-        _, _, stats = self.ai_solver.select_best_action(
+        best_action, best_score, stats = self.ai_solver.select_best_action(
             calc_state,
             algorithm=self.algorithm,
             eval_mode=self.eval_mode,
@@ -243,6 +263,16 @@ class BattleSystem:
             record_tree=self.record_tree,
         )
         self.last_ai_stats = stats
+        self.last_nodes_evaluated = stats.get("node_count", 0)
+        self.last_branches_pruned = stats.get("pruned_count", 0)
+        self.last_time_ms = stats.get("time_ms", 0.0)
+        self.last_action_scores = stats.get("action_scores", {})
+        self.last_tree_root = stats.get("tree", None)
+        self.last_nodes_evaluated = stats.get("node_count", 0)
+        self.last_branches_pruned = stats.get("pruned_count", 0)
+        self.last_time_ms = stats.get("time_ms", 0.0)
+        self.last_action_scores = stats.get("action_scores", {})
+        self.last_tree_root = stats.get("tree", None)
 
     def log(self, msg: str):
         self.battle_logs.append(msg)
@@ -284,6 +314,10 @@ class BattleSystem:
             self.npc_action_text["timer"] -= dt
             if self.npc_action_text["timer"] <= 0:
                 self.npc_action_text = None
+        if self.tactical_banner_timer > 0:
+            self.tactical_banner_timer = max(0.0, self.tactical_banner_timer - dt)
+            if self.tactical_banner_timer <= 0:
+                self.tactical_banner_info = None
 
     def execute_player_action(self, action: str) -> bool:
         """Mengeksekusi aksi giliran Player."""
@@ -323,9 +357,29 @@ class BattleSystem:
         return True
 
     def execute_npc_turn(self) -> Optional[str]:
-        """Mengeksekusi giliran NPC menggunakan AI Solver."""
+        """Mengeksekusi giliran NPC menggunakan AI Solver atau Rencana Taktis PDDL."""
         if self.is_finished or not self.state.is_npc_turn or self.is_locked:
             return None
+
+        # ----------------------------------------------------------------- #
+        # MATERI 08: AUTOMATED PLANNING (TAG-TEAM TACTICAL EMERGENCY PLAN)  #
+        # Jika petarung pertama sekarat (HP <= 35%) & ada rekan cadangan    #
+        # ----------------------------------------------------------------- #
+        active_member = self.squad.get_active_member() if self.squad else None
+        critical_hp_threshold = max(25, int(0.35 * self.state.npc_max_hp))
+        bench_alive = [
+            m for i, m in enumerate(self.squad.members)
+            if i != self.squad.active_index and m.is_alive()
+        ] if self.squad else []
+
+        if (
+            not self.tactical_plan_executed
+            and self.squad
+            and active_member
+            and bench_alive
+            and 0 < self.state.npc_hp <= critical_hp_threshold
+        ):
+            return self._execute_tactical_planning_turn(active_member, bench_alive)
 
         best_action, best_score, stats = self.ai_solver.select_best_action(
             self.state,
@@ -337,6 +391,11 @@ class BattleSystem:
         )
 
         self.last_ai_stats = stats
+        self.last_nodes_evaluated = stats.get("node_count", 0)
+        self.last_branches_pruned = stats.get("pruned_count", 0)
+        self.last_time_ms = stats.get("time_ms", 0.0)
+        self.last_action_scores = stats.get("action_scores", {})
+        self.last_tree_root = stats.get("tree", None)
 
         if not best_action:
             return None
@@ -367,6 +426,78 @@ class BattleSystem:
 
         self._check_game_over()
         return best_action
+
+    def _execute_tactical_planning_turn(self, active_member: NPCMember, bench_alive: List[NPCMember]) -> str:
+        """Mengeksekusi rencana aksi PDDL formal: SwapRetreat -> CastDefend -> HealTeammate."""
+        defender = bench_alive[0]
+        healer = bench_alive[1] if len(bench_alive) > 1 else bench_alive[0]
+
+        # 1. Panggil solver Automated Planning formal (PDDL/STRIPS)
+        from ..planning.domain_battle_tactics import create_battle_tactics_problem
+        from ..planning.planner_engine import ForwardProgressionPlanner
+
+        s0, goal, actions = create_battle_tactics_problem(
+            warrior_name=active_member.name,
+            tank_name=defender.name,
+            healer_name=healer.name,
+        )
+        planner = ForwardProgressionPlanner()
+        plan_result = planner.plan(s0, goal, actions)
+        self.last_tactical_plan = plan_result
+
+        # 2. Eksekusi Aksi 1: SwapRetreat
+        # Simpan sisa HP petarung yang sekarat
+        active_member.current_hp = self.state.npc_hp
+
+        # Tukar posisi petarung aktif dengan defender di squad
+        act_idx = self.squad.active_index
+        def_idx = self.squad.members.index(defender)
+        self.squad.members[act_idx], self.squad.members[def_idx] = (
+            self.squad.members[def_idx],
+            self.squad.members[act_idx],
+        )
+
+        # Sinkronkan status duel ke Defender yang baru maju ke frontline
+        self.state.npc_hp = defender.current_hp
+        self.state.npc_max_hp = defender.max_hp
+        self.state.npc_potions = defender.potions
+        self.state.npc_atk_bonus = defender.atk_bonus
+        self.state.npc_def_bonus = defender.def_bonus
+        self.state.npc_heavy_cd = 0
+        self.eval_mode = defender.eval_profile
+
+        # 3. Eksekusi Aksi 2: CastDefend (Defender memasang kuda-kuda bertahan)
+        self.state.npc_defending = True
+
+        # 4. Eksekusi Aksi 3: HealTeammate (Healer di bangku cadangan memulihkan petarung yang mundur)
+        heal_amount = min(35, active_member.max_hp - active_member.current_hp)
+        active_member.current_hp += heal_amount
+
+        # 5. Catat ke log pertarungan & feedback visual
+        self.tactical_plan_executed = True
+        self.tactical_banner_timer = 4.0
+        self.tactical_banner_info = {
+            "warrior": active_member.name,
+            "defender": defender.name,
+            "healer": healer.name,
+            "heal_amount": heal_amount,
+            "plan": plan_result.plan if plan_result.success else [],
+        }
+
+        self.log(f"[MATERI 08: AUTOMATED PLANNING] {active_member.name} Sekarat (HP <= 35%)!")
+        self.log(f"   -> Langkah 1: SwapRetreat - {active_member.name} mundur ke bangku cadangan.")
+        self.log(f"   -> Langkah 2: CastDefend - {defender.name} maju ke garis depan & pasang PERISAI.")
+        self.log(f"   -> Langkah 3: HealTeammate - {healer.name} memulihkan {active_member.name} (+{heal_amount} HP)!")
+
+        self._set_action_text("NPC", "TAKTIK PDDL!", f"{defender.name} DEFEND")
+
+        # Akhiri giliran NPC
+        self.state.is_npc_turn = False
+
+        if hasattr(self, "on_tactical_plan") and callable(self.on_tactical_plan):
+            self.on_tactical_plan(active_member, defender, healer, heal_amount, plan_result)
+
+        return "TACTICAL_ROTATION"
 
     def _check_game_over(self):
         # 1. Jika NPC tumbang tetapi masih ada anggota cadangan di squad
@@ -399,6 +530,8 @@ class BattleSystem:
                     if hasattr(self.player, "inventory") and isinstance(self.player.inventory, list):
                         if loot["name"] not in self.player.inventory:
                             self.player.inventory.append(loot["name"])
+                        if loot.get("image_key") and loot["image_key"] not in self.player.inventory:
+                            self.player.inventory.append(loot["image_key"])
 
                 self.log(f"💥 {active.name if active else 'NPC'} Tumbang! {next_npc.name} masuk ke arena duel!")
                 self.log(f"✨ SECOND WIND! Player pulih +{heal_amount} HP, +1 Potion, Cooldown Heavy Attack siap!")
@@ -449,5 +582,7 @@ class BattleSystem:
                         if hasattr(self.player, "inventory") and isinstance(self.player.inventory, list):
                             if final_loot["name"] not in self.player.inventory:
                                 self.player.inventory.append(final_loot["name"])
+                            if final_loot.get("image_key") and final_loot["image_key"] not in self.player.inventory:
+                                self.player.inventory.append(final_loot["image_key"])
                     self.log(f"🏆 RAMPASAN FINAL: Merebut {final_loot['name']}! ({final_loot['desc']})")
                     self.last_loot = final_loot

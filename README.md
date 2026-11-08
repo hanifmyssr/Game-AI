@@ -102,6 +102,9 @@ flowchart TD
 
 | Mode / Antarmuka | Tombol Keyboard | Aksi / Fungsi Khusus Tahap 4 |
 |:---|:---|:---|
+| **Navigasi Tab/Panel** | `Tab` | **Membuka / Menutup (Toggle) Inspector Dock Panel (Semua Mode)** |
+| | `Alt + Tab` / `Ctrl + Tab` | **Berpindah (Cycle) Tab Materi AI secara Siklis (Hero -> Search -> Minimax -> CSP -> Logic -> Planning -> Settings)** |
+| | `Alt + Shift + Tab` | **Berpindah Tab secara Mundur (Reverse Cycle)** |
 | **Eksplorasi Peta** | `E` | Membuka peti harta karun $\to$ Mengirim persepsi `TELL` ke KB Logika |
 | | `K` | **Membuka/Menutup Overlay Penalaran Logika Proposisional (Materi 07)** |
 | | `P` | **Membuka/Menutup Overlay Perencanaan Klasik PDDL STRIPS (Materi 08)** |

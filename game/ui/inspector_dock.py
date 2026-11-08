@@ -56,10 +56,10 @@ class InspectorDock:
         }
 
         # Tombol Tutup Panel di Header (Pojok Kanan Atas)
-        btn_collapse_w = 78
+        btn_collapse_w = 84
         self.btn_collapse = UIButton(
             pygame.Rect(self.rect.right - btn_collapse_w - 10, self.rect.y + 10, btn_collapse_w, 28),
-            "[X] Tutup",
+            "[TAB] Tutup",
             fonts.get("tiny", pygame.font.Font(None, 13)),
             on_click=self.close,
             bg_color=(238, 230, 216),

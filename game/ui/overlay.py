@@ -112,6 +112,20 @@ class DebugOverlay:
     def toggle_dock(self) -> None:
         self.dock.toggle()
 
+    def cycle_dock_tab(self, reverse: bool = False) -> int:
+        """Berpindah ke tab/panel berikutnya (atau sebelumnya jika reverse=True) secara siklis dan pastikan panel terbuka."""
+        total_tabs = len(self.nav_rail.tabs)
+        if total_tabs == 0:
+            return 0
+        current = self.nav_rail.active_tab
+        if reverse:
+            next_tab = (current - 1) % total_tabs
+        else:
+            next_tab = (current + 1) % total_tabs
+        self.nav_rail.set_active_tab(next_tab)
+        self.dock.open()
+        return next_tab
+
     def on_resize(self, w: int, h: int) -> None:
         """Menyesuaikan ukuran elemen Nav Rail & Inspector Dock saat resolusi layar berubah."""
         self.nav_rail.resize(h)
@@ -264,7 +278,17 @@ class DebugOverlay:
                 self.toggle_tree_overlay()
                 return True
             if event.key == K_TAB:
-                self.toggle_dock()
+                mods = pygame.key.get_mods()
+                if hasattr(event, "mod"):
+                    mods |= event.mod
+                is_alt = bool(mods & (pygame.KMOD_ALT | getattr(pygame, "KMOD_LALT", 0) | getattr(pygame, "KMOD_RALT", 0)))
+                is_ctrl = bool(mods & (pygame.KMOD_CTRL | getattr(pygame, "KMOD_LCTRL", 0) | getattr(pygame, "KMOD_RCTRL", 0)))
+                is_shift = bool(mods & (pygame.KMOD_SHIFT | getattr(pygame, "KMOD_LSHIFT", 0) | getattr(pygame, "KMOD_RSHIFT", 0)))
+
+                if is_alt or is_ctrl:
+                    self.cycle_dock_tab(reverse=is_shift)
+                else:
+                    self.toggle_dock()
                 return True
             if event.key == K_ESCAPE and self.dock.is_open:
                 self.dock.close()

@@ -1255,11 +1255,26 @@ class App:
                     if self.pre_battle_visualizer.is_open:
                         self.pre_battle_visualizer.handle_event(event)
             elif event.type == KEYDOWN:
-                self._handle_key(event.key)
+                self._handle_key(event.key, event=event)
 
-    def _handle_key(self, key):
+    def _handle_key(self, key, event=None):
         if key == K_F11:
             self.toggle_fullscreen()
+            return
+
+        # Shortcut TAB (Buka/Tutup Panel/Dock) & ALT+TAB / CTRL+TAB (Ganti-ganti Tab/Panel)
+        if key == K_TAB:
+            mods = pygame.key.get_mods()
+            if event is not None and hasattr(event, "mod"):
+                mods |= event.mod
+            is_alt = bool(mods & (pygame.KMOD_ALT | getattr(pygame, "KMOD_LALT", 0) | getattr(pygame, "KMOD_RALT", 0)))
+            is_ctrl = bool(mods & (pygame.KMOD_CTRL | getattr(pygame, "KMOD_LCTRL", 0) | getattr(pygame, "KMOD_RCTRL", 0)))
+            is_shift = bool(mods & (pygame.KMOD_SHIFT | getattr(pygame, "KMOD_LSHIFT", 0) | getattr(pygame, "KMOD_RSHIFT", 0)))
+
+            if is_alt or is_ctrl:
+                self.overlay.cycle_dock_tab(reverse=is_shift)
+            else:
+                self.overlay.toggle_dock()
             return
 
         if key == K_ESCAPE:
@@ -1341,7 +1356,7 @@ class App:
             elif key == K_5:
                 self.selected_ls_algo = "GENETIC_ALGORITHM"
                 self._run_optimization()
-            elif key in (K_TAB, K_ESCAPE):
+            elif key == K_ESCAPE:
                 self.exit_battle()
             return
 
@@ -1353,9 +1368,7 @@ class App:
                 return
 
             # Shortcut tombol di mode Battle
-            if key == K_TAB:
-                self.overlay.toggle_dock()
-            elif key == K_ESCAPE:
+            if key == K_ESCAPE:
                 if self.overlay.tree_overlay.visible:
                     self.overlay.tree_overlay.visible = False
                     return

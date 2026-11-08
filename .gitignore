@@ -31,17 +31,24 @@ Thumbs.db
 
 # File Catatan Internal & Task Planning (Tidak perlu di-push)
 plan.md
+plan_*.md
+plan_map.md
+plan_ui.md
+plan_tahap_4_fix.md
+kata_teman.md
 masalah.md
 poin_materi.md
+prd.md
+ide_tahap_*.md
+ide_tahap_4.md
+ide_tahap_4_part2.md
 Penjelasan_game.md
 05_Local_Search_and_Optimization.md
 06_Constraint_Satisfaction_Problem.md
 .check.md
 .LAPORAN_TAHAP_2.md
 .ide_tahap_4.md
-ide_tahap_4.md
 template_laporan.md
-
 
 # Scratch temporary screenshots & helper scripts
 scratch/*.png
@@ -54,9 +61,10 @@ scratch/*.ps1
 Data_Benchmark*.docx
 Laporan*.pdf
 
-# Aset Tambahan Khusus Laporan
+# Aset Tambahan Khusus Laporan & Unused Raw Assets
 assets/lampiran_c/
 assets/logo_upi.png
+assets/Blaze pixel asset pack 01/
 
 # Agent & AI Assistant Workspace Configurations (Internal)
 .gemini/

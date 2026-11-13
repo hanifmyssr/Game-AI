@@ -1,0 +1,8 @@
+file ini adalah catatan dari saya, jangan ubah file apapun, jangan mengerjakan apapun. jadikan ini sesi diskusi dan planning saja
+1. berdasarkan plan_tahap_4_fix.md, penerapan logic & knowledge base kan ada ketika MC membuka peti, namun seperti nya, informasi yang user dapat kurang jelas. ketika saya membuka suatu peti, yang saya alami adalah saya dikejar kejar npc, namun tidak ada pemberitahuan atau informasi kalau npc lain akan menjaga chest yang masih ada dan ada npc yang ngejar saya. apakah anda ada ide agar penerapan logic dan knowledge base nya terasa? karena memang itu yang diutamakan dosen saya, penerapan materi AI, bukan fokus ke gamedev
+2. seperti apa bagusnya "npc menjaga chest yang tersisa" itu konsepnya? 
+3. kira kira gimana agar user itu merasakan ketegangan dan keseruan dalam memainkan game ini, dan merasa perlu ada strategi. misal strategi untuk mendapatkan chest lain ketika user sudah membuka satu chest dan chest lain dijaga npc lain. 
+4. apakah anda ada saran pengembangan lain? misal membuat dungeon (map baru), dan ada villain boss, dan sebagainya.
+5. apa hal yang menarik untuk dikembangkan, tanpa merusak atau keluar dari materi pelajaran AI kami
+6. apa saja fitur atau kelebihan yang disediakan pygame dan cocok untuk pengembangan game kami? projek game ini nanti akan dipresentasikan terkait seperti apa penerapan materi materi AI yang telah diberikan dosen. sehingga sebisa mungkin game ini cara kerjanya simple, penerapan AI nya mudah dan jelas, namun tetap seru
+7. pastikan ide tersebut tetap bisa menampung materi baru yang kelak akan diberikan dosen AI saya nanti, entah akan ada algoritma atau fitur baru

@@ -34,6 +34,8 @@ class Player:
         self.atk_bonus = 0
         self.def_bonus = 0
         self.inventory = []
+        self.rune_keys = []  # Kunci Rune dari peti untuk membuka Abandoned Tower (plan_dev.md)
+        self.is_hidden = False  # Status kamuflase / stealth di dalam semak
 
         self.sprite = AnimatedSprite(config.BOLU_DIR, config.CHARACTER_HEIGHT)
 
@@ -68,6 +70,10 @@ class Player:
 
         # idle/walk + frame walk mengikuti kondisi gerak
         self.sprite.update(dt, self.moving)
+
+        # Status stealth otomatis aktif jika pemain berada di sel semak (plan_dev.md)
+        if hasattr(self.map, "is_bush"):
+            self.is_hidden = bool(self.map.is_bush(self.grid))
 
         if self.call_bubble_visible:
             self.call_bubble_timer -= dt

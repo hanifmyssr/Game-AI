@@ -4,7 +4,7 @@ Menghubungkan kejadian di dunia permainan (Bolu membuka peti) dengan
 penalaran logika KnowledgeBase dan penugasan peran adaptif ke NPC.
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from .kb_rules import KnowledgeBase
 from .inference_engine import ResolutionRefutationEngine, ResolutionStep
 
@@ -55,6 +55,7 @@ class InterNPCManager:
         # 1. TELL fakta baru ke KB
         self.kb.tell(f"ChestOpened_{chest_tag}")
         self.kb.tell("HasLootedItem_Player")
+        self.kb.tell(f"HasKey_{chest_tag}")
 
         # Tandai peti-peti lainnya yang masih unopened
         for t in chest_tags:
@@ -133,6 +134,10 @@ class InterNPCManager:
             self.app.npc.chasing = True
             if hasattr(self.app, "player"):
                 self.app.npc.find_path(self.app.player.grid)
+
+    def can_open_portal(self) -> Tuple[bool, List[ResolutionStep], Optional[Dict[str, Any]]]:
+        """Mengevaluasi pembuktian resolusi refutasi klausa PortalActive (Materi 07: Logic KB)."""
+        return self.engine.prove(self.kb, "PortalActive")
 
     def query_active_roles(self) -> Dict[str, Any]:
         """Mengambil status peran aktif saat ini dari KB."""

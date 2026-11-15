@@ -10,6 +10,7 @@ MAP_FILE = os.path.join(DATA_DIR, "map_tubes.json")
 WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 800
 FPS = 60
+TILE_SIZE = 16
 
 # ==============================================================================
 # PENGATURAN UKURAN TAB & SIDEBAR (Sesuai Spesifikasi plan_ui.md)

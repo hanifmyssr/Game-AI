@@ -271,7 +271,7 @@ def convert():
                 {"x": 5, "y": 24, "item": "item_shield"},
                 {"x": 34, "y": 28, "item": "health_potion"}
             ],
-            "boss_portal": {"x": 20, "y": 5}
+            "boss_portal": {"x": 38, "y": 5}
         }
     }
 

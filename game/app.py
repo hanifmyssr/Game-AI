@@ -369,6 +369,12 @@ class App:
         self.latest_plan_result = None
         self.planning_overlay = PlanningOverlay(self.fonts, self)
 
+        # State Fitur Tahap 4 / Plan Dev: Stealth, Whistle & Boss Portal Menara Kuno
+        self.whistle_waves = []
+        self.ai_ticker_info = None
+        self.is_boss_battle = False
+        self._tower_prompted = False
+
         # Rencana awal problem patroli dunia
         s0_init, goal_init, actions_init = create_world_patrol_problem("A")
         self.latest_plan_result = self.forward_planner.plan(s0_init, goal_init, actions_init)
@@ -407,6 +413,9 @@ class App:
             self.player.def_bonus = 0
             if hasattr(self.player, "inventory"):
                 self.player.inventory.clear()
+            if hasattr(self.player, "rune_keys"):
+                self.player.rune_keys.clear()
+            self.player.is_hidden = False
             preferred_spawn = self.map.get_map_center()
             self.player.grid = self.map.get_valid_spawn_point(preferred_spawn)
             self.player.px, self.player.py = self.map.world_to_px(self.player.grid)
@@ -437,6 +446,12 @@ class App:
             self.latest_plan_result = self.forward_planner.plan(s0_r, goal_r, actions_r)
             if hasattr(self, "task_executor") and self.task_executor:
                 self.task_executor.set_plan(self.latest_plan_result)
+
+        # 6. Reset State Stealth, Whistle & Boss Portal
+        self.whistle_waves.clear()
+        self.ai_ticker_info = None
+        self.is_boss_battle = False
+        self._tower_prompted = False
 
     def open_graph_modal(self, mode="MINIMAX"):
         """Membuka modal visualizer pohon keputusan AI universal (Minimax, Logic Refutation, PDDL Planning)."""
@@ -764,6 +779,21 @@ class App:
 
     def _update(self, dt):
         self.overlay.update_animation(dt)
+
+        # Update gelombang suara siulan [SPASI] (plan_dev.md Section 4.2)
+        for wave in self.whistle_waves[:]:
+            wave["radius"] += dt * wave.get("speed", 160.0)
+            progress = wave["radius"] / wave["max_radius"]
+            wave["alpha"] = max(0, int(220 * (1.0 - progress)))
+            if wave["radius"] >= wave["max_radius"]:
+                self.whistle_waves.remove(wave)
+
+        # Update HUD AI Ticker banner timer
+        if self.ai_ticker_info:
+            self.ai_ticker_info["timer"] -= dt
+            if self.ai_ticker_info["timer"] <= 0:
+                self.ai_ticker_info = None
+
         if self.game_mode == "EXPLORATION":
             self.player.update(dt)
             self.npc.update(dt)
@@ -866,6 +896,17 @@ class App:
             camera_target = (self.player.px, self.player.py)
             self.camera.follow(camera_target, smooth=True, dt=dt)
             self._last_camera_target = camera_target
+
+            # Cek jika pemain tiba di ubin portal Menara Kuno (Abandoned Tower)
+            portal_pos = getattr(self.map, "boss_portal", {"x": 38, "y": 5})
+            pt_x, pt_y = portal_pos.get("x", 38), portal_pos.get("y", 5)
+            if self.player.grid == (pt_x, pt_y) and not self.player.moving and not self.battle_reentry_locked:
+                if not getattr(self, "_tower_prompted", False):
+                    self._tower_prompted = True
+                    self._interact_tower_portal()
+            else:
+                if self.player.grid != (pt_x, pt_y):
+                    self._tower_prompted = False
 
             # Cek jarak kedekatan (Manhattan distance <= 1) dengan NPC mana pun di peta
             all_npcs = [self.npc, self.npc_kuro, self.npc_shiro]
@@ -1074,6 +1115,7 @@ class App:
         self.game_mode = "EXPLORATION"
         self.overlay.set_mode("EXPLORATION")
         self.battle_reentry_locked = True
+        self.is_boss_battle = False
         self.card_summon_anim = None
         self.loot_toast = None
         self.loot_modal = None
@@ -1468,7 +1510,13 @@ class App:
                         dy = abs(self.player.grid[1] - ch["pos"][1])
                         if max(dx, dy) <= 1:
                             self._open_chest(ch)
-                            break
+                            return
+                # Interaksi portal Menara Kuno (Abandoned Tower)
+                portal_pos = getattr(self.map, "boss_portal", {"x": 38, "y": 5})
+                tx, ty = portal_pos.get("x", 38), portal_pos.get("y", 5)
+                if max(abs(self.player.grid[0] - tx), abs(self.player.grid[1] - ty)) <= 2:
+                    self._interact_tower_portal()
+                    return
                 return
 
             mapping = {
@@ -1484,10 +1532,7 @@ class App:
             if key in mapping:
                 self.player.try_move(mapping[key])
             elif key == K_SPACE:
-                if not self.npc.chasing:
-                    self.player.show_call_bubble()
-                self.npc.toggle_chase()
-                self.overlay.set_chasing_visualization(self.npc.chasing)
+                self._trigger_whistle()
             elif key == K_b:
                 # Tombol pintas untuk masuk fase Pre-Battle
                 self.enter_pre_battle()
@@ -1508,16 +1553,23 @@ class App:
             self._draw_dust_particles()
             self._draw_swaying_ground_foliage()
             self._draw_chests()
+            self._draw_tower_portal()
+            self._draw_whistle_waves()
             self._draw_chickens()
-            self._draw_sprite(self.player.sprite.current_image, self.player.px, self.player.py)
+            player_alpha = 150 if getattr(self.player, "is_hidden", False) else 255
+            self._draw_sprite(self.player.sprite.current_image, self.player.px, self.player.py, alpha=player_alpha)
+            if getattr(self.player, "is_hidden", False):
+                self._draw_stealth_badge()
             self._draw_sprite(self.npc.sprite.current_image, self.npc.px, self.npc.py)
             self._draw_sprite(self.npc_kuro.sprite.current_image, self.npc_kuro.px, self.npc_kuro.py)
             self._draw_sprite(self.npc_shiro.sprite.current_image, self.npc_shiro.px, self.npc_shiro.py)
+            self._draw_npc_speech_bubbles()
             self._draw_swaying_tree_canopies()
             if self.player.call_bubble_visible:
                 self._draw_call_bubble()
             self._draw_npc_offscreen_indicator()
             self._draw_obtained_items_hud()
+            self._draw_ai_ticker_banner()
             if self.gacha_active or getattr(self, "gacha_showcase", None) or self.gacha_message_timer > 0:
                 self._draw_gacha_popup()
         elif self.game_mode == "PRE_BATTLE":
@@ -2966,10 +3018,19 @@ class App:
         pad_y = int(round(10 * sc))
 
         # Hitung kebutuhan lebar header
-        title_text = "ITEM DIDAPAT"
-        count_text = f"({len(inventory)}/3)" if len(inventory) <= 3 else f"({len(inventory)})"
-        t_surf = font_bubble.render(title_text, True, (42, 32, 25))
-        c_surf = font_sm.render(count_text, True, (145, 120, 95))
+        rune_count = len(getattr(self.player, "rune_keys", []))
+        if rune_count >= 3:
+            title_text = "PORTAL MENARA AKTIF!"
+            count_text = f"({rune_count}/3 Kunci) Menuju Menara!"
+            t_col = (130, 40, 195)
+            c_col = (175, 60, 230)
+        else:
+            title_text = "ITEM & KUNCI RUNE"
+            count_text = f"({rune_count}/3 Kunci)"
+            t_col = (42, 32, 25)
+            c_col = (145, 120, 95)
+        t_surf = font_bubble.render(title_text, True, t_col)
+        c_surf = font_sm.render(count_text, True, c_col)
 
         bonuses = []
         if self.player.atk_bonus > 0:
@@ -3400,6 +3461,8 @@ class App:
             "assassin": "battle_assassin.png",
             "mage": "battle_mage.png",
             "shiro": "battle_shiro.png",
+            "kage": "battle_kage.png",
+            "boss": "battle_boss.png",
         }
         for key, fn in files.items():
             path = os.path.join(config.ASSET_DIR, "battle_sprites", fn)
@@ -3425,18 +3488,29 @@ class App:
             self.overlay.nav_rail.set_badge(5, active=True)
 
         # 1. Trigger InterNPCManager (Materi 07: Logic KB & Resolution Refutation)
+        chest_idx = 0
+        if chest in self.chests:
+            chest_idx = self.chests.index(chest)
+        chest_tag = "A" if chest_idx == 0 else ("B" if chest_idx == 1 else ("C" if chest_idx == 2 else "D"))
+
+        # Tambahkan Kunci Rune ke pemain & Basis Pengetahuan
+        key_name = f"Kunci Rune {chest_tag}"
+        if key_name not in self.player.rune_keys:
+            self.player.rune_keys.append(key_name)
+
         if hasattr(self, "inter_npc_manager") and self.inter_npc_manager:
-            chest_idx = 0
-            if chest in self.chests:
-                chest_idx = self.chests.index(chest)
             self.inter_npc_manager.on_chest_opened(chest_idx, chest.get("item", "health_potion"))
+
+        # Banner Ticker AI Logic Percept
+        rune_count = len(self.player.rune_keys)
+        self.ai_ticker_info = {
+            "title": f"[KB PERCEPT] Peti {chest_tag} Terbuka -> {key_name} Diperoleh ({rune_count}/3)!",
+            "detail": f"Status FOL: ChestOpened({chest_tag}) & HasKey_{chest_tag} aktif. Koordinasi penjaga dipicu!",
+            "timer": 4.5,
+        }
 
         # 2. Trigger Automated Planning (Materi 08: Classical Planning STRIPS)
         if hasattr(self, "forward_planner") and self.forward_planner:
-            chest_idx = 0
-            if chest in self.chests:
-                chest_idx = self.chests.index(chest)
-            chest_tag = "A" if chest_idx == 0 else ("B" if chest_idx == 1 else ("C" if chest_idx == 2 else "D"))
             s0_p, goal_p, actions_p = create_world_patrol_problem(chest_tag)
             self.latest_plan_result = self.forward_planner.plan(s0_p, goal_p, actions_p)
             if hasattr(self, "task_executor") and self.task_executor:
@@ -3915,14 +3989,17 @@ class App:
             sx, sy = self.camera.world_to_screen(ch["x"], ch["y"] + hop)
             self.screen.blit(frame_surf, (int(sx), int(sy)))
 
-    def _draw_sprite(self, sprite, wx, wy):
+    def _draw_sprite(self, sprite, wx, wy, alpha: int = 255):
         sx, sy = self.camera.world_to_screen(wx, wy)
         nw = max(1, int(round(sprite.get_width() * self.camera.zoom)))
         nh = max(1, int(round(sprite.get_height() * self.camera.zoom)))
         # Nearest-Neighbor scaling untuk sprite karakter (bebas burik & tajam)
-        sprite = pygame.transform.scale(sprite, (nw, nh))
-        rect = sprite.get_rect(center=(int(sx), int(sy)))
-        self.screen.blit(sprite, rect)
+        scaled = pygame.transform.scale(sprite, (nw, nh))
+        if alpha < 255:
+            scaled = scaled.copy()
+            scaled.set_alpha(alpha)
+        rect = scaled.get_rect(center=(int(sx), int(sy)))
+        self.screen.blit(scaled, rect)
 
     def _draw_call_bubble(self):
         sx, sy = self.camera.world_to_screen(self.player.px, self.player.py)
@@ -3936,6 +4013,222 @@ class App:
         pygame.draw.rect(self.screen, (255, 255, 255), rect, border_radius=4)
         pygame.draw.rect(self.screen, (30, 30, 40), rect, 1, border_radius=4)
         self.screen.blit(surf, (rect.x + pad_x, rect.y + pad_y))
+
+    def _draw_stealth_badge(self):
+        """Gambar lencana mengambang di atas kepala pemain saat bersembunyi di semak."""
+        sx, sy = self.camera.world_to_screen(self.player.px, self.player.py)
+        font = self.fonts.get("tiny", pygame.font.Font(None, 13))
+        text = "🌿 Sembunyi"
+        surf = font.render(text, True, (245, 255, 240))
+        pad_x, pad_y = 6, 2
+        w = surf.get_width() + pad_x * 2
+        h = surf.get_height() + pad_y * 2
+        badge_rect = pygame.Rect(0, 0, w, h)
+        badge_rect.midbottom = (int(sx), int(sy - 20))
+        bg_surf = pygame.Surface((w, h), SRCALPHA)
+        bg_surf.fill((30, 90, 45, 215))
+        pygame.draw.rect(bg_surf, (110, 220, 140), bg_surf.get_rect(), 1, border_radius=4)
+        self.screen.blit(bg_surf, badge_rect)
+        self.screen.blit(surf, (badge_rect.x + pad_x, badge_rect.y + pad_y))
+
+    def _draw_tower_portal(self):
+        """Merender aura portal Menara Kuno (Abandoned Tower) di (38, 5)."""
+        portal_pos = getattr(self.map, "boss_portal", {"x": 38, "y": 5})
+        pt_x, pt_y = portal_pos.get("x", 38), portal_pos.get("y", 5)
+        wx = pt_x * 16 + 8
+        wy = pt_y * 16 + 8
+        sx, sy = self.camera.world_to_screen(wx, wy)
+
+        rune_count = len(getattr(self.player, "rune_keys", []))
+        is_ready = rune_count >= 3
+
+        ticks = pygame.time.get_ticks()
+        pulse = (math.sin(ticks * 0.005) + 1.0) * 0.5
+        radius = int(round((16 + pulse * 6) * self.camera.zoom))
+
+        aura_surf = pygame.Surface((radius * 2 + 4, radius * 2 + 4), SRCALPHA)
+        if is_ready:
+            aura_color = (175, 70, 255, int(90 + pulse * 60))
+            ring_color = (255, 225, 110, int(160 + pulse * 70))
+        else:
+            aura_color = (60, 120, 210, int(60 + pulse * 40))
+            ring_color = (120, 180, 255, int(110 + pulse * 50))
+
+        pygame.draw.circle(aura_surf, aura_color, (radius + 2, radius + 2), radius)
+        pygame.draw.circle(aura_surf, ring_color, (radius + 2, radius + 2), radius, width=2)
+        self.screen.blit(aura_surf, (int(sx - radius - 2), int(sy - radius - 2)))
+
+        dx = abs(self.player.grid[0] - pt_x)
+        dy = abs(self.player.grid[1] - pt_y)
+        if max(dx, dy) <= 3:
+            font = self.fonts.get("bubble", self.fonts.get("sm"))
+            font_sub = self.fonts.get("tiny", pygame.font.Font(None, 12))
+            if is_ready:
+                main_txt = "[E] Masuk Menara Kuno & Hadapi Boss Kage!"
+                sub_txt = "3/3 Kunci Rune Terpasang • Portal Siap!"
+                col = (255, 235, 140)
+                border_col = (195, 120, 255)
+                bg_col = (45, 20, 60, 235)
+            else:
+                main_txt = f"Gerbang Tersegel ({rune_count}/3 Kunci)"
+                sub_txt = "Kumpulkan 3 Kunci Rune dari peti untuk membuka!"
+                col = (220, 225, 235)
+                border_col = (100, 150, 220)
+                bg_col = (25, 35, 55, 230)
+
+            t_surf = font.render(main_txt, True, col)
+            s_surf = font_sub.render(sub_txt, True, (210, 200, 190))
+            pad_x, pad_y = 12, 6
+            bw = max(t_surf.get_width(), s_surf.get_width()) + pad_x * 2
+            bh = t_surf.get_height() + s_surf.get_height() + pad_y * 2 + 2
+            bx = int(sx - bw // 2)
+            by = int(sy - radius - bh - 8)
+
+            box_surf = pygame.Surface((bw, bh), SRCALPHA)
+            box_surf.fill(bg_col)
+            pygame.draw.rect(box_surf, border_col, box_surf.get_rect(), 1, border_radius=6)
+            self.screen.blit(box_surf, (bx, by))
+            self.screen.blit(t_surf, (bx + (bw - t_surf.get_width()) // 2, by + pad_y))
+            self.screen.blit(s_surf, (bx + (bw - s_surf.get_width()) // 2, by + pad_y + t_surf.get_height() + 2))
+
+    def _draw_whistle_waves(self):
+        """Menggambar cincin gelombang suara ekspansif saat siulan dibunyikan."""
+        for wave in self.whistle_waves:
+            wx, wy = wave["pos"]
+            sx, sy = self.camera.world_to_screen(wx, wy)
+            r = int(round(wave["radius"] * self.camera.zoom))
+            if r <= 2:
+                continue
+            surf = pygame.Surface((r * 2 + 4, r * 2 + 4), SRCALPHA)
+            alpha = wave.get("alpha", 180)
+            color = (255, 230, 100, alpha)
+            pygame.draw.circle(surf, color, (r + 2, r + 2), r, width=2)
+            if r > 15:
+                inner_r = max(2, r - int(12 * self.camera.zoom))
+                inner_col = (255, 245, 180, int(alpha * 0.6))
+                pygame.draw.circle(surf, inner_col, (r + 2, r + 2), inner_r, width=1)
+            self.screen.blit(surf, (int(sx - r - 2), int(sy - r - 2)))
+
+    def _draw_npc_speech_bubbles(self):
+        """Menggambar balon dialog percakapan dan respon sensorik di atas kepala NPC."""
+        for n in (self.npc, self.npc_kuro, self.npc_shiro):
+            if n and getattr(n, "speech_bubble", None):
+                sx, sy = self.camera.world_to_screen(n.px, n.py)
+                font = self.fonts.get("bubble", pygame.font.Font(None, 14))
+                surf = font.render(n.speech_bubble, True, (35, 25, 20))
+                pad_x, pad_y = 8, 4
+                bw = surf.get_width() + pad_x * 2
+                bh = surf.get_height() + pad_y * 2
+                bx = int(sx - bw // 2)
+                by = int(sy - 26 - bh)
+                b_surf = pygame.Surface((bw, bh), SRCALPHA)
+                b_surf.fill((255, 253, 246, 235))
+                pygame.draw.rect(b_surf, (200, 160, 110), b_surf.get_rect(), 1, border_radius=5)
+                self.screen.blit(b_surf, (bx, by))
+                self.screen.blit(surf, (bx + pad_x, by + pad_y))
+
+    def _draw_ai_ticker_banner(self):
+        """Menggambar banner notifikasi cerdas AI Ticker di bagian tengah atas layar."""
+        if not self.ai_ticker_info or self.ai_ticker_info.get("timer", 0.0) <= 0:
+            return
+
+        w, h = self.screen.get_size()
+        panel_w = self.camera.left_panel_w
+        free_w = w - panel_w
+        cx = panel_w + free_w // 2
+
+        title = self.ai_ticker_info.get("title", "")
+        detail = self.ai_ticker_info.get("detail", "")
+        font_t = self.fonts.get("bubble", self.fonts.get("sm"))
+        font_d = self.fonts.get("tiny", pygame.font.Font(None, 13))
+
+        t_surf = font_t.render(title, True, (255, 240, 170))
+        d_surf = font_d.render(detail, True, (230, 225, 215))
+
+        pad_x, pad_y = 16, 8
+        bw = max(t_surf.get_width(), d_surf.get_width()) + pad_x * 2
+        bh = t_surf.get_height() + d_surf.get_height() + pad_y * 2 + 4
+        bx = cx - bw // 2
+        by = 16
+
+        bg_surf = pygame.Surface((bw, bh), SRCALPHA)
+        bg_surf.fill((30, 26, 38, 230))
+        pygame.draw.rect(bg_surf, (215, 175, 90), bg_surf.get_rect(), 1, border_radius=8)
+        self.screen.blit(bg_surf, (bx, by))
+        self.screen.blit(t_surf, (bx + (bw - t_surf.get_width()) // 2, by + pad_y))
+        self.screen.blit(d_surf, (bx + (bw - d_surf.get_width()) // 2, by + pad_y + t_surf.get_height() + 2))
+
+    def _trigger_whistle(self):
+        """Picu peluit / pancingan suara Bolu (Whistle Mechanic [SPASI] - plan_dev.md Section 4.2)."""
+        self.player.show_call_bubble()
+        # Efek visual cincin audio yang melebar
+        self.whistle_waves.append({
+            "pos": (self.player.px, self.player.py),
+            "radius": 12.0,
+            "max_radius": 7.0 * config.TILE_SIZE,
+            "speed": 160.0,
+            "alpha": 220,
+        })
+        if hasattr(self, "audio") and hasattr(self.audio, "play_chest_prompt"):
+            self.audio.play_chest_prompt()
+
+        heard_count = 0
+        all_npcs = [getattr(self, "npc", None), getattr(self, "npc_kuro", None), getattr(self, "npc_shiro", None)]
+        for n in all_npcs:
+            if n and hasattr(n, "on_noise_heard"):
+                if n.on_noise_heard(self.player.grid):
+                    heard_count += 1
+
+        if heard_count > 0:
+            self.ai_ticker_info = {
+                "title": f"[SOUND PERCEPT] Siulan Bolu Didengar ({heard_count} NPC Menyelidiki)!",
+                "detail": "Stimulus audio memicu peralihan state NPC ke INVESTIGATING (4.0s) menuju titik siulan.",
+                "timer": 3.8,
+            }
+        else:
+            self.ai_ticker_info = {
+                "title": "[SOUND PERCEPT] Siulan Bolu Berbunyi -> Tidak ada NPC dalam jangkauan dengar (7 ubin).",
+                "detail": "Suara peluit tidak mencapai radius pendengaran NPC di sekeliling peta.",
+                "timer": 2.5,
+            }
+
+    def _trigger_chase(self):
+        """Callback dari tombol Panggil NPC di tab companion."""
+        self._trigger_whistle()
+
+    def _interact_tower_portal(self):
+        """Interaksi dengan Portal Menara Kuno (Abandoned Tower) menuju Boss Battle."""
+        rune_count = len(getattr(self.player, "rune_keys", []))
+        if rune_count < 3:
+            needed = 3 - rune_count
+            self.ai_ticker_info = {
+                "title": f"[GERBANG TERKUNCI] Butuh 3 Kunci Rune ({rune_count}/3 Terkumpul)!",
+                "detail": f"Buka {needed} peti harta lagi di penjuru peta untuk melengkapi segel Portal Menara Kuno.",
+                "timer": 4.0,
+            }
+            if hasattr(self, "audio") and hasattr(self.audio, "play_chest_prompt"):
+                self.audio.play_chest_prompt()
+            return
+
+        # Jika sudah memiliki 3 kunci, buktikan klausa logika KB (Resolution Refutation)
+        proved, steps, summary = False, [], None
+        if hasattr(self, "inter_npc_manager") and self.inter_npc_manager:
+            proved, steps, summary = self.inter_npc_manager.can_open_portal()
+
+        self.ai_ticker_info = {
+            "title": "[KB RESOLUTION] HasKey_A & HasKey_B & HasKey_C => PortalActive [TERBUKTI!]",
+            "detail": "Segel gerbang Menara Kuno terbuka! Memasuki pertarungan menghadapi Boss Kage!",
+            "timer": 4.5,
+        }
+        # Langsung masuk mode battle melawan Boss Kage the Shadow Lord
+        self.enter_boss_battle()
+
+    def enter_boss_battle(self):
+        """Memulai pertarungan langsung menghadapi Boss Kage the Shadow Lord."""
+        self.is_boss_battle = True
+        self.current_encounter_npc = None
+        self.current_squad = NPCSquad.create_boss_squad()
+        self.enter_battle()
 
     def _draw_loot_toast(self, w: int, h: int, center_x: int):
         """Merender banner pop-up Rampasan Perang (Spoils of War) di atas duel arena."""

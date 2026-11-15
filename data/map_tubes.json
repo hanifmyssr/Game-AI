@@ -17664,20 +17664,6 @@
           "atlas_y": 5
         },
         {
-          "x": 17,
-          "y": 27,
-          "src": "sprout/Basic_Grass_Biom_things.png",
-          "atlas_x": 3,
-          "atlas_y": 1
-        },
-        {
-          "x": 18,
-          "y": 27,
-          "src": "sprout/Basic_Grass_Biom_things.png",
-          "atlas_x": 4,
-          "atlas_y": 1
-        },
-        {
           "x": 20,
           "y": 27,
           "src": "Shining Fields_free_v1.1/Shining Fields_free_v1.1/Sprites/Objects/Objects.png",
@@ -36887,20 +36873,6 @@
       "atlas_y": 5
     },
     {
-      "x": 17,
-      "y": 27,
-      "src": "sprout/Basic_Grass_Biom_things.png",
-      "atlas_x": 3,
-      "atlas_y": 1
-    },
-    {
-      "x": 18,
-      "y": 27,
-      "src": "sprout/Basic_Grass_Biom_things.png",
-      "atlas_x": 4,
-      "atlas_y": 1
-    },
-    {
       "x": 20,
       "y": 27,
       "src": "Shining Fields_free_v1.1/Shining Fields_free_v1.1/Sprites/Objects/Objects.png",
@@ -41978,20 +41950,6 @@
       "atlas_y": 1
     },
     {
-      "x": 17,
-      "y": 26,
-      "src": "",
-      "atlas_x": 0,
-      "atlas_y": 1
-    },
-    {
-      "x": 18,
-      "y": 26,
-      "src": "",
-      "atlas_x": 0,
-      "atlas_y": 1
-    },
-    {
       "x": 20,
       "y": 26,
       "src": "",
@@ -42140,20 +42098,6 @@
     },
     {
       "x": 12,
-      "y": 27,
-      "src": "",
-      "atlas_x": 0,
-      "atlas_y": 1
-    },
-    {
-      "x": 17,
-      "y": 27,
-      "src": "",
-      "atlas_x": 0,
-      "atlas_y": 1
-    },
-    {
-      "x": 18,
       "y": 27,
       "src": "",
       "atlas_x": 0,
@@ -43655,10 +43599,6 @@
       ]
     ],
     "trees_pink": [
-      [
-        17,
-        26
-      ],
       [
         18,
         34
@@ -47102,7 +47042,7 @@
       }
     ],
     "boss_portal": {
-      "x": 20,
+      "x": 38,
       "y": 5
     }
   }

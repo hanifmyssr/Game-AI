@@ -157,6 +157,38 @@ class NPCSquad:
 
         return cls(members)
 
+    @classmethod
+    def create_boss_squad(cls) -> "NPCSquad":
+        """Membangun squad Boss Kage (Kucing Hitam Menara Kuno / Abandoned Tower)."""
+        boss = NPCMember(
+            name="Kage the Shadow Lord",
+            char_type="assassin",
+            max_hp=160,
+            potions=3,
+            atk_bonus=8,
+            def_bonus=5,
+            eval_profile="AGGRESSIVE",
+        )
+        minion_1 = NPCMember(
+            name="Shadow Ranger",
+            char_type="ranger",
+            max_hp=80,
+            potions=1,
+            atk_bonus=4,
+            def_bonus=2,
+            eval_profile="BALANCED",
+        )
+        minion_2 = NPCMember(
+            name="Shadow Mage",
+            char_type="mage",
+            max_hp=80,
+            potions=2,
+            atk_bonus=5,
+            def_bonus=1,
+            eval_profile="BALANCED",
+        )
+        return cls([boss, minion_1, minion_2])
+
     def reset(self):
         """Memulihkan seluruh anggota squad ke kondisi awal (HP maksimal & frontline awal)."""
         self.active_index = 0

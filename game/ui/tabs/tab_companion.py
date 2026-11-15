@@ -188,15 +188,20 @@ class TabCompanion:
 
         opened_chests = sum(1 for c in getattr(self.app, "chests", []) if c.get("opened", False))
         total_chests = len(getattr(self.app, "chests", []))
+        rune_count = len(getattr(self.app.player, "rune_keys", []))
         chickens_count = len(getattr(self.app, "chicken_entities", []))
 
+        key_lbl = "Kunci Rune"
+        key_val = f"{rune_count} / 3" if rune_count < 3 else "3/3 (SIAP!)"
+        key_col = (155, 45, 215) if rune_count >= 3 else config.COLOR_ACCENT_GOLD
+
         draw_metric_tile(surface, pygame.Rect(cx, cy, tile_w, tile_h),
-                         "Peti Dibuka", f"{opened_chests} / {total_chests}",
-                         val_color=config.COLOR_ACCENT_GOLD,
+                         key_lbl, key_val,
+                         val_color=key_col,
                          font_lbl=font_tiny, font_val=font_sm)
 
         draw_metric_tile(surface, pygame.Rect(cx + tile_w + 10, cy, tile_w, tile_h),
-                         "Ayam Roaming", f"{chickens_count} Ekor",
+                         "Peti Terbuka", f"{opened_chests} / {total_chests}",
                          val_color=config.COLOR_ACCENT_BLUE,
                          font_lbl=font_tiny, font_val=font_sm)
 

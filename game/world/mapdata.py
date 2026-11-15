@@ -100,6 +100,7 @@ class MapData:
         self.foliage = doc.get("foliage", {"trees": [], "bushes": [], "flowers": []})
         self.chickens = doc.get("chickens", [])
         self.chests_data = doc.get("spawns", {}).get("chests", [])
+        self.boss_portal = doc.get("spawns", {}).get("boss_portal", {"x": 38, "y": 5})
 
         # Identifikasi sel jembatan dari seluruh layer
         bridge_set = set()
@@ -143,7 +144,18 @@ class MapData:
         # Sel jembatan dapat dilalui (bukan obstacle)
         self.obstacle_set.difference_update(bridge_set)
 
-        # walkable = (ground atau jembatan) minus obstacle dan water (kecuali jembatan)
+        # 1. Ekstrak ubin semak dari foliage (ambushes & bushes) untuk mekanik stealth (plan_dev.md)
+        self.bush_set = set()
+        for item in self.foliage.get("ambushes", []) + self.foliage.get("bushes", []):
+            if isinstance(item, dict):
+                self.bush_set.add((int(item["x"]), int(item["y"])))
+            elif isinstance(item, (list, tuple)) and len(item) >= 2:
+                self.bush_set.add((int(item[0]), int(item[1])))
+
+        # 2. Pengecualian semak dari rintangan keras (agar pemain & NPC bisa masuk untuk stealth)
+        self.obstacle_set.difference_update(self.bush_set)
+
+        # walkable = (ground atau jembatan atau semak) minus obstacle dan water (kecuali jembatan)
         self.walkable_set = set()
         for key in self.ground_set:
             if key in self.obstacle_set:
@@ -151,6 +163,9 @@ class MapData:
             if key in self.water and key not in bridge_set:
                 continue
             self.walkable_set.add(key)
+        for key in self.bush_set:
+            if key in self.ground_set and (key not in self.water or key in bridge_set):
+                self.walkable_set.add(key)
 
     def _load_layer(self, cells, target):
         for cell in cells:
@@ -175,6 +190,10 @@ class MapData:
 
     def is_dirt_road(self, pos):
         return tuple(pos) in self.dirt_road_set
+
+    def is_bush(self, pos):
+        """Mengembalikan True jika koordinat grid berada di dalam ubin semak (hiding spot)."""
+        return tuple(pos) in getattr(self, "bush_set", set())
 
     def get_surface_type(self, pos):
         """Mengembalikan jenis permukaan pada posisi sel ('bridge', 'dirt', atau 'grass')."""

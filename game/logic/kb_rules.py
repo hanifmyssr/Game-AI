@@ -158,6 +158,17 @@ class KnowledgeBase:
             description="Oyen siaga penuh mengamankan peti di markas utama"
         )
 
+        # Rule 6: Portal Kuno Menara Ditinggalkan Membutuhkan 3 Kunci Rune (plan_dev.md)
+        # FOL: HasKey(A) ∧ HasKey(B) ∧ HasKey(C) => PortalActive
+        # CNF: ~HasKey_A ∨ ~HasKey_B ∨ ~HasKey_C ∨ PortalActive
+        self.add_rule(
+            rule_id="R6_PORTAL",
+            name="Aktivasi Portal Menara Kuno",
+            fol_str="HasKey(A) ∧ HasKey(B) ∧ HasKey(C) => PortalActive",
+            clause=frozenset({"~HasKey_A", "~HasKey_B", "~HasKey_C", "PortalActive"}),
+            description="Portal Menara Kuno (Abandoned Tower) terbuka jika Bolu telah mengumpulkan 3 Kunci Rune dari peti"
+        )
+
     def add_rule(self, rule_id: str, name: str, fol_str: str, clause: FrozenSet[str], description: str = "") -> None:
         """Menambahkan aturan formal ke basis pengetahuan."""
         self.clauses.add(clause)

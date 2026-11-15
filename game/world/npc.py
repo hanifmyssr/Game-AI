@@ -70,6 +70,13 @@ class NPC:
         self.chase_timer = 0.0
         self.current_path = []
 
+        # Fitur Investigasi Suara Siulan & Balon Dialog (plan_dev.md)
+        self.speech_bubble = None
+        self.speech_timer = 0.0
+        self.investigating = False
+        self.investigate_timer = 0.0
+        self.investigate_target = None
+
         # Deteksi otomatis aset sprite kustom terdedikasi
         effective_dir = config.OYEN_DIR
         effective_tint = self.tint_color
@@ -122,7 +129,22 @@ class NPC:
 
         self.sprite.update(dt, self.moving)
 
-        if self.chasing and not self.moving:
+        if self.speech_timer > 0.0:
+            self.speech_timer = max(0.0, self.speech_timer - dt)
+            if self.speech_timer <= 0.0:
+                self.speech_bubble = None
+
+        if self.investigating and not self.moving:
+            if self.investigate_target and self.grid != self.investigate_target:
+                self._patrol_step_towards(self.investigate_target)
+            else:
+                self.investigate_timer -= dt
+                if self.investigate_timer <= 0.0:
+                    self.investigating = False
+                    self.investigate_target = None
+                    self.speech_bubble = "Hanya suara angin..."
+                    self.speech_timer = 2.0
+        elif self.chasing and not self.moving:
             self.chase_timer += dt
             if self.chase_timer >= config.NPC_CHASE_INTERVAL:
                 self.chase_timer = 0.0
@@ -136,6 +158,28 @@ class NPC:
                     self.current_waypoint_idx = (self.current_waypoint_idx + 1) % len(self.waypoints)
                     target_wp = self.waypoints[self.current_waypoint_idx]
                 self._patrol_step_towards(target_wp)
+
+    def can_detect_player(self, player) -> bool:
+        """Sensor penglihatan NPC dengan dukungan mekanik stealth semak (plan_dev.md)."""
+        dist = abs(self.grid[0] - player.grid[0]) + abs(self.grid[1] - player.grid[1])
+        if getattr(player, "is_hidden", False):
+            # Pemain di semak hanya terdeteksi jika kontak fisik bersebelahan (dist <= 1)
+            return dist <= 1
+        return dist <= 5
+
+    def on_noise_heard(self, noise_pos: tuple) -> bool:
+        """Merespons stimulus suara siulan [SPASI] (plan_dev.md Section 4.2)."""
+        dist = abs(self.grid[0] - noise_pos[0]) + abs(self.grid[1] - noise_pos[1])
+        if dist <= 7:
+            self.investigating = True
+            self.investigate_timer = 4.0
+            self.investigate_target = tuple(noise_pos)
+            self.chasing = False
+            self.speech_bubble = "Ada suara apa?!"
+            self.speech_timer = 2.5
+            self.find_path(self.investigate_target)
+            return True
+        return False
 
     def _patrol_step_towards(self, target_grid):
         if self.moving or self.grid == tuple(target_grid):

@@ -8869,6 +8869,27 @@
           "atlas_y": 1
         },
         {
+          "x": 33,
+          "y": 28,
+          "src": "sprout/Grass.png",
+          "atlas_x": 1,
+          "atlas_y": 1
+        },
+        {
+          "x": 34,
+          "y": 28,
+          "src": "sprout/Grass.png",
+          "atlas_x": 1,
+          "atlas_y": 1
+        },
+        {
+          "x": 35,
+          "y": 28,
+          "src": "sprout/Grass.png",
+          "atlas_x": 1,
+          "atlas_y": 1
+        },
+        {
           "x": 36,
           "y": 28,
           "src": "sprout/Grass.png",
@@ -13932,6 +13953,27 @@
           "y": 28,
           "src": "sprout/Grass.png",
           "atlas_x": 0,
+          "atlas_y": 1
+        },
+        {
+          "x": 33,
+          "y": 28,
+          "src": "sprout/Grass.png",
+          "atlas_x": 1,
+          "atlas_y": 1
+        },
+        {
+          "x": 34,
+          "y": 28,
+          "src": "sprout/Grass.png",
+          "atlas_x": 1,
+          "atlas_y": 1
+        },
+        {
+          "x": 35,
+          "y": 28,
+          "src": "sprout/Grass.png",
+          "atlas_x": 1,
           "atlas_y": 1
         },
         {
@@ -27134,6 +27176,27 @@
       "atlas_y": 1
     },
     {
+      "x": 33,
+      "y": 28,
+      "src": "sprout/Grass.png",
+      "atlas_x": 1,
+      "atlas_y": 1
+    },
+    {
+      "x": 34,
+      "y": 28,
+      "src": "sprout/Grass.png",
+      "atlas_x": 1,
+      "atlas_y": 1
+    },
+    {
+      "x": 35,
+      "y": 28,
+      "src": "sprout/Grass.png",
+      "atlas_x": 1,
+      "atlas_y": 1
+    },
+    {
       "x": 36,
       "y": 28,
       "src": "sprout/Grass.png",
@@ -31681,6 +31744,27 @@
       "y": 28,
       "src": "sprout/Grass.png",
       "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
+      "x": 33,
+      "y": 28,
+      "src": "sprout/Grass.png",
+      "atlas_x": 1,
+      "atlas_y": 1
+    },
+    {
+      "x": 34,
+      "y": 28,
+      "src": "sprout/Grass.png",
+      "atlas_x": 1,
+      "atlas_y": 1
+    },
+    {
+      "x": 35,
+      "y": 28,
+      "src": "sprout/Grass.png",
+      "atlas_x": 1,
       "atlas_y": 1
     },
     {
@@ -42735,30 +42819,6 @@
     ],
     "grass_tufts": [
       {
-        "x": 33,
-        "y": 28,
-        "src": "sprout/Grass.png",
-        "atlas_x": 2,
-        "atlas_y": 6,
-        "type": "grass"
-      },
-      {
-        "x": 34,
-        "y": 28,
-        "src": "sprout/Grass.png",
-        "atlas_x": 2,
-        "atlas_y": 6,
-        "type": "grass"
-      },
-      {
-        "x": 35,
-        "y": 28,
-        "src": "sprout/Grass.png",
-        "atlas_x": 2,
-        "atlas_y": 6,
-        "type": "grass"
-      },
-      {
         "x": 27,
         "y": 0,
         "src": "sprout/Basic_Grass_Biom_things.png",
@@ -45548,16 +45608,16 @@
       ]
     },
     "npc_shiro": {
-      "grid_x": 34,
-      "grid_y": 27,
+      "grid_x": 33,
+      "grid_y": 28,
       "waypoints": [
         [
-          34,
-          27
+          33,
+          28
         ],
         [
-          32,
-          27
+          31,
+          28
         ]
       ]
     },

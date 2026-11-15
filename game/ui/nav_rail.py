@@ -48,10 +48,12 @@ class NavRail:
         ]
 
         try:
-            self.font_code = pygame.font.SysFont(["dejavusansmono", "liberationsans", "ubuntu", "arial"], 15, bold=True)
-            self.font_tooltip = pygame.font.SysFont(["dejavusans", "liberationsans", "ubuntu", "arial"], 13)
-            self.font_badge = pygame.font.SysFont(["dejavusans", "liberationsans", "ubuntu", "arial"], 11, bold=True)
+            self.font_glyph = pygame.font.SysFont(["segoeuisymbol", "segoeui", "notosanssymbols2", "symbola", "dejavusans", "arial"], 19, bold=True)
+            self.font_code = pygame.font.SysFont(["dejavusansmono", "liberationsans", "consolas", "segoeui", "arial"], 13, bold=True)
+            self.font_tooltip = pygame.font.SysFont(["dejavusans", "liberationsans", "segoeui", "arial"], 13)
+            self.font_badge = pygame.font.SysFont(["dejavusans", "liberationsans", "segoeui", "arial"], 11, bold=True)
         except Exception:
+            self.font_glyph = pygame.font.Font(None, 22)
             self.font_code = pygame.font.Font(None, 16)
             self.font_tooltip = pygame.font.Font(None, 14)
             self.font_badge = pygame.font.Font(None, 12)
@@ -64,23 +66,25 @@ class NavRail:
         self.rect.height = height
         if width is not None:
             self.rect.width = width
-            scale = width / float(getattr(config, "BASE_NAV_RAIL_WIDTH", 68))
+            scale = width / float(getattr(config, "BASE_NAV_RAIL_WIDTH", 64))
             try:
-                self.font_code = pygame.font.SysFont(["dejavusansmono", "liberationsans", "ubuntu", "arial"], max(13, int(round(15 * scale))), bold=True)
-                self.font_tooltip = pygame.font.SysFont(["dejavusans", "liberationsans", "ubuntu", "arial"], max(12, int(round(13 * scale))))
-                self.font_badge = pygame.font.SysFont(["dejavusans", "liberationsans", "ubuntu", "arial"], max(10, int(round(11 * scale))), bold=True)
+                self.font_glyph = pygame.font.SysFont(["segoeuisymbol", "segoeui", "notosanssymbols2", "symbola", "dejavusans", "arial"], max(16, int(round(19 * scale))), bold=True)
+                self.font_code = pygame.font.SysFont(["dejavusansmono", "liberationsans", "consolas", "segoeui", "arial"], max(11, int(round(13 * scale))), bold=True)
+                self.font_tooltip = pygame.font.SysFont(["dejavusans", "liberationsans", "segoeui", "arial"], max(12, int(round(13 * scale))))
+                self.font_badge = pygame.font.SysFont(["dejavusans", "liberationsans", "segoeui", "arial"], max(10, int(round(11 * scale))), bold=True)
             except Exception:
-                self.font_code = pygame.font.Font(None, max(14, int(round(16 * scale))))
+                self.font_glyph = pygame.font.Font(None, max(18, int(round(22 * scale))))
+                self.font_code = pygame.font.Font(None, max(13, int(round(16 * scale))))
                 self.font_tooltip = pygame.font.Font(None, max(12, int(round(14 * scale))))
                 self.font_badge = pygame.font.Font(None, max(11, int(round(12 * scale))))
         self._recompute_item_rects()
 
     def _recompute_item_rects(self) -> None:
-        scale = self.rect.width / float(getattr(config, "BASE_NAV_RAIL_WIDTH", 68))
-        btn_size = int(round(48 * scale))
+        scale = self.rect.width / float(getattr(config, "BASE_NAV_RAIL_WIDTH", 64))
+        btn_size = int(round(46 * scale))
         pad_x = max(2, (self.rect.width - btn_size) // 2)
         start_y = int(round(14 * scale))
-        spacing = int(round(56 * scale))
+        spacing = int(round(54 * scale))
 
         for item in self.tabs:
             if item.tab_id == 6:
@@ -164,9 +168,20 @@ class NavRail:
                 accent_rect = pygame.Rect(self.rect.x, btn_rect.y + 7, 4, btn_rect.height - 14)
                 pygame.draw.rect(surface, config.COLOR_NAV_ACCENT, accent_rect, border_radius=2)
 
-            # Render Kode Tab (Singkatan 2 huruf yang bersih & bebas karakter undefined)
+            # Render Icon Glyph atau Huruf Kode jika glyph tidak terdukung di OS
             icon_color = config.COLOR_NAV_ACCENT if is_active else ((255, 255, 255) if is_hover else (195, 178, 160))
-            g_surf = self.font_code.render(item.short_code, True, icon_color)
+            g_surf = None
+            try:
+                if hasattr(self, "font_glyph") and self.font_glyph:
+                    glyph_candidate = self.font_glyph.render(item.glyph, True, icon_color)
+                    # Jika lebar rendering lebih dari 7px, berarti glyph valid (bukan missing char / tofu box berukuran 5px)
+                    if glyph_candidate.get_width() > 7:
+                        g_surf = glyph_candidate
+            except Exception:
+                pass
+            if g_surf is None:
+                g_surf = self.font_code.render(item.short_code, True, icon_color)
+
             gx = btn_rect.centerx - g_surf.get_width() // 2
             gy = btn_rect.centery - g_surf.get_height() // 2
             surface.blit(g_surf, (gx, gy))

@@ -159,7 +159,7 @@ class TabLogic:
             for idx, st in enumerate(mgr.latest_steps[-4:], start=1):
                 lit = _clean_cnf_str(st.resolved_literal)
                 res = "[] (KONTRADIKSI)" if len(st.resolvent) == 0 else _clean_cnf_str(clause_to_str(st.resolvent))
-                steps.append((f"{idx}. {lit} ➔ {res}", "[]" in res))
+                steps.append((f"{idx}. {lit} -> {res}", "[]" in res))
         else:
             steps = [
                 ("1. Query: ~Chaser(K) (Asumsi)", False),

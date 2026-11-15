@@ -52,7 +52,6 @@ class TabSettings:
             hover_color=(255, 230, 230),
             active_color=(245, 218, 218),
             border_color=config.COLOR_STATUS_DANGER,
-            icon="🔄",
         )
 
     def resize(self, rect: pygame.Rect) -> None:
@@ -86,7 +85,7 @@ class TabSettings:
                 self.app.player.def_bonus = 0
                 if hasattr(self.app.player, "inventory"):
                     self.app.player.inventory.clear()
-        self.btn_reset.text = "✓ Status Berhasil Direset!"
+        self.btn_reset.text = "[OK] Status Berhasil Direset!"
         self.reset_msg_timer = 2.5
 
     def handle_event(self, event: pygame.event.Event) -> bool:

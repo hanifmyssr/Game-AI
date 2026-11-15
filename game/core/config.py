@@ -12,26 +12,26 @@ WINDOW_HEIGHT = 800
 FPS = 60
 
 # ==============================================================================
-# PENGATURAN UKURAN TAB & SIDEBAR (Bisa diatur / diotak-atik di sini)
+# PENGATURAN UKURAN TAB & SIDEBAR (Sesuai Spesifikasi plan_ui.md)
 # ==============================================================================
-BASE_NAV_RAIL_WIDTH = 68      # Lebar bilah ikon vertikal paling kiri (default: 68 px)
-BASE_INSPECTOR_WIDTH = 520    # Lebar panel tab/jurnal petualang (diperlebar ke 520 px agar lapang)
-MAX_UI_SCALE = 1.6            # Batas pengali skala pada layar resolusi tinggi (High-DPI / 3.4K)
+BASE_NAV_RAIL_WIDTH = 64      # Lebar bilah ikon vertikal paling kiri (standar Cozy Journal: 64 px)
+BASE_INSPECTOR_WIDTH = 356    # Lebar panel tab/jurnal petualang (standar plan_ui.md: 356 px)
+MAX_UI_SCALE = 1.15           # Batas pengali skala pada layar resolusi tinggi (agar tab tetap proporsional & nyaman)
 
 # Collapsible Adventurer Journal Geometri (nilai default sebelum resize)
 UI_SCALE = 1.0
 NAV_RAIL_WIDTH = BASE_NAV_RAIL_WIDTH
 INSPECTOR_WIDTH = BASE_INSPECTOR_WIDTH
-TOTAL_DOCK_WIDTH = NAV_RAIL_WIDTH + INSPECTOR_WIDTH        # Total lebar saat tab terbuka
-TOTAL_COLLAPSED_WIDTH = NAV_RAIL_WIDTH                     # Lebar saat tab ditutup ([TAB])
+TOTAL_DOCK_WIDTH = NAV_RAIL_WIDTH + INSPECTOR_WIDTH        # Total lebar saat tab terbuka: 420 px
+TOTAL_COLLAPSED_WIDTH = NAV_RAIL_WIDTH                     # Lebar saat tab ditutup ([TAB]): 64 px
 DEBUG_LEFT_PANEL_WIDTH = TOTAL_DOCK_WIDTH
 DEBUG_PANEL_WIDTH = TOTAL_DOCK_WIDTH
 TREE_PANEL_WIDTH = 380
 
-GAME_VIEWPORT_X = TOTAL_DOCK_WIDTH
-GAME_VIEWPORT_WIDTH = WINDOW_WIDTH - TOTAL_DOCK_WIDTH
-GAME_VIEWPORT_HEIGHT = WINDOW_HEIGHT
-SAFE_CAMERA_FOCUS_X = 850
+GAME_VIEWPORT_X = TOTAL_DOCK_WIDTH                         # 420 px
+GAME_VIEWPORT_WIDTH = WINDOW_WIDTH - TOTAL_DOCK_WIDTH      # 860 px
+GAME_VIEWPORT_HEIGHT = WINDOW_HEIGHT                       # 800 px
+SAFE_CAMERA_FOCUS_X = 850                                  # Pusat pandangan kamera aman (Bolu bebas halangan)
 
 
 def update_ui_scale(win_w: int, win_h: int) -> float:
@@ -39,7 +39,7 @@ def update_ui_scale(win_w: int, win_h: int) -> float:
     global NAV_RAIL_WIDTH, INSPECTOR_WIDTH, TOTAL_DOCK_WIDTH, TOTAL_COLLAPSED_WIDTH
     global DEBUG_LEFT_PANEL_WIDTH, DEBUG_PANEL_WIDTH, GAME_VIEWPORT_X, GAME_VIEWPORT_WIDTH, UI_SCALE
 
-    # Batas skala UI minimal 1.0x (800p), proporsional naik di 1080p, hingga MAX_UI_SCALE di 3.4K
+    # Batas skala UI minimal 1.0x (800p), proporsional naik di 1080p, hingga MAX_UI_SCALE (1.15)
     scale = max(1.0, min(MAX_UI_SCALE, win_h / 800.0))
     UI_SCALE = scale
 

@@ -112,19 +112,14 @@ class Camera:
         usable_w_dock = max(100.0, win_w - dock_w)
         self.fit_zoom = min(usable_w_dock / map_w, win_h / map_h) * (1.0 - margin)
 
-        # Hitung zoom agar kamera SELALU sangat dekat dengan pemain (close-up POV)
-        # Menampilkan sekitar 18 tile secara horizontal agar hanya sebagian kecil peta yang tampak
-        target_visible_tiles_x = 18.0
-        zoom_for_visible_tiles = usable_w_dock / (target_visible_tiles_x * 16.0)
-
-        # Pastikan skala selalu meluber (overflow) dari viewport layar
-        # sehingga tidak pernah ada celah/gap di samping tab atau tepi jendela
+        # Hitung zoom kamera standar petualang (2.8x sesuai plan_ui.md)
+        # Menampilkan pemandangan padang rumput & sungai yang nyaman dan proporsional
         min_overflow_zoom_x = (usable_w_dock + 64.0) / map_w
         min_overflow_zoom_y = (win_h + 64.0) / map_h
         self.min_overflow_zoom = max(min_overflow_zoom_x, min_overflow_zoom_y)
 
-        # Default zoom: minimal 3.0x (pada 1280x800) dan menyesuaikan proporsional pada resolusi tinggi/fullscreen
-        self.base_zoom = max(3.0, max(zoom_for_visible_tiles, self.min_overflow_zoom))
+        # Default zoom: 2.8x (pada 1280x800) dan menyesuaikan proporsional pada resolusi tinggi/fullscreen
+        self.base_zoom = max(2.8, self.min_overflow_zoom)
         self.zoom = self.base_zoom
         self._center_map()
 
@@ -3791,8 +3786,6 @@ class App:
                 sway_x = math.sin(self.wind_timer * 2.4 + tx * 0.8) * (1.2 * zoom)
                 wx = tx * 16
                 wy = ty * 16
-                sx, sy = self.camera.world_to_screen(wx, wy)
-                self.screen.blit(scaled_small, (int(sx + sway_x), int(sy)))
                 sx, sy = self.camera.world_to_screen(wx, wy)
                 self.screen.blit(scaled_small, (int(sx + sway_x), int(sy)))
 

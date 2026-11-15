@@ -67,7 +67,6 @@ class TabMinimax:
             hover_color=(255, 252, 245),
             active_color=(230, 220, 205),
             border_color=config.COLOR_CARD_BORDER,
-            icon="🌳",
         )
 
     def resize(self, rect: pygame.Rect) -> None:

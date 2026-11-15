@@ -41,7 +41,6 @@ class TabSearch:
             hover_color=(255, 252, 245),
             active_color=(230, 220, 205),
             border_color=config.COLOR_CARD_BORDER,
-            icon="👁",
         )
 
     def resize(self, rect: pygame.Rect) -> None:
@@ -180,7 +179,7 @@ class TabSearch:
 
         if ucs_exp > 0 and expanded_count > 0:
             saving = max(0, int(round((1.0 - (expanded_count / float(ucs_exp))) * 100)))
-            eff_str = f"⚡ Heuristik memangkas {saving}% ekspansi simpul!"
+            eff_str = f">> Heuristik memangkas {saving}% ekspansi simpul!"
             eff_color = config.COLOR_STATUS_SUCCESS
         else:
             eff_str = "Menunggu kalkulasi kedua rute..."

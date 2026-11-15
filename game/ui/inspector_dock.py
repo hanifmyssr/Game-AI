@@ -90,7 +90,7 @@ class InspectorDock:
             self.rect.width = width
         if x is not None:
             self.rect.x = x
-        base_w = float(getattr(config, "BASE_INSPECTOR_WIDTH", 460))
+        base_w = float(getattr(config, "BASE_INSPECTOR_WIDTH", 356))
         scale = max(1.0, self.rect.width / base_w)
         self.header_h = max(48, int(round(48 * scale)))
         btn_collapse_w = int(round(88 * scale))

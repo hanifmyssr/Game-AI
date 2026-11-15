@@ -53,7 +53,6 @@ class TabCSP:
             hover_color=(255, 252, 245),
             active_color=(230, 220, 205),
             border_color=config.COLOR_CARD_BORDER,
-            icon="🎲",
         )
 
         self.btn_tree_modal = UIButton(
@@ -65,7 +64,6 @@ class TabCSP:
             hover_color=(255, 252, 245),
             active_color=(230, 220, 205),
             border_color=config.COLOR_ACCENT_GOLD,
-            icon="📊",
         )
 
     def resize(self, rect: pygame.Rect) -> None:
@@ -203,14 +201,12 @@ class TabCSP:
             row_rect = pygame.Rect(cx + 10, row_y, card_w - 20, 26)
             draw_card(surface, row_rect, (250, 246, 238), border_color=(226, 216, 202), border_radius=4)
 
-            status_icon = "✔" if is_valid else "✖"
             status_color = config.COLOR_STATUS_SUCCESS if is_valid else config.COLOR_STATUS_DANGER
-            ic_surf = font_tiny.render(status_icon, True, status_color)
+            pygame.draw.circle(surface, status_color, (row_rect.x + 14, row_rect.centery), 4)
             lb_surf = font_tiny.render(label, True, config.COLOR_TEXT_PRIMARY)
             vl_surf = font_tiny.render(val_text, True, status_color)
 
-            surface.blit(ic_surf, (row_rect.x + 8, row_rect.y + 5))
-            surface.blit(lb_surf, (row_rect.x + 24, row_rect.y + 5))
+            surface.blit(lb_surf, (row_rect.x + 26, row_rect.y + 5))
             surface.blit(vl_surf, (row_rect.right - vl_surf.get_width() - 8, row_rect.y + 5))
             row_y += 28
 

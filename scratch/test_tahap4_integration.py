@@ -46,10 +46,10 @@ def test_tahap4_full_integration():
     # Verifikasi Inferensi Logika (Materi 07)
     roles_after = app.inter_npc_manager.query_active_roles()
     print(f"   - Percept: {roles_after['percept']}")
-    print(f"   - ASK Chaser: {roles_after['chaser']} (Kuro terpilih)")
-    print(f"   - ASK Guardians: {roles_after['guardians']} (Shiro & Oyen siaga)")
-    assert roles_after["chaser"] == "Kuro", "Kuro harus menjadi Chaser via inferensi resolusi refutasi!"
-    assert "Shiro" in roles_after["guardians"], "Shiro harus menjadi Tight Guardian!"
+    print(f"   - ASK Chaser: {roles_after['chaser']} (Shiro terpilih)")
+    print(f"   - ASK Guardians: {roles_after['guardians']} (Kuro & Oyen siaga)")
+    assert roles_after["chaser"] == "Shiro", "Shiro harus menjadi Chaser via inferensi resolusi refutasi!"
+    assert "Kuro" in roles_after["guardians"], "Kuro harus menjadi Tight Guardian!"
 
     # 4. Verifikasi Automated Planning (Materi 08)
     plan_res = app.latest_plan_result

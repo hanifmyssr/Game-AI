@@ -215,6 +215,7 @@ class App:
         self.card_summon_anim = None
         self.game_mode = "EXPLORATION"  # "EXPLORATION", "PRE_BATTLE", atau "BATTLE"
         self.battle_reentry_locked = False
+        self.battle_reentry_timer = 0.0
 
         # Modul CSP & Local Search Optimizer (Tahap 3 & 4)
         self.csp = NPCConfigCSP()
@@ -916,26 +917,44 @@ class App:
                 if self.player.grid != (pt_x, pt_y):
                     self._tower_prompted = False
 
-            # Cek jarak kedekatan (Manhattan distance <= 1) dengan NPC mana pun di peta
-            all_npcs = [self.npc, self.npc_kuro, self.npc_shiro]
+            # Cek jarak kedekatan dengan NPC mana pun di peta (Grid distance <= 1 atau Pixel distance <= 18)
+            all_npcs = [getattr(self, "npc", None), getattr(self, "npc_kuro", None), getattr(self, "npc_shiro", None)]
             min_dist = 999
             closest_npc = None
+            pixel_collision_npc = None
+
             for n in all_npcs:
+                if not n:
+                    continue
                 d = abs(self.player.grid[0] - n.grid[0]) + abs(self.player.grid[1] - n.grid[1])
                 if d < min_dist:
                     min_dist = d
                     closest_npc = n
+                # Cek jarak pixel langsung saat entitas melangkah/bergerak
+                px_dist = math.hypot(self.player.px - n.px, self.player.py - n.py)
+                if px_dist <= 18.0:
+                    pixel_collision_npc = n
 
-            if min_dist > 1:
+            # Unlock reentry lock jika pemain sudah menjauh atau jeda waktu habis
+            if getattr(self, "battle_reentry_timer", 0.0) > 0.0:
+                self.battle_reentry_timer = max(0.0, self.battle_reentry_timer - dt)
+                if self.battle_reentry_timer <= 0.0:
+                    self.battle_reentry_locked = False
+            elif min_dist > 1:
                 self.battle_reentry_locked = False
 
-            if (
-                min_dist <= 1
-                and not self.battle_reentry_locked
-                and not self.player.moving
-                and (closest_npc and not closest_npc.moving)
-            ):
-                self.enter_pre_battle(closest_npc)
+            target_encounter_npc = pixel_collision_npc or (closest_npc if min_dist <= 1 else None)
+
+            if target_encounter_npc and not self.battle_reentry_locked:
+                # Tabrakan fisik terdeteksi! Kunci seketika gerakan kedua entitas agar tidak saling tembus
+                self.player.moving = False
+                self.player.move_t = 1.0
+                self.player.px, self.player.py = self.map.world_to_px(self.player.grid)
+                target_encounter_npc.moving = False
+                target_encounter_npc.move_t = 1.0
+                target_encounter_npc.px, target_encounter_npc.py = self.map.world_to_px(target_encounter_npc.grid)
+                self.player.is_hidden = False
+                self.enter_pre_battle(target_encounter_npc)
         elif self.game_mode == "PRE_BATTLE":
             # State menunggu input player untuk mulai/re-roll
             if self.reroll_toast_timer > 0:
@@ -1084,7 +1103,10 @@ class App:
         self.overlay.set_mode("PRE_BATTLE")
         self.overlay.set_chasing_visualization(False)
         self.overlay.stop_path_animation()
-        self.npc.chasing = False
+        for n in (getattr(self, "npc", None), getattr(self, "npc_kuro", None), getattr(self, "npc_shiro", None)):
+            if n:
+                n.chasing = False
+                n.investigating = False
         # Jika darah player sebelumnya habis/kalah atau <= 10, pulihkan penuh ke 100
         if getattr(self.player, "persistent_hp", 100) <= 10:
             self.player.persistent_hp = 100
@@ -1096,7 +1118,10 @@ class App:
         self.overlay.set_mode("BATTLE")
         self.overlay.set_chasing_visualization(False)
         self.overlay.stop_path_animation()
-        self.npc.chasing = False
+        for n in (getattr(self, "npc", None), getattr(self, "npc_kuro", None), getattr(self, "npc_shiro", None)):
+            if n:
+                n.chasing = False
+                n.investigating = False
         self.npc_battle_turn_timer = 0.0
         self.battle_log_scroll_offset = 0
         self.card_summon_anim = None
@@ -1123,6 +1148,7 @@ class App:
         self.game_mode = "EXPLORATION"
         self.overlay.set_mode("EXPLORATION")
         self.battle_reentry_locked = True
+        self.battle_reentry_timer = 2.5
         self.is_boss_battle = False
         self.card_summon_anim = None
         self.loot_toast = None
@@ -1676,7 +1702,7 @@ class App:
 
         # Label Teks Badge "🐱 Bolu (X meter)"
         font = self.fonts.get("bubble", self.fonts["sm"])
-        txt_surf = font.render(f"🐱 {self.npc.name} ({dist_grid} meter)", True, (255, 255, 255))
+        txt_surf = font.render(f"🐱 {self.npc.name} ({dist_grid} meter)", True, (150, 75, 15))
 
         txt_x = int(edge_x)
         txt_y = int(edge_y + radius + 16)
@@ -1687,8 +1713,8 @@ class App:
         bg_rect.clamp_ip(pygame.Rect(min_x, min_y, max_x - min_x, max_y - min_y))
 
         card_bg = pygame.Surface((bg_rect.width + 12, bg_rect.height + 6), SRCALPHA)
-        card_bg.fill((20, 24, 34, 220))
-        pygame.draw.rect(card_bg, (255, 140, 0, 210), card_bg.get_rect(), 1, border_radius=5)
+        card_bg.fill((255, 253, 248, 245))
+        pygame.draw.rect(card_bg, (215, 140, 30), card_bg.get_rect(), 1, border_radius=5)
         self.screen.blit(card_bg, card_bg.get_rect(center=bg_rect.center))
         self.screen.blit(txt_surf, bg_rect)
 
@@ -2905,11 +2931,11 @@ class App:
                 dx = abs(self.player.grid[0] - chest["pos"][0])
                 dy = abs(self.player.grid[1] - chest["pos"][1])
                 if max(dx, dy) <= 1:
-                    prompt = self.fonts.get("bubble", self.fonts["sm"]).render("[E] Buka Peti", True, (255, 255, 255))
+                    prompt = self.fonts.get("bubble", self.fonts["sm"]).render("[E] Buka Peti", True, (150, 75, 15))
                     p_box = prompt.get_rect(center=(rect.centerx, rect.top - 16))
                     card = pygame.Surface((p_box.width + 12, p_box.height + 6), SRCALPHA)
-                    card.fill((20, 24, 34, 230))
-                    pygame.draw.rect(card, (255, 205, 50), card.get_rect(), 1, border_radius=4)
+                    card.fill((255, 253, 248, 245))
+                    pygame.draw.rect(card, (212, 186, 150), card.get_rect(), 1, border_radius=4)
                     self.screen.blit(card, card.get_rect(center=p_box.center))
                     self.screen.blit(prompt, p_box)
 
@@ -4136,7 +4162,7 @@ class App:
                 self.screen.blit(surf, (bx + pad_x, by + pad_y))
 
     def _draw_ai_ticker_banner(self):
-        """Menggambar banner notifikasi cerdas AI Ticker di bagian tengah atas layar."""
+        """Menggambar banner notifikasi cerdas AI Ticker di bagian tengah atas layar dengan tema Cozy Warm Parchment."""
         if not self.ai_ticker_info or self.ai_ticker_info.get("timer", 0.0) <= 0:
             return
 
@@ -4147,24 +4173,56 @@ class App:
 
         title = self.ai_ticker_info.get("title", "")
         detail = self.ai_ticker_info.get("detail", "")
+        timer = self.ai_ticker_info.get("timer", 0.0)
+        alpha = min(255, int(255 * (timer / 0.35))) if timer < 0.35 else 255
+
         font_t = self.fonts.get("bubble", self.fonts.get("sm"))
         font_d = self.fonts.get("tiny", pygame.font.Font(None, 13))
 
-        t_surf = font_t.render(title, True, (255, 240, 170))
-        d_surf = font_d.render(detail, True, (230, 225, 215))
+        # Pilih aksen warna yang harmonis sesuai jenis notifikasi
+        if "SOUND PERCEPT" in title:
+            t_col = (30, 110, 175)
+            accent_col = (50, 135, 205)
+        elif "GERBANG TERKUNCI" in title:
+            t_col = (185, 50, 35)
+            accent_col = (215, 70, 50)
+        elif "RESOLUTION" in title:
+            t_col = (35, 125, 55)
+            accent_col = (55, 155, 75)
+        else:
+            t_col = (155, 75, 15)
+            accent_col = (205, 135, 25)
 
-        pad_x, pad_y = 16, 8
-        bw = max(t_surf.get_width(), d_surf.get_width()) + pad_x * 2
-        bh = t_surf.get_height() + d_surf.get_height() + pad_y * 2 + 4
+        t_surf = font_t.render(title, True, t_col)
+        d_surf = font_d.render(detail, True, (65, 48, 36))
+
+        pad_x, pad_y = 20, 9
+        bw = max(t_surf.get_width(), d_surf.get_width()) + pad_x * 2 + 10
+        bh = t_surf.get_height() + d_surf.get_height() + pad_y * 2 + 5
         bx = cx - bw // 2
         by = 16
 
+        # Bayangan lembut (Drop shadow)
+        shadow_surf = pygame.Surface((bw, bh), SRCALPHA)
+        pygame.draw.rect(shadow_surf, (45, 35, 25, int(35 * (alpha / 255.0))), (0, 0, bw, bh), border_radius=10)
+        self.screen.blit(shadow_surf, (bx + 2, by + 3))
+
+        # Kartu utama tema Cozy Warm Parchment
         bg_surf = pygame.Surface((bw, bh), SRCALPHA)
-        bg_surf.fill((30, 26, 38, 230))
-        pygame.draw.rect(bg_surf, (215, 175, 90), bg_surf.get_rect(), 1, border_radius=8)
+        bg_surf.fill((255, 253, 248, min(246, alpha)))
+        # Garis aksen vertikal di tepi kiri banner
+        pygame.draw.rect(bg_surf, (*accent_col[:3], alpha), pygame.Rect(5, 6, 4, bh - 12), border_radius=2)
+        # Border ganda elegan
+        pygame.draw.rect(bg_surf, (212, 186, 150, alpha), (0, 0, bw, bh), 2, border_radius=10)
+        pygame.draw.rect(bg_surf, (255, 255, 255, min(200, alpha)), (1, 1, bw - 2, bh - 2), 1, border_radius=9)
         self.screen.blit(bg_surf, (bx, by))
-        self.screen.blit(t_surf, (bx + (bw - t_surf.get_width()) // 2, by + pad_y))
-        self.screen.blit(d_surf, (bx + (bw - d_surf.get_width()) // 2, by + pad_y + t_surf.get_height() + 2))
+
+        if alpha < 255:
+            t_surf.set_alpha(alpha)
+            d_surf.set_alpha(alpha)
+
+        self.screen.blit(t_surf, (bx + pad_x + 6, by + pad_y))
+        self.screen.blit(d_surf, (bx + pad_x + 6, by + pad_y + t_surf.get_height() + 4))
 
     def _trigger_whistle(self):
         """Picu peluit / pancingan suara Bolu (Whistle Mechanic [SPASI] - plan_dev.md Section 4.2)."""
@@ -4239,7 +4297,7 @@ class App:
         self.enter_battle()
 
     def _draw_loot_toast(self, w: int, h: int, center_x: int):
-        """Merender banner pop-up Rampasan Perang (Spoils of War) di atas duel arena."""
+        """Merender banner pop-up Rampasan Perang (Spoils of War) di atas duel arena dengan tema Cozy Warm Parchment."""
         if not self.loot_toast or self.loot_toast["timer"] <= 0:
             return
 
@@ -4261,28 +4319,36 @@ class App:
         by = 28
         banner_rect = pygame.Rect(center_x - bw // 2, by, bw, bh)
 
+        # Drop shadow
+        shadow_surf = pygame.Surface((bw, bh), SRCALPHA)
+        pygame.draw.rect(shadow_surf, (45, 35, 25, int(35 * (alpha / 255.0))), (0, 0, bw, bh), border_radius=10)
+        self.screen.blit(shadow_surf, (banner_rect.x + 2, banner_rect.y + 3))
+
         banner_surf = pygame.Surface((bw, bh), SRCALPHA)
-        bg_alpha = int(235 * (alpha / 255.0))
-        banner_surf.fill((16, 18, 26, bg_alpha))
+        bg_alpha = int(246 * (alpha / 255.0))
+        banner_surf.fill((255, 253, 248, bg_alpha))
 
-        border_col = loot.get("color", (255, 215, 60))
+        border_col = (212, 186, 150)
         border_col_alpha = (*border_col[:3], alpha)
-        pygame.draw.rect(banner_surf, border_col_alpha, pygame.Rect(0, 0, bw, bh), width=2, border_radius=8)
+        pygame.draw.rect(banner_surf, border_col_alpha, pygame.Rect(0, 0, bw, bh), width=2, border_radius=10)
+        pygame.draw.rect(banner_surf, (255, 255, 255, min(200, alpha)), pygame.Rect(1, 1, bw - 2, bh - 2), width=1, border_radius=9)
 
-        glow_bar = pygame.Rect(4, 4, 6, bh - 8)
-        pygame.draw.rect(banner_surf, border_col_alpha, glow_bar, border_radius=3)
+        accent_col = loot.get("color", (205, 135, 25))
+        accent_col_alpha = (*accent_col[:3], alpha)
+        glow_bar = pygame.Rect(5, 5, 5, bh - 10)
+        pygame.draw.rect(banner_surf, accent_col_alpha, glow_bar, border_radius=3)
 
         font_bubble = self.fonts.get("bubble", self.fonts["sm"])
         font_sm = self.fonts["sm"]
 
         title_str = "⚔️ RAMPASAN PERANG DIPEROLEH!"
-        title_txt = font_bubble.render(title_str, True, (255, 220, 80))
+        title_txt = font_bubble.render(title_str, True, (165, 80, 15))
         if alpha < 255:
             title_txt.set_alpha(alpha)
         banner_surf.blit(title_txt, (20, 6))
 
         desc_str = f"Merebut: {loot['name']} ({loot['desc']})"
-        desc_txt = font_sm.render(desc_str, True, (235, 245, 255))
+        desc_txt = font_sm.render(desc_str, True, (65, 48, 36))
         if alpha < 255:
             desc_txt.set_alpha(alpha)
         banner_surf.blit(desc_txt, (20, 31))

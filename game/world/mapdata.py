@@ -155,6 +155,11 @@ class MapData:
         # 2. Pengecualian semak dari rintangan keras (agar pemain & NPC bisa masuk untuk stealth)
         self.obstacle_set.difference_update(self.bush_set)
 
+        # Sel yang memiliki ubin tanah/ground nyata atau jembatan tidak dianggap air
+        for k in list(self.water.keys()):
+            if k in self.ground_set or k in bridge_set:
+                del self.water[k]
+
         # walkable = (ground atau jembatan atau semak) minus obstacle dan water (kecuali jembatan)
         self.walkable_set = set()
         for key in self.ground_set:

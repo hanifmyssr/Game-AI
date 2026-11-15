@@ -19229,20 +19229,6 @@
   ],
   "water": [
     {
-      "x": 21,
-      "y": 0,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 22,
-      "y": 0,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 23,
       "y": 0,
       "src": "sprout/Water.png",
@@ -19257,20 +19243,6 @@
       "atlas_y": 0
     },
     {
-      "x": 25,
-      "y": 0,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 26,
-      "y": 0,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 27,
       "y": 0,
       "src": "sprout/Water.png",
@@ -19280,41 +19252,6 @@
     {
       "x": 28,
       "y": 0,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 29,
-      "y": 0,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 30,
-      "y": 0,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 22,
-      "y": 1,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 23,
-      "y": 1,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 24,
-      "y": 1,
       "src": "sprout/Water.png",
       "atlas_x": 0,
       "atlas_y": 0
@@ -19341,35 +19278,7 @@
       "atlas_y": 0
     },
     {
-      "x": 28,
-      "y": 1,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 29,
-      "y": 1,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 24,
-      "y": 2,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 25,
-      "y": 2,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 26,
       "y": 2,
       "src": "sprout/Water.png",
       "atlas_x": 0,
@@ -19383,50 +19292,8 @@
       "atlas_y": 0
     },
     {
-      "x": 28,
-      "y": 2,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 24,
-      "y": 3,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 25,
-      "y": 3,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 26,
-      "y": 3,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 27,
       "y": 3,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 28,
-      "y": 3,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 24,
-      "y": 4,
       "src": "sprout/Water.png",
       "atlas_x": 0,
       "atlas_y": 0
@@ -19441,27 +19308,6 @@
     {
       "x": 26,
       "y": 4,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 27,
-      "y": 4,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 28,
-      "y": 4,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 24,
-      "y": 5,
       "src": "sprout/Water.png",
       "atlas_x": 0,
       "atlas_y": 0
@@ -19481,20 +19327,6 @@
       "atlas_y": 0
     },
     {
-      "x": 27,
-      "y": 5,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 24,
-      "y": 6,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 25,
       "y": 6,
       "src": "sprout/Water.png",
@@ -19504,20 +19336,6 @@
     {
       "x": 26,
       "y": 6,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 27,
-      "y": 6,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 24,
-      "y": 7,
       "src": "sprout/Water.png",
       "atlas_x": 0,
       "atlas_y": 0
@@ -19537,27 +19355,6 @@
       "atlas_y": 0
     },
     {
-      "x": 27,
-      "y": 7,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 23,
-      "y": 8,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 24,
-      "y": 8,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 25,
       "y": 8,
       "src": "sprout/Water.png",
@@ -19567,27 +19364,6 @@
     {
       "x": 26,
       "y": 8,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 27,
-      "y": 8,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 22,
-      "y": 9,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 23,
-      "y": 9,
       "src": "sprout/Water.png",
       "atlas_x": 0,
       "atlas_y": 0
@@ -19614,35 +19390,7 @@
       "atlas_y": 0
     },
     {
-      "x": 27,
-      "y": 9,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 21,
-      "y": 10,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 22,
-      "y": 10,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 23,
-      "y": 10,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 24,
       "y": 10,
       "src": "sprout/Water.png",
       "atlas_x": 0,
@@ -19651,34 +19399,6 @@
     {
       "x": 25,
       "y": 10,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 26,
-      "y": 10,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 27,
-      "y": 10,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 20,
-      "y": 11,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 21,
-      "y": 11,
       "src": "sprout/Water.png",
       "atlas_x": 0,
       "atlas_y": 0
@@ -19700,27 +19420,6 @@
     {
       "x": 24,
       "y": 11,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 25,
-      "y": 11,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 26,
-      "y": 11,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 20,
-      "y": 12,
       "src": "sprout/Water.png",
       "atlas_x": 0,
       "atlas_y": 0
@@ -19747,62 +19446,6 @@
       "atlas_y": 0
     },
     {
-      "x": 24,
-      "y": 12,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 25,
-      "y": 12,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 15,
-      "y": 13,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 16,
-      "y": 13,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 17,
-      "y": 13,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 18,
-      "y": 13,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 19,
-      "y": 13,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 20,
-      "y": 13,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 21,
       "y": 13,
       "src": "sprout/Water.png",
@@ -19819,41 +19462,6 @@
     {
       "x": 23,
       "y": 13,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 24,
-      "y": 13,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 25,
-      "y": 13,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 26,
-      "y": 13,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 27,
-      "y": 13,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 15,
-      "y": 14,
       "src": "sprout/Water.png",
       "atlas_x": 0,
       "atlas_y": 0
@@ -19880,13 +19488,6 @@
       "atlas_y": 0
     },
     {
-      "x": 19,
-      "y": 14,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 20,
       "y": 14,
       "src": "sprout/Water.png",
@@ -19895,13 +19496,6 @@
     },
     {
       "x": 21,
-      "y": 14,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 22,
       "y": 14,
       "src": "sprout/Water.png",
       "atlas_x": 0,
@@ -19936,27 +19530,6 @@
       "atlas_y": 0
     },
     {
-      "x": 27,
-      "y": 14,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 28,
-      "y": 14,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 15,
-      "y": 15,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 16,
       "y": 15,
       "src": "sprout/Water.png",
@@ -19964,21 +19537,7 @@
       "atlas_y": 0
     },
     {
-      "x": 17,
-      "y": 15,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 18,
-      "y": 15,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 19,
       "y": 15,
       "src": "sprout/Water.png",
       "atlas_x": 0,
@@ -20027,13 +19586,6 @@
       "atlas_y": 0
     },
     {
-      "x": 26,
-      "y": 15,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 27,
       "y": 15,
       "src": "sprout/Water.png",
@@ -20041,77 +19593,7 @@
       "atlas_y": 0
     },
     {
-      "x": 28,
-      "y": 15,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 15,
-      "y": 16,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 16,
-      "y": 16,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 17,
-      "y": 16,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 18,
-      "y": 16,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 19,
-      "y": 16,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 20,
-      "y": 16,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 21,
-      "y": 16,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 22,
-      "y": 16,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 23,
-      "y": 16,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 24,
       "y": 16,
       "src": "sprout/Water.png",
       "atlas_x": 0,
@@ -20125,36 +19607,8 @@
       "atlas_y": 0
     },
     {
-      "x": 26,
-      "y": 16,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 27,
       "y": 16,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 28,
-      "y": 16,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 29,
-      "y": 16,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 15,
-      "y": 17,
       "src": "sprout/Water.png",
       "atlas_x": 0,
       "atlas_y": 0
@@ -20168,27 +19622,6 @@
     },
     {
       "x": 17,
-      "y": 17,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 18,
-      "y": 17,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 24,
-      "y": 17,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 25,
       "y": 17,
       "src": "sprout/Water.png",
       "atlas_x": 0,
@@ -20216,62 +19649,6 @@
       "atlas_y": 0
     },
     {
-      "x": 29,
-      "y": 17,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 0,
-      "y": 18,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 1,
-      "y": 18,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 11,
-      "y": 18,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 12,
-      "y": 18,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 13,
-      "y": 18,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 14,
-      "y": 18,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 15,
-      "y": 18,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 16,
       "y": 18,
       "src": "sprout/Water.png",
@@ -20280,20 +19657,6 @@
     },
     {
       "x": 17,
-      "y": 18,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 18,
-      "y": 18,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 25,
       "y": 18,
       "src": "sprout/Water.png",
       "atlas_x": 0,
@@ -20315,13 +19678,6 @@
     },
     {
       "x": 28,
-      "y": 18,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 29,
       "y": 18,
       "src": "sprout/Water.png",
       "atlas_x": 0,
@@ -20336,76 +19692,6 @@
     },
     {
       "x": 1,
-      "y": 19,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 2,
-      "y": 19,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 3,
-      "y": 19,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 4,
-      "y": 19,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 5,
-      "y": 19,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 6,
-      "y": 19,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 7,
-      "y": 19,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 8,
-      "y": 19,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 9,
-      "y": 19,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 10,
-      "y": 19,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 11,
       "y": 19,
       "src": "sprout/Water.png",
       "atlas_x": 0,
@@ -20454,20 +19740,6 @@
       "atlas_y": 0
     },
     {
-      "x": 18,
-      "y": 19,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 25,
-      "y": 19,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 26,
       "y": 19,
       "src": "sprout/Water.png",
@@ -20477,27 +19749,6 @@
     {
       "x": 27,
       "y": 19,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 28,
-      "y": 19,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 29,
-      "y": 19,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 0,
-      "y": 20,
       "src": "sprout/Water.png",
       "atlas_x": 0,
       "atlas_y": 0
@@ -20545,13 +19796,6 @@
       "atlas_y": 0
     },
     {
-      "x": 7,
-      "y": 20,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 8,
       "y": 20,
       "src": "sprout/Water.png",
@@ -20587,13 +19831,6 @@
       "atlas_y": 0
     },
     {
-      "x": 13,
-      "y": 20,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 14,
       "y": 20,
       "src": "sprout/Water.png",
@@ -20608,13 +19845,6 @@
       "atlas_y": 0
     },
     {
-      "x": 16,
-      "y": 20,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 17,
       "y": 20,
       "src": "sprout/Water.png",
@@ -20622,49 +19852,7 @@
       "atlas_y": 0
     },
     {
-      "x": 18,
-      "y": 20,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 25,
-      "y": 20,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 26,
-      "y": 20,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 27,
-      "y": 20,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 28,
-      "y": 20,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 0,
-      "y": 21,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 1,
       "y": 21,
       "src": "sprout/Water.png",
       "atlas_x": 0,
@@ -20755,20 +19943,6 @@
       "atlas_y": 0
     },
     {
-      "x": 14,
-      "y": 21,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 15,
-      "y": 21,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 16,
       "y": 21,
       "src": "sprout/Water.png",
@@ -20777,41 +19951,6 @@
     },
     {
       "x": 17,
-      "y": 21,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 18,
-      "y": 21,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 25,
-      "y": 21,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 26,
-      "y": 21,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 27,
-      "y": 21,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 28,
       "y": 21,
       "src": "sprout/Water.png",
       "atlas_x": 0,
@@ -20839,97 +19978,6 @@
       "atlas_y": 0
     },
     {
-      "x": 3,
-      "y": 22,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 4,
-      "y": 22,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 5,
-      "y": 22,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 6,
-      "y": 22,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 7,
-      "y": 22,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 8,
-      "y": 22,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 9,
-      "y": 22,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 10,
-      "y": 22,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 11,
-      "y": 22,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 12,
-      "y": 22,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 13,
-      "y": 22,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 14,
-      "y": 22,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 15,
-      "y": 22,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 16,
       "y": 22,
       "src": "sprout/Water.png",
@@ -20944,41 +19992,6 @@
       "atlas_y": 0
     },
     {
-      "x": 18,
-      "y": 22,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 19,
-      "y": 22,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 20,
-      "y": 22,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 24,
-      "y": 22,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 25,
-      "y": 22,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 26,
       "y": 22,
       "src": "sprout/Water.png",
@@ -20987,13 +20000,6 @@
     },
     {
       "x": 27,
-      "y": 22,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 28,
       "y": 22,
       "src": "sprout/Water.png",
       "atlas_x": 0,
@@ -21007,27 +20013,6 @@
       "atlas_y": 0
     },
     {
-      "x": 1,
-      "y": 23,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 2,
-      "y": 23,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 15,
-      "y": 23,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 16,
       "y": 23,
       "src": "sprout/Water.png",
@@ -21049,48 +20034,6 @@
       "atlas_y": 0
     },
     {
-      "x": 19,
-      "y": 23,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 20,
-      "y": 23,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 21,
-      "y": 23,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 22,
-      "y": 23,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 23,
-      "y": 23,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 24,
-      "y": 23,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 25,
       "y": 23,
       "src": "sprout/Water.png",
@@ -21100,41 +20043,6 @@
     {
       "x": 26,
       "y": 23,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 27,
-      "y": 23,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 28,
-      "y": 23,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 0,
-      "y": 24,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 15,
-      "y": 24,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 16,
-      "y": 24,
       "src": "sprout/Water.png",
       "atlas_x": 0,
       "atlas_y": 0
@@ -21154,13 +20062,6 @@
       "atlas_y": 0
     },
     {
-      "x": 19,
-      "y": 24,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 20,
       "y": 24,
       "src": "sprout/Water.png",
@@ -21212,27 +20113,6 @@
     {
       "x": 27,
       "y": 24,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 28,
-      "y": 24,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 16,
-      "y": 25,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 17,
-      "y": 25,
       "src": "sprout/Water.png",
       "atlas_x": 0,
       "atlas_y": 0
@@ -21245,21 +20125,7 @@
       "atlas_y": 0
     },
     {
-      "x": 19,
-      "y": 25,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 20,
-      "y": 25,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 21,
       "y": 25,
       "src": "sprout/Water.png",
       "atlas_x": 0,
@@ -21274,13 +20140,6 @@
     },
     {
       "x": 23,
-      "y": 25,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 24,
       "y": 25,
       "src": "sprout/Water.png",
       "atlas_x": 0,
@@ -21301,41 +20160,6 @@
       "atlas_y": 0
     },
     {
-      "x": 27,
-      "y": 25,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 28,
-      "y": 25,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 17,
-      "y": 26,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 18,
-      "y": 26,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 19,
-      "y": 26,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 20,
       "y": 26,
       "src": "sprout/Water.png",
@@ -21364,48 +20188,6 @@
       "atlas_y": 0
     },
     {
-      "x": 24,
-      "y": 26,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 25,
-      "y": 26,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 26,
-      "y": 26,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 27,
-      "y": 26,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 19,
-      "y": 27,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 20,
-      "y": 27,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 21,
       "y": 27,
       "src": "sprout/Water.png",
@@ -21427,35 +20209,7 @@
       "atlas_y": 0
     },
     {
-      "x": 24,
-      "y": 27,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 25,
-      "y": 27,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 20,
-      "y": 28,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 21,
-      "y": 28,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 22,
       "y": 28,
       "src": "sprout/Water.png",
       "atlas_x": 0,
@@ -21471,20 +20225,6 @@
     {
       "x": 24,
       "y": 28,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 25,
-      "y": 28,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 20,
-      "y": 29,
       "src": "sprout/Water.png",
       "atlas_x": 0,
       "atlas_y": 0
@@ -21513,27 +20253,6 @@
     {
       "x": 24,
       "y": 29,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 25,
-      "y": 29,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 26,
-      "y": 29,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 20,
-      "y": 30,
       "src": "sprout/Water.png",
       "atlas_x": 0,
       "atlas_y": 0
@@ -21574,27 +20293,6 @@
       "atlas_y": 0
     },
     {
-      "x": 26,
-      "y": 30,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 20,
-      "y": 31,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 21,
-      "y": 31,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 22,
       "y": 31,
       "src": "sprout/Water.png",
@@ -21618,20 +20316,6 @@
     {
       "x": 25,
       "y": 31,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 26,
-      "y": 31,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 21,
-      "y": 32,
       "src": "sprout/Water.png",
       "atlas_x": 0,
       "atlas_y": 0
@@ -21665,27 +20349,6 @@
       "atlas_y": 0
     },
     {
-      "x": 26,
-      "y": 32,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 21,
-      "y": 33,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 22,
-      "y": 33,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 23,
       "y": 33,
       "src": "sprout/Water.png",
@@ -21707,35 +20370,7 @@
       "atlas_y": 0
     },
     {
-      "x": 26,
-      "y": 33,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 27,
-      "y": 33,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 22,
-      "y": 34,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 23,
-      "y": 34,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 24,
       "y": 34,
       "src": "sprout/Water.png",
       "atlas_x": 0,
@@ -21751,20 +20386,6 @@
     {
       "x": 26,
       "y": 34,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 27,
-      "y": 34,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 22,
-      "y": 35,
       "src": "sprout/Water.png",
       "atlas_x": 0,
       "atlas_y": 0
@@ -21798,20 +20419,6 @@
       "atlas_y": 0
     },
     {
-      "x": 27,
-      "y": 35,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 22,
-      "y": 36,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 23,
       "y": 36,
       "src": "sprout/Water.png",
@@ -21840,27 +20447,6 @@
       "atlas_y": 0
     },
     {
-      "x": 27,
-      "y": 36,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 28,
-      "y": 36,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 22,
-      "y": 37,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 23,
       "y": 37,
       "src": "sprout/Water.png",
@@ -21869,13 +20455,6 @@
     },
     {
       "x": 24,
-      "y": 37,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 25,
       "y": 37,
       "src": "sprout/Water.png",
       "atlas_x": 0,
@@ -21891,27 +20470,6 @@
     {
       "x": 27,
       "y": 37,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 28,
-      "y": 37,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 22,
-      "y": 38,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 23,
-      "y": 38,
       "src": "sprout/Water.png",
       "atlas_x": 0,
       "atlas_y": 0
@@ -21940,20 +20498,6 @@
     {
       "x": 27,
       "y": 38,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 28,
-      "y": 38,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 23,
-      "y": 39,
       "src": "sprout/Water.png",
       "atlas_x": 0,
       "atlas_y": 0
@@ -21981,13 +20525,6 @@
     },
     {
       "x": 27,
-      "y": 39,
-      "src": "sprout/Water.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 28,
       "y": 39,
       "src": "sprout/Water.png",
       "atlas_x": 0,
@@ -31528,9 +30065,7 @@
       "src": "sprout/Grass.png",
       "atlas_x": 1,
       "atlas_y": 1
-    }
-  ],
-  "decorations": [
+    },
     {
       "x": 0,
       "y": 0,
@@ -33359,34 +31894,6 @@
       "atlas_y": 1
     },
     {
-      "x": 2,
-      "y": 0,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 1,
-      "atlas_y": 9
-    },
-    {
-      "x": 3,
-      "y": 0,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 2,
-      "atlas_y": 9
-    },
-    {
-      "x": 4,
-      "y": 0,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 3,
-      "atlas_y": 9
-    },
-    {
-      "x": 15,
-      "y": 0,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 11,
-      "atlas_y": 9
-    },
-    {
       "x": 17,
       "y": 0,
       "src": "sprout/Basic_Grass_Biom_things.png",
@@ -33422,144 +31929,11 @@
       "atlas_y": 4
     },
     {
-      "x": 37,
-      "y": 0,
-      "src": "tubes/Abandoned Tower.png",
-      "atlas_x": 1,
-      "atlas_y": 0
-    },
-    {
-      "x": 38,
-      "y": 0,
-      "src": "tubes/Abandoned Tower.png",
-      "atlas_x": 2,
-      "atlas_y": 0
-    },
-    {
-      "x": 39,
-      "y": 0,
-      "src": "tubes/Abandoned Tower.png",
-      "atlas_x": 3,
-      "atlas_y": 0
-    },
-    {
       "x": 43,
       "y": 0,
       "src": "sprout/Basic_Grass_Biom_things.png",
       "atlas_x": 5,
       "atlas_y": 2
-    },
-    {
-      "x": 1,
-      "y": 1,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 0,
-      "atlas_y": 10
-    },
-    {
-      "x": 2,
-      "y": 1,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 1,
-      "atlas_y": 10
-    },
-    {
-      "x": 3,
-      "y": 1,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 2,
-      "atlas_y": 10
-    },
-    {
-      "x": 4,
-      "y": 1,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 3,
-      "atlas_y": 10
-    },
-    {
-      "x": 5,
-      "y": 1,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 4,
-      "atlas_y": 10
-    },
-    {
-      "x": 6,
-      "y": 1,
-      "src": "sprout/Fences.png",
-      "atlas_x": 1,
-      "atlas_y": 0
-    },
-    {
-      "x": 7,
-      "y": 1,
-      "src": "sprout/Fences.png",
-      "atlas_x": 2,
-      "atlas_y": 0
-    },
-    {
-      "x": 8,
-      "y": 1,
-      "src": "sprout/Fences.png",
-      "atlas_x": 2,
-      "atlas_y": 0
-    },
-    {
-      "x": 9,
-      "y": 1,
-      "src": "sprout/Fences.png",
-      "atlas_x": 2,
-      "atlas_y": 0
-    },
-    {
-      "x": 10,
-      "y": 1,
-      "src": "sprout/Fences.png",
-      "atlas_x": 2,
-      "atlas_y": 0
-    },
-    {
-      "x": 11,
-      "y": 1,
-      "src": "sprout/Fences.png",
-      "atlas_x": 2,
-      "atlas_y": 0
-    },
-    {
-      "x": 12,
-      "y": 1,
-      "src": "sprout/Fences.png",
-      "atlas_x": 2,
-      "atlas_y": 0
-    },
-    {
-      "x": 13,
-      "y": 1,
-      "src": "sprout/Fences.png",
-      "atlas_x": 3,
-      "atlas_y": 0
-    },
-    {
-      "x": 15,
-      "y": 1,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 11,
-      "atlas_y": 10
-    },
-    {
-      "x": 18,
-      "y": 1,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 9
-    },
-    {
-      "x": 19,
-      "y": 1,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 10,
-      "atlas_y": 9
     },
     {
       "x": 20,
@@ -33597,62 +31971,6 @@
       "atlas_y": 2
     },
     {
-      "x": 37,
-      "y": 1,
-      "src": "tubes/Abandoned Tower.png",
-      "atlas_x": 1,
-      "atlas_y": 1
-    },
-    {
-      "x": 38,
-      "y": 1,
-      "src": "tubes/Abandoned Tower.png",
-      "atlas_x": 2,
-      "atlas_y": 1
-    },
-    {
-      "x": 39,
-      "y": 1,
-      "src": "tubes/Abandoned Tower.png",
-      "atlas_x": 3,
-      "atlas_y": 1
-    },
-    {
-      "x": 1,
-      "y": 2,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 0,
-      "atlas_y": 11
-    },
-    {
-      "x": 2,
-      "y": 2,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 1,
-      "atlas_y": 11
-    },
-    {
-      "x": 3,
-      "y": 2,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 2,
-      "atlas_y": 11
-    },
-    {
-      "x": 4,
-      "y": 2,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 3,
-      "atlas_y": 11
-    },
-    {
-      "x": 5,
-      "y": 2,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 4,
-      "atlas_y": 11
-    },
-    {
       "x": 7,
       "y": 2,
       "src": "sprout/Tilled_Dirt.png",
@@ -33686,34 +32004,6 @@
       "src": "sprout/Tilled_Dirt.png",
       "atlas_x": 2,
       "atlas_y": 6
-    },
-    {
-      "x": 13,
-      "y": 2,
-      "src": "sprout/Fences.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 15,
-      "y": 2,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 11,
-      "atlas_y": 9
-    },
-    {
-      "x": 18,
-      "y": 2,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 10
-    },
-    {
-      "x": 19,
-      "y": 2,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 10,
-      "atlas_y": 10
     },
     {
       "x": 20,
@@ -33758,27 +32048,6 @@
       "atlas_y": 2
     },
     {
-      "x": 37,
-      "y": 2,
-      "src": "tubes/Abandoned Tower.png",
-      "atlas_x": 1,
-      "atlas_y": 2
-    },
-    {
-      "x": 38,
-      "y": 2,
-      "src": "tubes/Abandoned Tower.png",
-      "atlas_x": 2,
-      "atlas_y": 2
-    },
-    {
-      "x": 39,
-      "y": 2,
-      "src": "tubes/Abandoned Tower.png",
-      "atlas_x": 3,
-      "atlas_y": 2
-    },
-    {
       "x": 41,
       "y": 2,
       "src": "Shining Fields_free_v1.1/Shining Fields_free_v1.1/Sprites/Objects/Objects.png",
@@ -33791,41 +32060,6 @@
       "src": "Shining Fields_free_v1.1/Shining Fields_free_v1.1/Sprites/Objects/Objects.png",
       "atlas_x": 1,
       "atlas_y": 1
-    },
-    {
-      "x": 1,
-      "y": 3,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 0,
-      "atlas_y": 12
-    },
-    {
-      "x": 2,
-      "y": 3,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 1,
-      "atlas_y": 12
-    },
-    {
-      "x": 3,
-      "y": 3,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 2,
-      "atlas_y": 12
-    },
-    {
-      "x": 4,
-      "y": 3,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 3,
-      "atlas_y": 12
-    },
-    {
-      "x": 5,
-      "y": 3,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 4,
-      "atlas_y": 12
     },
     {
       "x": 7,
@@ -33861,20 +32095,6 @@
       "src": "sprout/Tilled_Dirt.png",
       "atlas_x": 2,
       "atlas_y": 6
-    },
-    {
-      "x": 13,
-      "y": 3,
-      "src": "sprout/Fences.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 15,
-      "y": 3,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 11,
-      "atlas_y": 10
     },
     {
       "x": 20,
@@ -33940,27 +32160,6 @@
       "atlas_y": 1
     },
     {
-      "x": 37,
-      "y": 3,
-      "src": "tubes/Abandoned Tower.png",
-      "atlas_x": 1,
-      "atlas_y": 3
-    },
-    {
-      "x": 38,
-      "y": 3,
-      "src": "tubes/Abandoned Tower.png",
-      "atlas_x": 2,
-      "atlas_y": 3
-    },
-    {
-      "x": 39,
-      "y": 3,
-      "src": "tubes/Abandoned Tower.png",
-      "atlas_x": 3,
-      "atlas_y": 3
-    },
-    {
       "x": 41,
       "y": 3,
       "src": "Shining Fields_free_v1.1/Shining Fields_free_v1.1/Sprites/Objects/Objects.png",
@@ -33973,41 +32172,6 @@
       "src": "Shining Fields_free_v1.1/Shining Fields_free_v1.1/Sprites/Objects/Objects.png",
       "atlas_x": 1,
       "atlas_y": 2
-    },
-    {
-      "x": 1,
-      "y": 4,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 0,
-      "atlas_y": 13
-    },
-    {
-      "x": 2,
-      "y": 4,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 1,
-      "atlas_y": 13
-    },
-    {
-      "x": 3,
-      "y": 4,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 2,
-      "atlas_y": 13
-    },
-    {
-      "x": 4,
-      "y": 4,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 3,
-      "atlas_y": 13
-    },
-    {
-      "x": 5,
-      "y": 4,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 4,
-      "atlas_y": 13
     },
     {
       "x": 7,
@@ -34043,20 +32207,6 @@
       "src": "sprout/Tilled_Dirt.png",
       "atlas_x": 2,
       "atlas_y": 6
-    },
-    {
-      "x": 12,
-      "y": 4,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 11
-    },
-    {
-      "x": 13,
-      "y": 4,
-      "src": "sprout/Fences.png",
-      "atlas_x": 0,
-      "atlas_y": 0
     },
     {
       "x": 15,
@@ -34115,62 +32265,6 @@
       "atlas_y": 2
     },
     {
-      "x": 37,
-      "y": 4,
-      "src": "tubes/Abandoned Tower.png",
-      "atlas_x": 1,
-      "atlas_y": 4
-    },
-    {
-      "x": 38,
-      "y": 4,
-      "src": "tubes/Abandoned Tower.png",
-      "atlas_x": 2,
-      "atlas_y": 4
-    },
-    {
-      "x": 39,
-      "y": 4,
-      "src": "tubes/Abandoned Tower.png",
-      "atlas_x": 3,
-      "atlas_y": 4
-    },
-    {
-      "x": 1,
-      "y": 5,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 0,
-      "atlas_y": 14
-    },
-    {
-      "x": 2,
-      "y": 5,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 1,
-      "atlas_y": 14
-    },
-    {
-      "x": 3,
-      "y": 5,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 2,
-      "atlas_y": 14
-    },
-    {
-      "x": 4,
-      "y": 5,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 3,
-      "atlas_y": 14
-    },
-    {
-      "x": 5,
-      "y": 5,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 4,
-      "atlas_y": 14
-    },
-    {
       "x": 8,
       "y": 5,
       "src": "sprout/Tilled_Dirt.png",
@@ -34183,34 +32277,6 @@
       "src": "sprout/Tilled_Dirt.png",
       "atlas_x": 1,
       "atlas_y": 5
-    },
-    {
-      "x": 11,
-      "y": 5,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 11
-    },
-    {
-      "x": 12,
-      "y": 5,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 11
-    },
-    {
-      "x": 13,
-      "y": 5,
-      "src": "sprout/Fences.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 15,
-      "y": 5,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 11,
-      "atlas_y": 9
     },
     {
       "x": 19,
@@ -34290,81 +32356,11 @@
       "atlas_y": 1
     },
     {
-      "x": 2,
-      "y": 6,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 1,
-      "atlas_y": 15
-    },
-    {
-      "x": 3,
-      "y": 6,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 2,
-      "atlas_y": 15
-    },
-    {
-      "x": 4,
-      "y": 6,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 3,
-      "atlas_y": 15
-    },
-    {
-      "x": 5,
-      "y": 6,
-      "src": "sprout/Fences.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 8,
       "y": 6,
       "src": "sprout/Tilled_Dirt.png",
       "atlas_x": 1,
       "atlas_y": 5
-    },
-    {
-      "x": 11,
-      "y": 6,
-      "src": "sprout/Fences.png",
-      "atlas_x": 1,
-      "atlas_y": 0
-    },
-    {
-      "x": 12,
-      "y": 6,
-      "src": "sprout/Fences.png",
-      "atlas_x": 2,
-      "atlas_y": 0
-    },
-    {
-      "x": 13,
-      "y": 6,
-      "src": "sprout/Fences.png",
-      "atlas_x": 3,
-      "atlas_y": 0
-    },
-    {
-      "x": 15,
-      "y": 6,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 11,
-      "atlas_y": 10
-    },
-    {
-      "x": 17,
-      "y": 6,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 9
-    },
-    {
-      "x": 18,
-      "y": 6,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 10,
-      "atlas_y": 9
     },
     {
       "x": 19,
@@ -34465,27 +32461,6 @@
       "atlas_y": 5
     },
     {
-      "x": 5,
-      "y": 7,
-      "src": "sprout/Fences.png",
-      "atlas_x": 1,
-      "atlas_y": 0
-    },
-    {
-      "x": 6,
-      "y": 7,
-      "src": "sprout/Fences.png",
-      "atlas_x": 2,
-      "atlas_y": 0
-    },
-    {
-      "x": 7,
-      "y": 7,
-      "src": "sprout/Fences.png",
-      "atlas_x": 3,
-      "atlas_y": 0
-    },
-    {
       "x": 8,
       "y": 7,
       "src": "sprout/Tilled_Dirt.png",
@@ -34493,46 +32468,11 @@
       "atlas_y": 5
     },
     {
-      "x": 11,
-      "y": 7,
-      "src": "sprout/Fences.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 17,
-      "y": 7,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 10
-    },
-    {
-      "x": 18,
-      "y": 7,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 10,
-      "atlas_y": 10
-    },
-    {
       "x": 19,
       "y": 7,
       "src": "sprout/Tilled_Dirt.png",
       "atlas_x": 1,
       "atlas_y": 5
-    },
-    {
-      "x": 20,
-      "y": 7,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 9
-    },
-    {
-      "x": 21,
-      "y": 7,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 10,
-      "atlas_y": 9
     },
     {
       "x": 32,
@@ -34626,27 +32566,6 @@
       "atlas_y": 5
     },
     {
-      "x": 9,
-      "y": 8,
-      "src": "sprout/Fences.png",
-      "atlas_x": 1,
-      "atlas_y": 0
-    },
-    {
-      "x": 10,
-      "y": 8,
-      "src": "sprout/Fences.png",
-      "atlas_x": 2,
-      "atlas_y": 0
-    },
-    {
-      "x": 11,
-      "y": 8,
-      "src": "sprout/Fences.png",
-      "atlas_x": 3,
-      "atlas_y": 0
-    },
-    {
       "x": 14,
       "y": 8,
       "src": "sprout/Basic_Grass_Biom_things.png",
@@ -34666,20 +32585,6 @@
       "src": "sprout/Tilled_Dirt.png",
       "atlas_x": 1,
       "atlas_y": 5
-    },
-    {
-      "x": 20,
-      "y": 8,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 10
-    },
-    {
-      "x": 21,
-      "y": 8,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 10,
-      "atlas_y": 10
     },
     {
       "x": 29,
@@ -34766,20 +32671,6 @@
       "atlas_y": 1
     },
     {
-      "x": 4,
-      "y": 9,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 9
-    },
-    {
-      "x": 5,
-      "y": 9,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 10,
-      "atlas_y": 9
-    },
-    {
       "x": 6,
       "y": 9,
       "src": "sprout/Tilled_Dirt.png",
@@ -34792,20 +32683,6 @@
       "src": "sprout/Tilled_Dirt.png",
       "atlas_x": 1,
       "atlas_y": 5
-    },
-    {
-      "x": 9,
-      "y": 9,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 11
-    },
-    {
-      "x": 14,
-      "y": 9,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 11,
-      "atlas_y": 9
     },
     {
       "x": 19,
@@ -34871,20 +32748,6 @@
       "atlas_y": 2
     },
     {
-      "x": 4,
-      "y": 10,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 10
-    },
-    {
-      "x": 5,
-      "y": 10,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 10,
-      "atlas_y": 10
-    },
-    {
       "x": 6,
       "y": 10,
       "src": "sprout/Tilled_Dirt.png",
@@ -34897,27 +32760,6 @@
       "src": "sprout/Tilled_Dirt.png",
       "atlas_x": 1,
       "atlas_y": 5
-    },
-    {
-      "x": 9,
-      "y": 10,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 11
-    },
-    {
-      "x": 10,
-      "y": 10,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 11
-    },
-    {
-      "x": 14,
-      "y": 10,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 11,
-      "atlas_y": 10
     },
     {
       "x": 15,
@@ -34990,20 +32832,6 @@
       "atlas_y": 0
     },
     {
-      "x": 0,
-      "y": 11,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 9
-    },
-    {
-      "x": 1,
-      "y": 11,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 10,
-      "atlas_y": 9
-    },
-    {
       "x": 6,
       "y": 11,
       "src": "sprout/Hills.png",
@@ -35088,20 +32916,6 @@
       "atlas_y": 0
     },
     {
-      "x": 0,
-      "y": 12,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 10
-    },
-    {
-      "x": 1,
-      "y": 12,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 10,
-      "atlas_y": 10
-    },
-    {
       "x": 6,
       "y": 12,
       "src": "sprout/Hills.png",
@@ -35144,41 +32958,6 @@
       "atlas_y": 5
     },
     {
-      "x": 30,
-      "y": 12,
-      "src": "tubes/Mansion.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 31,
-      "y": 12,
-      "src": "tubes/Mansion.png",
-      "atlas_x": 1,
-      "atlas_y": 0
-    },
-    {
-      "x": 32,
-      "y": 12,
-      "src": "tubes/Mansion.png",
-      "atlas_x": 2,
-      "atlas_y": 0
-    },
-    {
-      "x": 33,
-      "y": 12,
-      "src": "tubes/Mansion.png",
-      "atlas_x": 3,
-      "atlas_y": 0
-    },
-    {
-      "x": 34,
-      "y": 12,
-      "src": "tubes/Mansion.png",
-      "atlas_x": 4,
-      "atlas_y": 0
-    },
-    {
       "x": 36,
       "y": 12,
       "src": "sprout/Tilled_Dirt.png",
@@ -35191,20 +32970,6 @@
       "src": "sprout/Basic_Grass_Biom_things.png",
       "atlas_x": 5,
       "atlas_y": 2
-    },
-    {
-      "x": 2,
-      "y": 13,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 9
-    },
-    {
-      "x": 3,
-      "y": 13,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 10,
-      "atlas_y": 9
     },
     {
       "x": 6,
@@ -35226,48 +32991,6 @@
       "src": "sprout/Tilled_Dirt.png",
       "atlas_x": 1,
       "atlas_y": 5
-    },
-    {
-      "x": 19,
-      "y": 13,
-      "src": "sprout/Wood_Bridge.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 30,
-      "y": 13,
-      "src": "tubes/Mansion.png",
-      "atlas_x": 0,
-      "atlas_y": 1
-    },
-    {
-      "x": 31,
-      "y": 13,
-      "src": "tubes/Mansion.png",
-      "atlas_x": 1,
-      "atlas_y": 1
-    },
-    {
-      "x": 32,
-      "y": 13,
-      "src": "tubes/Mansion.png",
-      "atlas_x": 2,
-      "atlas_y": 1
-    },
-    {
-      "x": 33,
-      "y": 13,
-      "src": "tubes/Mansion.png",
-      "atlas_x": 3,
-      "atlas_y": 1
-    },
-    {
-      "x": 34,
-      "y": 13,
-      "src": "tubes/Mansion.png",
-      "atlas_x": 4,
-      "atlas_y": 1
     },
     {
       "x": 35,
@@ -35305,20 +33028,6 @@
       "atlas_y": 5
     },
     {
-      "x": 2,
-      "y": 14,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 10
-    },
-    {
-      "x": 3,
-      "y": 14,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 10,
-      "atlas_y": 10
-    },
-    {
       "x": 6,
       "y": 14,
       "src": "sprout/Tilled_Dirt.png",
@@ -35347,53 +33056,11 @@
       "atlas_y": 5
     },
     {
-      "x": 19,
-      "y": 14,
-      "src": "sprout/Wood_Bridge.png",
-      "atlas_x": 0,
-      "atlas_y": 1
-    },
-    {
       "x": 22,
       "y": 14,
       "src": "sprout/Basic_Grass_Biom_things.png",
       "atlas_x": 5,
       "atlas_y": 4
-    },
-    {
-      "x": 30,
-      "y": 14,
-      "src": "tubes/Mansion.png",
-      "atlas_x": 0,
-      "atlas_y": 2
-    },
-    {
-      "x": 31,
-      "y": 14,
-      "src": "tubes/Mansion.png",
-      "atlas_x": 1,
-      "atlas_y": 2
-    },
-    {
-      "x": 32,
-      "y": 14,
-      "src": "tubes/Mansion.png",
-      "atlas_x": 2,
-      "atlas_y": 2
-    },
-    {
-      "x": 33,
-      "y": 14,
-      "src": "tubes/Mansion.png",
-      "atlas_x": 3,
-      "atlas_y": 2
-    },
-    {
-      "x": 34,
-      "y": 14,
-      "src": "tubes/Mansion.png",
-      "atlas_x": 4,
-      "atlas_y": 2
     },
     {
       "x": 36,
@@ -35522,13 +33189,6 @@
       "atlas_y": 4
     },
     {
-      "x": 19,
-      "y": 15,
-      "src": "sprout/Wood_Bridge.png",
-      "atlas_x": 0,
-      "atlas_y": 1
-    },
-    {
       "x": 26,
       "y": 15,
       "src": "sprout/Basic_Grass_Biom_things.png",
@@ -35536,60 +33196,11 @@
       "atlas_y": 4
     },
     {
-      "x": 30,
-      "y": 15,
-      "src": "tubes/Mansion.png",
-      "atlas_x": 0,
-      "atlas_y": 3
-    },
-    {
-      "x": 31,
-      "y": 15,
-      "src": "tubes/Mansion.png",
-      "atlas_x": 1,
-      "atlas_y": 3
-    },
-    {
-      "x": 32,
-      "y": 15,
-      "src": "tubes/Mansion.png",
-      "atlas_x": 2,
-      "atlas_y": 3
-    },
-    {
-      "x": 33,
-      "y": 15,
-      "src": "tubes/Mansion.png",
-      "atlas_x": 3,
-      "atlas_y": 3
-    },
-    {
-      "x": 34,
-      "y": 15,
-      "src": "tubes/Mansion.png",
-      "atlas_x": 4,
-      "atlas_y": 3
-    },
-    {
       "x": 36,
       "y": 15,
       "src": "sprout/Tilled_Dirt.png",
       "atlas_x": 1,
       "atlas_y": 5
-    },
-    {
-      "x": 0,
-      "y": 16,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 9
-    },
-    {
-      "x": 1,
-      "y": 16,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 10,
-      "atlas_y": 9
     },
     {
       "x": 2,
@@ -35627,20 +33238,6 @@
       "atlas_y": 1
     },
     {
-      "x": 9,
-      "y": 16,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 11
-    },
-    {
-      "x": 10,
-      "y": 16,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 11
-    },
-    {
       "x": 12,
       "y": 16,
       "src": "sprout/Basic_Grass_Biom_things.png",
@@ -35648,32 +33245,11 @@
       "atlas_y": 1
     },
     {
-      "x": 14,
-      "y": 16,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 9
-    },
-    {
-      "x": 15,
-      "y": 16,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 10,
-      "atlas_y": 9
-    },
-    {
       "x": 17,
       "y": 16,
       "src": "sprout/Basic_Grass_Biom_things.png",
       "atlas_x": 6,
       "atlas_y": 4
-    },
-    {
-      "x": 19,
-      "y": 16,
-      "src": "sprout/Wood_Bridge.png",
-      "atlas_x": 0,
-      "atlas_y": 2
     },
     {
       "x": 20,
@@ -35690,109 +33266,11 @@
       "atlas_y": 4
     },
     {
-      "x": 30,
-      "y": 16,
-      "src": "tubes/Mansion.png",
-      "atlas_x": 0,
-      "atlas_y": 4
-    },
-    {
-      "x": 31,
-      "y": 16,
-      "src": "tubes/Mansion.png",
-      "atlas_x": 1,
-      "atlas_y": 4
-    },
-    {
-      "x": 32,
-      "y": 16,
-      "src": "tubes/Mansion.png",
-      "atlas_x": 2,
-      "atlas_y": 4
-    },
-    {
-      "x": 33,
-      "y": 16,
-      "src": "tubes/Mansion.png",
-      "atlas_x": 3,
-      "atlas_y": 4
-    },
-    {
-      "x": 34,
-      "y": 16,
-      "src": "tubes/Mansion.png",
-      "atlas_x": 4,
-      "atlas_y": 4
-    },
-    {
       "x": 36,
       "y": 16,
       "src": "sprout/Tilled_Dirt.png",
       "atlas_x": 1,
       "atlas_y": 5
-    },
-    {
-      "x": 40,
-      "y": 16,
-      "src": "tubes/Clock Tower Building.png",
-      "atlas_x": 1,
-      "atlas_y": 0
-    },
-    {
-      "x": 41,
-      "y": 16,
-      "src": "tubes/Clock Tower Building.png",
-      "atlas_x": 2,
-      "atlas_y": 0
-    },
-    {
-      "x": 42,
-      "y": 16,
-      "src": "tubes/Clock Tower Building.png",
-      "atlas_x": 3,
-      "atlas_y": 0
-    },
-    {
-      "x": 0,
-      "y": 17,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 10
-    },
-    {
-      "x": 1,
-      "y": 17,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 10,
-      "atlas_y": 10
-    },
-    {
-      "x": 4,
-      "y": 17,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 9
-    },
-    {
-      "x": 5,
-      "y": 17,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 10,
-      "atlas_y": 9
-    },
-    {
-      "x": 14,
-      "y": 17,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 10
-    },
-    {
-      "x": 15,
-      "y": 17,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 10,
-      "atlas_y": 10
     },
     {
       "x": 22,
@@ -35821,27 +33299,6 @@
       "src": "sprout/Tilled_Dirt.png",
       "atlas_x": 1,
       "atlas_y": 5
-    },
-    {
-      "x": 40,
-      "y": 17,
-      "src": "tubes/Clock Tower Building.png",
-      "atlas_x": 1,
-      "atlas_y": 1
-    },
-    {
-      "x": 41,
-      "y": 17,
-      "src": "tubes/Clock Tower Building.png",
-      "atlas_x": 2,
-      "atlas_y": 1
-    },
-    {
-      "x": 42,
-      "y": 17,
-      "src": "tubes/Clock Tower Building.png",
-      "atlas_x": 3,
-      "atlas_y": 1
     },
     {
       "x": 43,
@@ -35858,20 +33315,6 @@
       "atlas_y": 1
     },
     {
-      "x": 4,
-      "y": 18,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 10
-    },
-    {
-      "x": 5,
-      "y": 18,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 10,
-      "atlas_y": 10
-    },
-    {
       "x": 22,
       "y": 18,
       "src": "Shining Fields_free_v1.1/Shining Fields_free_v1.1/Sprites/Objects/Objects.png",
@@ -35891,34 +33334,6 @@
       "src": "sprout/Tilled_Dirt.png",
       "atlas_x": 1,
       "atlas_y": 5
-    },
-    {
-      "x": 40,
-      "y": 18,
-      "src": "tubes/Clock Tower Building.png",
-      "atlas_x": 1,
-      "atlas_y": 2
-    },
-    {
-      "x": 41,
-      "y": 18,
-      "src": "tubes/Clock Tower Building.png",
-      "atlas_x": 2,
-      "atlas_y": 2
-    },
-    {
-      "x": 42,
-      "y": 18,
-      "src": "tubes/Clock Tower Building.png",
-      "atlas_x": 3,
-      "atlas_y": 2
-    },
-    {
-      "x": 43,
-      "y": 18,
-      "src": "tubes/Clock Tower Building.png",
-      "atlas_x": 4,
-      "atlas_y": 2
     },
     {
       "x": 18,
@@ -35940,34 +33355,6 @@
       "src": "sprout/Tilled_Dirt.png",
       "atlas_x": 1,
       "atlas_y": 5
-    },
-    {
-      "x": 40,
-      "y": 19,
-      "src": "tubes/Clock Tower Building.png",
-      "atlas_x": 1,
-      "atlas_y": 3
-    },
-    {
-      "x": 41,
-      "y": 19,
-      "src": "tubes/Clock Tower Building.png",
-      "atlas_x": 2,
-      "atlas_y": 3
-    },
-    {
-      "x": 42,
-      "y": 19,
-      "src": "tubes/Clock Tower Building.png",
-      "atlas_x": 3,
-      "atlas_y": 3
-    },
-    {
-      "x": 43,
-      "y": 19,
-      "src": "tubes/Clock Tower Building.png",
-      "atlas_x": 4,
-      "atlas_y": 3
     },
     {
       "x": 0,
@@ -35998,34 +33385,6 @@
       "atlas_y": 4
     },
     {
-      "x": 25,
-      "y": 20,
-      "src": "sprout/Wood_Bridge.png",
-      "atlas_x": 2,
-      "atlas_y": 0
-    },
-    {
-      "x": 26,
-      "y": 20,
-      "src": "sprout/Wood_Bridge.png",
-      "atlas_x": 3,
-      "atlas_y": 0
-    },
-    {
-      "x": 27,
-      "y": 20,
-      "src": "sprout/Wood_Bridge.png",
-      "atlas_x": 3,
-      "atlas_y": 0
-    },
-    {
-      "x": 28,
-      "y": 20,
-      "src": "sprout/Wood_Bridge.png",
-      "atlas_x": 4,
-      "atlas_y": 0
-    },
-    {
       "x": 29,
       "y": 20,
       "src": "sprout/Tilled_Dirt.png",
@@ -36075,34 +33434,6 @@
       "atlas_y": 5
     },
     {
-      "x": 40,
-      "y": 20,
-      "src": "tubes/Clock Tower Building.png",
-      "atlas_x": 1,
-      "atlas_y": 4
-    },
-    {
-      "x": 41,
-      "y": 20,
-      "src": "tubes/Clock Tower Building.png",
-      "atlas_x": 2,
-      "atlas_y": 4
-    },
-    {
-      "x": 42,
-      "y": 20,
-      "src": "tubes/Clock Tower Building.png",
-      "atlas_x": 3,
-      "atlas_y": 4
-    },
-    {
-      "x": 43,
-      "y": 20,
-      "src": "tubes/Clock Tower Building.png",
-      "atlas_x": 4,
-      "atlas_y": 4
-    },
-    {
       "x": 1,
       "y": 21,
       "src": "sprout/Basic_Grass_Biom_things.png",
@@ -36114,34 +33445,6 @@
       "y": 21,
       "src": "Shining Fields_free_v1.1/Shining Fields_free_v1.1/Sprites/Objects/Objects.png",
       "atlas_x": 3,
-      "atlas_y": 0
-    },
-    {
-      "x": 25,
-      "y": 21,
-      "src": "sprout/Wood_Bridge.png",
-      "atlas_x": 2,
-      "atlas_y": 0
-    },
-    {
-      "x": 26,
-      "y": 21,
-      "src": "sprout/Wood_Bridge.png",
-      "atlas_x": 3,
-      "atlas_y": 0
-    },
-    {
-      "x": 27,
-      "y": 21,
-      "src": "sprout/Wood_Bridge.png",
-      "atlas_x": 3,
-      "atlas_y": 0
-    },
-    {
-      "x": 28,
-      "y": 21,
-      "src": "sprout/Wood_Bridge.png",
-      "atlas_x": 4,
       "atlas_y": 0
     },
     {
@@ -36201,53 +33504,11 @@
       "atlas_y": 0
     },
     {
-      "x": 19,
-      "y": 22,
-      "src": "sprout/Wood_Bridge.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
       "x": 30,
       "y": 22,
       "src": "sprout/Basic_Grass_Biom_things.png",
       "atlas_x": 0,
       "atlas_y": 1
-    },
-    {
-      "x": 32,
-      "y": 22,
-      "src": "tubes/Painters House.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 33,
-      "y": 22,
-      "src": "tubes/Painters House.png",
-      "atlas_x": 1,
-      "atlas_y": 0
-    },
-    {
-      "x": 34,
-      "y": 22,
-      "src": "tubes/Painters House.png",
-      "atlas_x": 2,
-      "atlas_y": 0
-    },
-    {
-      "x": 35,
-      "y": 22,
-      "src": "tubes/Painters House.png",
-      "atlas_x": 3,
-      "atlas_y": 0
-    },
-    {
-      "x": 36,
-      "y": 22,
-      "src": "tubes/Painters House.png",
-      "atlas_x": 4,
-      "atlas_y": 0
     },
     {
       "x": 37,
@@ -36327,53 +33588,11 @@
       "atlas_y": 2
     },
     {
-      "x": 19,
-      "y": 23,
-      "src": "sprout/Wood_Bridge.png",
-      "atlas_x": 0,
-      "atlas_y": 1
-    },
-    {
       "x": 27,
       "y": 23,
       "src": "sprout/Basic_Grass_Biom_things.png",
       "atlas_x": 5,
       "atlas_y": 4
-    },
-    {
-      "x": 32,
-      "y": 23,
-      "src": "tubes/Painters House.png",
-      "atlas_x": 0,
-      "atlas_y": 1
-    },
-    {
-      "x": 33,
-      "y": 23,
-      "src": "tubes/Painters House.png",
-      "atlas_x": 1,
-      "atlas_y": 1
-    },
-    {
-      "x": 34,
-      "y": 23,
-      "src": "tubes/Painters House.png",
-      "atlas_x": 2,
-      "atlas_y": 1
-    },
-    {
-      "x": 35,
-      "y": 23,
-      "src": "tubes/Painters House.png",
-      "atlas_x": 3,
-      "atlas_y": 1
-    },
-    {
-      "x": 36,
-      "y": 23,
-      "src": "tubes/Painters House.png",
-      "atlas_x": 4,
-      "atlas_y": 1
     },
     {
       "x": 38,
@@ -36474,53 +33693,11 @@
       "atlas_y": 5
     },
     {
-      "x": 19,
-      "y": 24,
-      "src": "sprout/Wood_Bridge.png",
-      "atlas_x": 0,
-      "atlas_y": 1
-    },
-    {
       "x": 29,
       "y": 24,
       "src": "sprout/Basic_Grass_Biom_things.png",
       "atlas_x": 0,
       "atlas_y": 1
-    },
-    {
-      "x": 32,
-      "y": 24,
-      "src": "tubes/Painters House.png",
-      "atlas_x": 0,
-      "atlas_y": 2
-    },
-    {
-      "x": 33,
-      "y": 24,
-      "src": "tubes/Painters House.png",
-      "atlas_x": 1,
-      "atlas_y": 2
-    },
-    {
-      "x": 34,
-      "y": 24,
-      "src": "tubes/Painters House.png",
-      "atlas_x": 2,
-      "atlas_y": 2
-    },
-    {
-      "x": 35,
-      "y": 24,
-      "src": "tubes/Painters House.png",
-      "atlas_x": 3,
-      "atlas_y": 2
-    },
-    {
-      "x": 36,
-      "y": 24,
-      "src": "tubes/Painters House.png",
-      "atlas_x": 4,
-      "atlas_y": 2
     },
     {
       "x": 38,
@@ -36586,13 +33763,6 @@
       "atlas_y": 5
     },
     {
-      "x": 19,
-      "y": 25,
-      "src": "sprout/Wood_Bridge.png",
-      "atlas_x": 0,
-      "atlas_y": 1
-    },
-    {
       "x": 21,
       "y": 25,
       "src": "sprout/Basic_Grass_Biom_things.png",
@@ -36605,41 +33775,6 @@
       "src": "sprout/Basic_Grass_Biom_things.png",
       "atlas_x": 6,
       "atlas_y": 4
-    },
-    {
-      "x": 32,
-      "y": 25,
-      "src": "tubes/Painters House.png",
-      "atlas_x": 0,
-      "atlas_y": 3
-    },
-    {
-      "x": 33,
-      "y": 25,
-      "src": "tubes/Painters House.png",
-      "atlas_x": 1,
-      "atlas_y": 3
-    },
-    {
-      "x": 34,
-      "y": 25,
-      "src": "tubes/Painters House.png",
-      "atlas_x": 2,
-      "atlas_y": 3
-    },
-    {
-      "x": 35,
-      "y": 25,
-      "src": "tubes/Painters House.png",
-      "atlas_x": 3,
-      "atlas_y": 3
-    },
-    {
-      "x": 36,
-      "y": 25,
-      "src": "tubes/Painters House.png",
-      "atlas_x": 4,
-      "atlas_y": 3
     },
     {
       "x": 39,
@@ -36726,83 +33861,6 @@
       "atlas_y": 5
     },
     {
-      "x": 19,
-      "y": 26,
-      "src": "sprout/Wood_Bridge.png",
-      "atlas_x": 0,
-      "atlas_y": 2
-    },
-    {
-      "x": 27,
-      "y": 26,
-      "src": "tubes/Merchant House.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 28,
-      "y": 26,
-      "src": "tubes/Merchant House.png",
-      "atlas_x": 1,
-      "atlas_y": 0
-    },
-    {
-      "x": 29,
-      "y": 26,
-      "src": "tubes/Merchant House.png",
-      "atlas_x": 2,
-      "atlas_y": 0
-    },
-    {
-      "x": 30,
-      "y": 26,
-      "src": "tubes/Merchant House.png",
-      "atlas_x": 3,
-      "atlas_y": 0
-    },
-    {
-      "x": 31,
-      "y": 26,
-      "src": "tubes/Merchant House.png",
-      "atlas_x": 4,
-      "atlas_y": 0
-    },
-    {
-      "x": 32,
-      "y": 26,
-      "src": "tubes/Painters House.png",
-      "atlas_x": 0,
-      "atlas_y": 4
-    },
-    {
-      "x": 33,
-      "y": 26,
-      "src": "tubes/Painters House.png",
-      "atlas_x": 1,
-      "atlas_y": 4
-    },
-    {
-      "x": 34,
-      "y": 26,
-      "src": "tubes/Painters House.png",
-      "atlas_x": 2,
-      "atlas_y": 4
-    },
-    {
-      "x": 35,
-      "y": 26,
-      "src": "tubes/Painters House.png",
-      "atlas_x": 3,
-      "atlas_y": 4
-    },
-    {
-      "x": 36,
-      "y": 26,
-      "src": "tubes/Painters House.png",
-      "atlas_x": 4,
-      "atlas_y": 4
-    },
-    {
       "x": 39,
       "y": 26,
       "src": "sprout/Tilled_Dirt.png",
@@ -36878,41 +33936,6 @@
       "src": "Shining Fields_free_v1.1/Shining Fields_free_v1.1/Sprites/Objects/Objects.png",
       "atlas_x": 3,
       "atlas_y": 0
-    },
-    {
-      "x": 27,
-      "y": 27,
-      "src": "tubes/Merchant House.png",
-      "atlas_x": 0,
-      "atlas_y": 1
-    },
-    {
-      "x": 28,
-      "y": 27,
-      "src": "tubes/Merchant House.png",
-      "atlas_x": 1,
-      "atlas_y": 1
-    },
-    {
-      "x": 29,
-      "y": 27,
-      "src": "tubes/Merchant House.png",
-      "atlas_x": 2,
-      "atlas_y": 1
-    },
-    {
-      "x": 30,
-      "y": 27,
-      "src": "tubes/Merchant House.png",
-      "atlas_x": 3,
-      "atlas_y": 1
-    },
-    {
-      "x": 31,
-      "y": 27,
-      "src": "tubes/Merchant House.png",
-      "atlas_x": 4,
-      "atlas_y": 1
     },
     {
       "x": 33,
@@ -37048,41 +34071,6 @@
       "atlas_y": 1
     },
     {
-      "x": 27,
-      "y": 28,
-      "src": "tubes/Merchant House.png",
-      "atlas_x": 0,
-      "atlas_y": 2
-    },
-    {
-      "x": 28,
-      "y": 28,
-      "src": "tubes/Merchant House.png",
-      "atlas_x": 1,
-      "atlas_y": 2
-    },
-    {
-      "x": 29,
-      "y": 28,
-      "src": "tubes/Merchant House.png",
-      "atlas_x": 2,
-      "atlas_y": 2
-    },
-    {
-      "x": 30,
-      "y": 28,
-      "src": "tubes/Merchant House.png",
-      "atlas_x": 3,
-      "atlas_y": 2
-    },
-    {
-      "x": 31,
-      "y": 28,
-      "src": "tubes/Merchant House.png",
-      "atlas_x": 4,
-      "atlas_y": 2
-    },
-    {
       "x": 32,
       "y": 28,
       "src": "sprout/Tilled_Dirt.png",
@@ -37223,41 +34211,6 @@
       "atlas_y": 5
     },
     {
-      "x": 27,
-      "y": 29,
-      "src": "tubes/Merchant House.png",
-      "atlas_x": 0,
-      "atlas_y": 3
-    },
-    {
-      "x": 28,
-      "y": 29,
-      "src": "tubes/Merchant House.png",
-      "atlas_x": 1,
-      "atlas_y": 3
-    },
-    {
-      "x": 29,
-      "y": 29,
-      "src": "tubes/Merchant House.png",
-      "atlas_x": 2,
-      "atlas_y": 3
-    },
-    {
-      "x": 30,
-      "y": 29,
-      "src": "tubes/Merchant House.png",
-      "atlas_x": 3,
-      "atlas_y": 3
-    },
-    {
-      "x": 31,
-      "y": 29,
-      "src": "tubes/Merchant House.png",
-      "atlas_x": 4,
-      "atlas_y": 3
-    },
-    {
       "x": 32,
       "y": 29,
       "src": "sprout/Tilled_Dirt.png",
@@ -37370,62 +34323,6 @@
       "atlas_y": 5
     },
     {
-      "x": 27,
-      "y": 30,
-      "src": "tubes/Merchant House.png",
-      "atlas_x": 0,
-      "atlas_y": 4
-    },
-    {
-      "x": 28,
-      "y": 30,
-      "src": "tubes/Merchant House.png",
-      "atlas_x": 1,
-      "atlas_y": 4
-    },
-    {
-      "x": 29,
-      "y": 30,
-      "src": "tubes/Merchant House.png",
-      "atlas_x": 2,
-      "atlas_y": 4
-    },
-    {
-      "x": 30,
-      "y": 30,
-      "src": "tubes/Merchant House.png",
-      "atlas_x": 3,
-      "atlas_y": 4
-    },
-    {
-      "x": 31,
-      "y": 30,
-      "src": "tubes/Merchant House.png",
-      "atlas_x": 4,
-      "atlas_y": 4
-    },
-    {
-      "x": 33,
-      "y": 30,
-      "src": "tubes/Workshop House.png",
-      "atlas_x": 1,
-      "atlas_y": 0
-    },
-    {
-      "x": 34,
-      "y": 30,
-      "src": "tubes/Workshop House.png",
-      "atlas_x": 2,
-      "atlas_y": 0
-    },
-    {
-      "x": 35,
-      "y": 30,
-      "src": "tubes/Workshop House.png",
-      "atlas_x": 3,
-      "atlas_y": 0
-    },
-    {
       "x": 39,
       "y": 30,
       "src": "Shining Fields_free_v1.1/Shining Fields_free_v1.1/Sprites/Objects/Objects.png",
@@ -37473,41 +34370,6 @@
       "src": "sprout/Basic_Grass_Biom_things.png",
       "atlas_x": 5,
       "atlas_y": 2
-    },
-    {
-      "x": 32,
-      "y": 31,
-      "src": "tubes/Workshop House.png",
-      "atlas_x": 0,
-      "atlas_y": 1
-    },
-    {
-      "x": 33,
-      "y": 31,
-      "src": "tubes/Workshop House.png",
-      "atlas_x": 1,
-      "atlas_y": 1
-    },
-    {
-      "x": 34,
-      "y": 31,
-      "src": "tubes/Workshop House.png",
-      "atlas_x": 2,
-      "atlas_y": 1
-    },
-    {
-      "x": 35,
-      "y": 31,
-      "src": "tubes/Workshop House.png",
-      "atlas_x": 3,
-      "atlas_y": 1
-    },
-    {
-      "x": 36,
-      "y": 31,
-      "src": "tubes/Workshop House.png",
-      "atlas_x": 4,
-      "atlas_y": 1
     },
     {
       "x": 40,
@@ -37615,41 +34477,6 @@
       "atlas_y": 5
     },
     {
-      "x": 32,
-      "y": 32,
-      "src": "tubes/Workshop House.png",
-      "atlas_x": 0,
-      "atlas_y": 2
-    },
-    {
-      "x": 33,
-      "y": 32,
-      "src": "tubes/Workshop House.png",
-      "atlas_x": 1,
-      "atlas_y": 2
-    },
-    {
-      "x": 34,
-      "y": 32,
-      "src": "tubes/Workshop House.png",
-      "atlas_x": 2,
-      "atlas_y": 2
-    },
-    {
-      "x": 35,
-      "y": 32,
-      "src": "tubes/Workshop House.png",
-      "atlas_x": 3,
-      "atlas_y": 2
-    },
-    {
-      "x": 36,
-      "y": 32,
-      "src": "tubes/Workshop House.png",
-      "atlas_x": 4,
-      "atlas_y": 2
-    },
-    {
       "x": 40,
       "y": 32,
       "src": "sprout/Tilled_Dirt.png",
@@ -37718,41 +34545,6 @@
       "src": "sprout/Tilled_Dirt.png",
       "atlas_x": 1,
       "atlas_y": 5
-    },
-    {
-      "x": 32,
-      "y": 33,
-      "src": "tubes/Workshop House.png",
-      "atlas_x": 0,
-      "atlas_y": 3
-    },
-    {
-      "x": 33,
-      "y": 33,
-      "src": "tubes/Workshop House.png",
-      "atlas_x": 1,
-      "atlas_y": 3
-    },
-    {
-      "x": 34,
-      "y": 33,
-      "src": "tubes/Workshop House.png",
-      "atlas_x": 2,
-      "atlas_y": 3
-    },
-    {
-      "x": 35,
-      "y": 33,
-      "src": "tubes/Workshop House.png",
-      "atlas_x": 3,
-      "atlas_y": 3
-    },
-    {
-      "x": 36,
-      "y": 33,
-      "src": "tubes/Workshop House.png",
-      "atlas_x": 4,
-      "atlas_y": 3
     },
     {
       "x": 39,
@@ -37895,41 +34687,6 @@
       "atlas_y": 5
     },
     {
-      "x": 32,
-      "y": 34,
-      "src": "tubes/Workshop House.png",
-      "atlas_x": 0,
-      "atlas_y": 4
-    },
-    {
-      "x": 33,
-      "y": 34,
-      "src": "tubes/Workshop House.png",
-      "atlas_x": 1,
-      "atlas_y": 4
-    },
-    {
-      "x": 34,
-      "y": 34,
-      "src": "tubes/Workshop House.png",
-      "atlas_x": 2,
-      "atlas_y": 4
-    },
-    {
-      "x": 35,
-      "y": 34,
-      "src": "tubes/Workshop House.png",
-      "atlas_x": 3,
-      "atlas_y": 4
-    },
-    {
-      "x": 36,
-      "y": 34,
-      "src": "tubes/Workshop House.png",
-      "atlas_x": 4,
-      "atlas_y": 4
-    },
-    {
       "x": 38,
       "y": 34,
       "src": "sprout/Tilled_Dirt.png",
@@ -37942,27 +34699,6 @@
       "src": "sprout/Tilled_Dirt.png",
       "atlas_x": 1,
       "atlas_y": 5
-    },
-    {
-      "x": 1,
-      "y": 35,
-      "src": "Sprout Lands - Sprites - Basic pack/Sprout Lands - Sprites - Basic pack/Objects/Free_Chicken_House.png",
-      "atlas_x": 0,
-      "atlas_y": 0
-    },
-    {
-      "x": 2,
-      "y": 35,
-      "src": "Sprout Lands - Sprites - Basic pack/Sprout Lands - Sprites - Basic pack/Objects/Free_Chicken_House.png",
-      "atlas_x": 1,
-      "atlas_y": 0
-    },
-    {
-      "x": 3,
-      "y": 35,
-      "src": "Sprout Lands - Sprites - Basic pack/Sprout Lands - Sprites - Basic pack/Objects/Free_Chicken_House.png",
-      "atlas_x": 2,
-      "atlas_y": 0
     },
     {
       "x": 10,
@@ -38098,48 +34834,6 @@
       "atlas_y": 5
     },
     {
-      "x": 0,
-      "y": 36,
-      "src": "sprout/Fences.png",
-      "atlas_x": 3,
-      "atlas_y": 0
-    },
-    {
-      "x": 1,
-      "y": 36,
-      "src": "Sprout Lands - Sprites - Basic pack/Sprout Lands - Sprites - Basic pack/Objects/Free_Chicken_House.png",
-      "atlas_x": 0,
-      "atlas_y": 1
-    },
-    {
-      "x": 2,
-      "y": 36,
-      "src": "Sprout Lands - Sprites - Basic pack/Sprout Lands - Sprites - Basic pack/Objects/Free_Chicken_House.png",
-      "atlas_x": 1,
-      "atlas_y": 1
-    },
-    {
-      "x": 3,
-      "y": 36,
-      "src": "Sprout Lands - Sprites - Basic pack/Sprout Lands - Sprites - Basic pack/Objects/Free_Chicken_House.png",
-      "atlas_x": 2,
-      "atlas_y": 1
-    },
-    {
-      "x": 4,
-      "y": 36,
-      "src": "sprout/Fences.png",
-      "atlas_x": 1,
-      "atlas_y": 0
-    },
-    {
-      "x": 7,
-      "y": 36,
-      "src": "sprout/Fences.png",
-      "atlas_x": 3,
-      "atlas_y": 0
-    },
-    {
       "x": 16,
       "y": 36,
       "src": "sprout/Tilled_Dirt.png",
@@ -38166,34 +34860,6 @@
       "src": "sprout/Tilled_Dirt.png",
       "atlas_x": 1,
       "atlas_y": 5
-    },
-    {
-      "x": 1,
-      "y": 37,
-      "src": "Sprout Lands - Sprites - Basic pack/Sprout Lands - Sprites - Basic pack/Objects/Free_Chicken_House.png",
-      "atlas_x": 0,
-      "atlas_y": 2
-    },
-    {
-      "x": 2,
-      "y": 37,
-      "src": "Sprout Lands - Sprites - Basic pack/Sprout Lands - Sprites - Basic pack/Objects/Free_Chicken_House.png",
-      "atlas_x": 1,
-      "atlas_y": 2
-    },
-    {
-      "x": 3,
-      "y": 37,
-      "src": "Sprout Lands - Sprites - Basic pack/Sprout Lands - Sprites - Basic pack/Objects/Free_Chicken_House.png",
-      "atlas_x": 2,
-      "atlas_y": 2
-    },
-    {
-      "x": 7,
-      "y": 37,
-      "src": "sprout/Fences.png",
-      "atlas_x": 0,
-      "atlas_y": 1
     },
     {
       "x": 17,
@@ -38248,13 +34914,6 @@
       "x": 42,
       "y": 37,
       "src": "sprout/Basic_Grass_Biom_things.png",
-      "atlas_x": 0,
-      "atlas_y": 1
-    },
-    {
-      "x": 7,
-      "y": 38,
-      "src": "sprout/Fences.png",
       "atlas_x": 0,
       "atlas_y": 1
     },
@@ -38332,13 +34991,6 @@
       "x": 40,
       "y": 38,
       "src": "sprout/Basic_Grass_Biom_things.png",
-      "atlas_x": 0,
-      "atlas_y": 1
-    },
-    {
-      "x": 7,
-      "y": 39,
-      "src": "sprout/Fences.png",
       "atlas_x": 0,
       "atlas_y": 1
     },
@@ -38430,6 +35082,1891 @@
       "x": 43,
       "y": 39,
       "src": "sprout/Basic_Grass_Biom_things.png",
+      "atlas_x": 0,
+      "atlas_y": 1
+    }
+  ],
+  "decorations": [
+    {
+      "x": 2,
+      "y": 0,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 1,
+      "atlas_y": 9
+    },
+    {
+      "x": 3,
+      "y": 0,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 2,
+      "atlas_y": 9
+    },
+    {
+      "x": 4,
+      "y": 0,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 3,
+      "atlas_y": 9
+    },
+    {
+      "x": 15,
+      "y": 0,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 11,
+      "atlas_y": 9
+    },
+    {
+      "x": 37,
+      "y": 0,
+      "src": "tubes/Abandoned Tower.png",
+      "atlas_x": 1,
+      "atlas_y": 0
+    },
+    {
+      "x": 38,
+      "y": 0,
+      "src": "tubes/Abandoned Tower.png",
+      "atlas_x": 2,
+      "atlas_y": 0
+    },
+    {
+      "x": 39,
+      "y": 0,
+      "src": "tubes/Abandoned Tower.png",
+      "atlas_x": 3,
+      "atlas_y": 0
+    },
+    {
+      "x": 1,
+      "y": 1,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 0,
+      "atlas_y": 10
+    },
+    {
+      "x": 2,
+      "y": 1,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 1,
+      "atlas_y": 10
+    },
+    {
+      "x": 3,
+      "y": 1,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 2,
+      "atlas_y": 10
+    },
+    {
+      "x": 4,
+      "y": 1,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 3,
+      "atlas_y": 10
+    },
+    {
+      "x": 5,
+      "y": 1,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 4,
+      "atlas_y": 10
+    },
+    {
+      "x": 6,
+      "y": 1,
+      "src": "sprout/Fences.png",
+      "atlas_x": 1,
+      "atlas_y": 0
+    },
+    {
+      "x": 7,
+      "y": 1,
+      "src": "sprout/Fences.png",
+      "atlas_x": 2,
+      "atlas_y": 0
+    },
+    {
+      "x": 8,
+      "y": 1,
+      "src": "sprout/Fences.png",
+      "atlas_x": 2,
+      "atlas_y": 0
+    },
+    {
+      "x": 9,
+      "y": 1,
+      "src": "sprout/Fences.png",
+      "atlas_x": 2,
+      "atlas_y": 0
+    },
+    {
+      "x": 10,
+      "y": 1,
+      "src": "sprout/Fences.png",
+      "atlas_x": 2,
+      "atlas_y": 0
+    },
+    {
+      "x": 11,
+      "y": 1,
+      "src": "sprout/Fences.png",
+      "atlas_x": 2,
+      "atlas_y": 0
+    },
+    {
+      "x": 12,
+      "y": 1,
+      "src": "sprout/Fences.png",
+      "atlas_x": 2,
+      "atlas_y": 0
+    },
+    {
+      "x": 13,
+      "y": 1,
+      "src": "sprout/Fences.png",
+      "atlas_x": 3,
+      "atlas_y": 0
+    },
+    {
+      "x": 15,
+      "y": 1,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 11,
+      "atlas_y": 10
+    },
+    {
+      "x": 18,
+      "y": 1,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 9,
+      "atlas_y": 9
+    },
+    {
+      "x": 19,
+      "y": 1,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 10,
+      "atlas_y": 9
+    },
+    {
+      "x": 37,
+      "y": 1,
+      "src": "tubes/Abandoned Tower.png",
+      "atlas_x": 1,
+      "atlas_y": 1
+    },
+    {
+      "x": 38,
+      "y": 1,
+      "src": "tubes/Abandoned Tower.png",
+      "atlas_x": 2,
+      "atlas_y": 1
+    },
+    {
+      "x": 39,
+      "y": 1,
+      "src": "tubes/Abandoned Tower.png",
+      "atlas_x": 3,
+      "atlas_y": 1
+    },
+    {
+      "x": 1,
+      "y": 2,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 0,
+      "atlas_y": 11
+    },
+    {
+      "x": 2,
+      "y": 2,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 1,
+      "atlas_y": 11
+    },
+    {
+      "x": 3,
+      "y": 2,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 2,
+      "atlas_y": 11
+    },
+    {
+      "x": 4,
+      "y": 2,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 3,
+      "atlas_y": 11
+    },
+    {
+      "x": 5,
+      "y": 2,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 4,
+      "atlas_y": 11
+    },
+    {
+      "x": 13,
+      "y": 2,
+      "src": "sprout/Fences.png",
+      "atlas_x": 0,
+      "atlas_y": 0
+    },
+    {
+      "x": 15,
+      "y": 2,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 11,
+      "atlas_y": 9
+    },
+    {
+      "x": 18,
+      "y": 2,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 9,
+      "atlas_y": 10
+    },
+    {
+      "x": 19,
+      "y": 2,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 10,
+      "atlas_y": 10
+    },
+    {
+      "x": 37,
+      "y": 2,
+      "src": "tubes/Abandoned Tower.png",
+      "atlas_x": 1,
+      "atlas_y": 2
+    },
+    {
+      "x": 38,
+      "y": 2,
+      "src": "tubes/Abandoned Tower.png",
+      "atlas_x": 2,
+      "atlas_y": 2
+    },
+    {
+      "x": 39,
+      "y": 2,
+      "src": "tubes/Abandoned Tower.png",
+      "atlas_x": 3,
+      "atlas_y": 2
+    },
+    {
+      "x": 1,
+      "y": 3,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 0,
+      "atlas_y": 12
+    },
+    {
+      "x": 2,
+      "y": 3,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 1,
+      "atlas_y": 12
+    },
+    {
+      "x": 3,
+      "y": 3,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 2,
+      "atlas_y": 12
+    },
+    {
+      "x": 4,
+      "y": 3,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 3,
+      "atlas_y": 12
+    },
+    {
+      "x": 5,
+      "y": 3,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 4,
+      "atlas_y": 12
+    },
+    {
+      "x": 13,
+      "y": 3,
+      "src": "sprout/Fences.png",
+      "atlas_x": 0,
+      "atlas_y": 0
+    },
+    {
+      "x": 15,
+      "y": 3,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 11,
+      "atlas_y": 10
+    },
+    {
+      "x": 37,
+      "y": 3,
+      "src": "tubes/Abandoned Tower.png",
+      "atlas_x": 1,
+      "atlas_y": 3
+    },
+    {
+      "x": 38,
+      "y": 3,
+      "src": "tubes/Abandoned Tower.png",
+      "atlas_x": 2,
+      "atlas_y": 3
+    },
+    {
+      "x": 39,
+      "y": 3,
+      "src": "tubes/Abandoned Tower.png",
+      "atlas_x": 3,
+      "atlas_y": 3
+    },
+    {
+      "x": 1,
+      "y": 4,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 0,
+      "atlas_y": 13
+    },
+    {
+      "x": 2,
+      "y": 4,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 1,
+      "atlas_y": 13
+    },
+    {
+      "x": 3,
+      "y": 4,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 2,
+      "atlas_y": 13
+    },
+    {
+      "x": 4,
+      "y": 4,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 3,
+      "atlas_y": 13
+    },
+    {
+      "x": 5,
+      "y": 4,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 4,
+      "atlas_y": 13
+    },
+    {
+      "x": 12,
+      "y": 4,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 9,
+      "atlas_y": 11
+    },
+    {
+      "x": 13,
+      "y": 4,
+      "src": "sprout/Fences.png",
+      "atlas_x": 0,
+      "atlas_y": 0
+    },
+    {
+      "x": 37,
+      "y": 4,
+      "src": "tubes/Abandoned Tower.png",
+      "atlas_x": 1,
+      "atlas_y": 4
+    },
+    {
+      "x": 38,
+      "y": 4,
+      "src": "tubes/Abandoned Tower.png",
+      "atlas_x": 2,
+      "atlas_y": 4
+    },
+    {
+      "x": 39,
+      "y": 4,
+      "src": "tubes/Abandoned Tower.png",
+      "atlas_x": 3,
+      "atlas_y": 4
+    },
+    {
+      "x": 1,
+      "y": 5,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 0,
+      "atlas_y": 14
+    },
+    {
+      "x": 2,
+      "y": 5,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 1,
+      "atlas_y": 14
+    },
+    {
+      "x": 3,
+      "y": 5,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 2,
+      "atlas_y": 14
+    },
+    {
+      "x": 4,
+      "y": 5,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 3,
+      "atlas_y": 14
+    },
+    {
+      "x": 5,
+      "y": 5,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 4,
+      "atlas_y": 14
+    },
+    {
+      "x": 11,
+      "y": 5,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 9,
+      "atlas_y": 11
+    },
+    {
+      "x": 12,
+      "y": 5,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 9,
+      "atlas_y": 11
+    },
+    {
+      "x": 13,
+      "y": 5,
+      "src": "sprout/Fences.png",
+      "atlas_x": 0,
+      "atlas_y": 0
+    },
+    {
+      "x": 15,
+      "y": 5,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 11,
+      "atlas_y": 9
+    },
+    {
+      "x": 2,
+      "y": 6,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 1,
+      "atlas_y": 15
+    },
+    {
+      "x": 3,
+      "y": 6,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 2,
+      "atlas_y": 15
+    },
+    {
+      "x": 4,
+      "y": 6,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 3,
+      "atlas_y": 15
+    },
+    {
+      "x": 5,
+      "y": 6,
+      "src": "sprout/Fences.png",
+      "atlas_x": 0,
+      "atlas_y": 0
+    },
+    {
+      "x": 11,
+      "y": 6,
+      "src": "sprout/Fences.png",
+      "atlas_x": 1,
+      "atlas_y": 0
+    },
+    {
+      "x": 12,
+      "y": 6,
+      "src": "sprout/Fences.png",
+      "atlas_x": 2,
+      "atlas_y": 0
+    },
+    {
+      "x": 13,
+      "y": 6,
+      "src": "sprout/Fences.png",
+      "atlas_x": 3,
+      "atlas_y": 0
+    },
+    {
+      "x": 15,
+      "y": 6,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 11,
+      "atlas_y": 10
+    },
+    {
+      "x": 17,
+      "y": 6,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 9,
+      "atlas_y": 9
+    },
+    {
+      "x": 18,
+      "y": 6,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 10,
+      "atlas_y": 9
+    },
+    {
+      "x": 5,
+      "y": 7,
+      "src": "sprout/Fences.png",
+      "atlas_x": 1,
+      "atlas_y": 0
+    },
+    {
+      "x": 6,
+      "y": 7,
+      "src": "sprout/Fences.png",
+      "atlas_x": 2,
+      "atlas_y": 0
+    },
+    {
+      "x": 7,
+      "y": 7,
+      "src": "sprout/Fences.png",
+      "atlas_x": 3,
+      "atlas_y": 0
+    },
+    {
+      "x": 11,
+      "y": 7,
+      "src": "sprout/Fences.png",
+      "atlas_x": 0,
+      "atlas_y": 0
+    },
+    {
+      "x": 17,
+      "y": 7,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 9,
+      "atlas_y": 10
+    },
+    {
+      "x": 18,
+      "y": 7,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 10,
+      "atlas_y": 10
+    },
+    {
+      "x": 20,
+      "y": 7,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 9,
+      "atlas_y": 9
+    },
+    {
+      "x": 21,
+      "y": 7,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 10,
+      "atlas_y": 9
+    },
+    {
+      "x": 9,
+      "y": 8,
+      "src": "sprout/Fences.png",
+      "atlas_x": 1,
+      "atlas_y": 0
+    },
+    {
+      "x": 10,
+      "y": 8,
+      "src": "sprout/Fences.png",
+      "atlas_x": 2,
+      "atlas_y": 0
+    },
+    {
+      "x": 11,
+      "y": 8,
+      "src": "sprout/Fences.png",
+      "atlas_x": 3,
+      "atlas_y": 0
+    },
+    {
+      "x": 20,
+      "y": 8,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 9,
+      "atlas_y": 10
+    },
+    {
+      "x": 21,
+      "y": 8,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 10,
+      "atlas_y": 10
+    },
+    {
+      "x": 4,
+      "y": 9,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 9,
+      "atlas_y": 9
+    },
+    {
+      "x": 5,
+      "y": 9,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 10,
+      "atlas_y": 9
+    },
+    {
+      "x": 9,
+      "y": 9,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 9,
+      "atlas_y": 11
+    },
+    {
+      "x": 14,
+      "y": 9,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 11,
+      "atlas_y": 9
+    },
+    {
+      "x": 4,
+      "y": 10,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 9,
+      "atlas_y": 10
+    },
+    {
+      "x": 5,
+      "y": 10,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 10,
+      "atlas_y": 10
+    },
+    {
+      "x": 9,
+      "y": 10,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 9,
+      "atlas_y": 11
+    },
+    {
+      "x": 10,
+      "y": 10,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 9,
+      "atlas_y": 11
+    },
+    {
+      "x": 14,
+      "y": 10,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 11,
+      "atlas_y": 10
+    },
+    {
+      "x": 0,
+      "y": 11,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 9,
+      "atlas_y": 9
+    },
+    {
+      "x": 1,
+      "y": 11,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 10,
+      "atlas_y": 9
+    },
+    {
+      "x": 0,
+      "y": 12,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 9,
+      "atlas_y": 10
+    },
+    {
+      "x": 1,
+      "y": 12,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 10,
+      "atlas_y": 10
+    },
+    {
+      "x": 30,
+      "y": 12,
+      "src": "tubes/Mansion.png",
+      "atlas_x": 0,
+      "atlas_y": 0
+    },
+    {
+      "x": 31,
+      "y": 12,
+      "src": "tubes/Mansion.png",
+      "atlas_x": 1,
+      "atlas_y": 0
+    },
+    {
+      "x": 32,
+      "y": 12,
+      "src": "tubes/Mansion.png",
+      "atlas_x": 2,
+      "atlas_y": 0
+    },
+    {
+      "x": 33,
+      "y": 12,
+      "src": "tubes/Mansion.png",
+      "atlas_x": 3,
+      "atlas_y": 0
+    },
+    {
+      "x": 34,
+      "y": 12,
+      "src": "tubes/Mansion.png",
+      "atlas_x": 4,
+      "atlas_y": 0
+    },
+    {
+      "x": 2,
+      "y": 13,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 9,
+      "atlas_y": 9
+    },
+    {
+      "x": 3,
+      "y": 13,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 10,
+      "atlas_y": 9
+    },
+    {
+      "x": 19,
+      "y": 13,
+      "src": "sprout/Wood_Bridge.png",
+      "atlas_x": 0,
+      "atlas_y": 0
+    },
+    {
+      "x": 30,
+      "y": 13,
+      "src": "tubes/Mansion.png",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
+      "x": 31,
+      "y": 13,
+      "src": "tubes/Mansion.png",
+      "atlas_x": 1,
+      "atlas_y": 1
+    },
+    {
+      "x": 32,
+      "y": 13,
+      "src": "tubes/Mansion.png",
+      "atlas_x": 2,
+      "atlas_y": 1
+    },
+    {
+      "x": 33,
+      "y": 13,
+      "src": "tubes/Mansion.png",
+      "atlas_x": 3,
+      "atlas_y": 1
+    },
+    {
+      "x": 34,
+      "y": 13,
+      "src": "tubes/Mansion.png",
+      "atlas_x": 4,
+      "atlas_y": 1
+    },
+    {
+      "x": 2,
+      "y": 14,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 9,
+      "atlas_y": 10
+    },
+    {
+      "x": 3,
+      "y": 14,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 10,
+      "atlas_y": 10
+    },
+    {
+      "x": 19,
+      "y": 14,
+      "src": "sprout/Wood_Bridge.png",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
+      "x": 30,
+      "y": 14,
+      "src": "tubes/Mansion.png",
+      "atlas_x": 0,
+      "atlas_y": 2
+    },
+    {
+      "x": 31,
+      "y": 14,
+      "src": "tubes/Mansion.png",
+      "atlas_x": 1,
+      "atlas_y": 2
+    },
+    {
+      "x": 32,
+      "y": 14,
+      "src": "tubes/Mansion.png",
+      "atlas_x": 2,
+      "atlas_y": 2
+    },
+    {
+      "x": 33,
+      "y": 14,
+      "src": "tubes/Mansion.png",
+      "atlas_x": 3,
+      "atlas_y": 2
+    },
+    {
+      "x": 34,
+      "y": 14,
+      "src": "tubes/Mansion.png",
+      "atlas_x": 4,
+      "atlas_y": 2
+    },
+    {
+      "x": 19,
+      "y": 15,
+      "src": "sprout/Wood_Bridge.png",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
+      "x": 30,
+      "y": 15,
+      "src": "tubes/Mansion.png",
+      "atlas_x": 0,
+      "atlas_y": 3
+    },
+    {
+      "x": 31,
+      "y": 15,
+      "src": "tubes/Mansion.png",
+      "atlas_x": 1,
+      "atlas_y": 3
+    },
+    {
+      "x": 32,
+      "y": 15,
+      "src": "tubes/Mansion.png",
+      "atlas_x": 2,
+      "atlas_y": 3
+    },
+    {
+      "x": 33,
+      "y": 15,
+      "src": "tubes/Mansion.png",
+      "atlas_x": 3,
+      "atlas_y": 3
+    },
+    {
+      "x": 34,
+      "y": 15,
+      "src": "tubes/Mansion.png",
+      "atlas_x": 4,
+      "atlas_y": 3
+    },
+    {
+      "x": 0,
+      "y": 16,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 9,
+      "atlas_y": 9
+    },
+    {
+      "x": 1,
+      "y": 16,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 10,
+      "atlas_y": 9
+    },
+    {
+      "x": 9,
+      "y": 16,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 9,
+      "atlas_y": 11
+    },
+    {
+      "x": 10,
+      "y": 16,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 9,
+      "atlas_y": 11
+    },
+    {
+      "x": 14,
+      "y": 16,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 9,
+      "atlas_y": 9
+    },
+    {
+      "x": 15,
+      "y": 16,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 10,
+      "atlas_y": 9
+    },
+    {
+      "x": 19,
+      "y": 16,
+      "src": "sprout/Wood_Bridge.png",
+      "atlas_x": 0,
+      "atlas_y": 2
+    },
+    {
+      "x": 30,
+      "y": 16,
+      "src": "tubes/Mansion.png",
+      "atlas_x": 0,
+      "atlas_y": 4
+    },
+    {
+      "x": 31,
+      "y": 16,
+      "src": "tubes/Mansion.png",
+      "atlas_x": 1,
+      "atlas_y": 4
+    },
+    {
+      "x": 32,
+      "y": 16,
+      "src": "tubes/Mansion.png",
+      "atlas_x": 2,
+      "atlas_y": 4
+    },
+    {
+      "x": 33,
+      "y": 16,
+      "src": "tubes/Mansion.png",
+      "atlas_x": 3,
+      "atlas_y": 4
+    },
+    {
+      "x": 34,
+      "y": 16,
+      "src": "tubes/Mansion.png",
+      "atlas_x": 4,
+      "atlas_y": 4
+    },
+    {
+      "x": 40,
+      "y": 16,
+      "src": "tubes/Clock Tower Building.png",
+      "atlas_x": 1,
+      "atlas_y": 0
+    },
+    {
+      "x": 41,
+      "y": 16,
+      "src": "tubes/Clock Tower Building.png",
+      "atlas_x": 2,
+      "atlas_y": 0
+    },
+    {
+      "x": 42,
+      "y": 16,
+      "src": "tubes/Clock Tower Building.png",
+      "atlas_x": 3,
+      "atlas_y": 0
+    },
+    {
+      "x": 0,
+      "y": 17,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 9,
+      "atlas_y": 10
+    },
+    {
+      "x": 1,
+      "y": 17,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 10,
+      "atlas_y": 10
+    },
+    {
+      "x": 4,
+      "y": 17,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 9,
+      "atlas_y": 9
+    },
+    {
+      "x": 5,
+      "y": 17,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 10,
+      "atlas_y": 9
+    },
+    {
+      "x": 14,
+      "y": 17,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 9,
+      "atlas_y": 10
+    },
+    {
+      "x": 15,
+      "y": 17,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 10,
+      "atlas_y": 10
+    },
+    {
+      "x": 40,
+      "y": 17,
+      "src": "tubes/Clock Tower Building.png",
+      "atlas_x": 1,
+      "atlas_y": 1
+    },
+    {
+      "x": 41,
+      "y": 17,
+      "src": "tubes/Clock Tower Building.png",
+      "atlas_x": 2,
+      "atlas_y": 1
+    },
+    {
+      "x": 42,
+      "y": 17,
+      "src": "tubes/Clock Tower Building.png",
+      "atlas_x": 3,
+      "atlas_y": 1
+    },
+    {
+      "x": 4,
+      "y": 18,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 9,
+      "atlas_y": 10
+    },
+    {
+      "x": 5,
+      "y": 18,
+      "src": "tubes/Ext_10a_DEMO.png",
+      "atlas_x": 10,
+      "atlas_y": 10
+    },
+    {
+      "x": 40,
+      "y": 18,
+      "src": "tubes/Clock Tower Building.png",
+      "atlas_x": 1,
+      "atlas_y": 2
+    },
+    {
+      "x": 41,
+      "y": 18,
+      "src": "tubes/Clock Tower Building.png",
+      "atlas_x": 2,
+      "atlas_y": 2
+    },
+    {
+      "x": 42,
+      "y": 18,
+      "src": "tubes/Clock Tower Building.png",
+      "atlas_x": 3,
+      "atlas_y": 2
+    },
+    {
+      "x": 43,
+      "y": 18,
+      "src": "tubes/Clock Tower Building.png",
+      "atlas_x": 4,
+      "atlas_y": 2
+    },
+    {
+      "x": 40,
+      "y": 19,
+      "src": "tubes/Clock Tower Building.png",
+      "atlas_x": 1,
+      "atlas_y": 3
+    },
+    {
+      "x": 41,
+      "y": 19,
+      "src": "tubes/Clock Tower Building.png",
+      "atlas_x": 2,
+      "atlas_y": 3
+    },
+    {
+      "x": 42,
+      "y": 19,
+      "src": "tubes/Clock Tower Building.png",
+      "atlas_x": 3,
+      "atlas_y": 3
+    },
+    {
+      "x": 43,
+      "y": 19,
+      "src": "tubes/Clock Tower Building.png",
+      "atlas_x": 4,
+      "atlas_y": 3
+    },
+    {
+      "x": 25,
+      "y": 20,
+      "src": "sprout/Wood_Bridge.png",
+      "atlas_x": 2,
+      "atlas_y": 0
+    },
+    {
+      "x": 26,
+      "y": 20,
+      "src": "sprout/Wood_Bridge.png",
+      "atlas_x": 3,
+      "atlas_y": 0
+    },
+    {
+      "x": 27,
+      "y": 20,
+      "src": "sprout/Wood_Bridge.png",
+      "atlas_x": 3,
+      "atlas_y": 0
+    },
+    {
+      "x": 28,
+      "y": 20,
+      "src": "sprout/Wood_Bridge.png",
+      "atlas_x": 4,
+      "atlas_y": 0
+    },
+    {
+      "x": 40,
+      "y": 20,
+      "src": "tubes/Clock Tower Building.png",
+      "atlas_x": 1,
+      "atlas_y": 4
+    },
+    {
+      "x": 41,
+      "y": 20,
+      "src": "tubes/Clock Tower Building.png",
+      "atlas_x": 2,
+      "atlas_y": 4
+    },
+    {
+      "x": 42,
+      "y": 20,
+      "src": "tubes/Clock Tower Building.png",
+      "atlas_x": 3,
+      "atlas_y": 4
+    },
+    {
+      "x": 43,
+      "y": 20,
+      "src": "tubes/Clock Tower Building.png",
+      "atlas_x": 4,
+      "atlas_y": 4
+    },
+    {
+      "x": 25,
+      "y": 21,
+      "src": "sprout/Wood_Bridge.png",
+      "atlas_x": 2,
+      "atlas_y": 0
+    },
+    {
+      "x": 26,
+      "y": 21,
+      "src": "sprout/Wood_Bridge.png",
+      "atlas_x": 3,
+      "atlas_y": 0
+    },
+    {
+      "x": 27,
+      "y": 21,
+      "src": "sprout/Wood_Bridge.png",
+      "atlas_x": 3,
+      "atlas_y": 0
+    },
+    {
+      "x": 28,
+      "y": 21,
+      "src": "sprout/Wood_Bridge.png",
+      "atlas_x": 4,
+      "atlas_y": 0
+    },
+    {
+      "x": 19,
+      "y": 22,
+      "src": "sprout/Wood_Bridge.png",
+      "atlas_x": 0,
+      "atlas_y": 0
+    },
+    {
+      "x": 32,
+      "y": 22,
+      "src": "tubes/Painters House.png",
+      "atlas_x": 0,
+      "atlas_y": 0
+    },
+    {
+      "x": 33,
+      "y": 22,
+      "src": "tubes/Painters House.png",
+      "atlas_x": 1,
+      "atlas_y": 0
+    },
+    {
+      "x": 34,
+      "y": 22,
+      "src": "tubes/Painters House.png",
+      "atlas_x": 2,
+      "atlas_y": 0
+    },
+    {
+      "x": 35,
+      "y": 22,
+      "src": "tubes/Painters House.png",
+      "atlas_x": 3,
+      "atlas_y": 0
+    },
+    {
+      "x": 36,
+      "y": 22,
+      "src": "tubes/Painters House.png",
+      "atlas_x": 4,
+      "atlas_y": 0
+    },
+    {
+      "x": 19,
+      "y": 23,
+      "src": "sprout/Wood_Bridge.png",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
+      "x": 32,
+      "y": 23,
+      "src": "tubes/Painters House.png",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
+      "x": 33,
+      "y": 23,
+      "src": "tubes/Painters House.png",
+      "atlas_x": 1,
+      "atlas_y": 1
+    },
+    {
+      "x": 34,
+      "y": 23,
+      "src": "tubes/Painters House.png",
+      "atlas_x": 2,
+      "atlas_y": 1
+    },
+    {
+      "x": 35,
+      "y": 23,
+      "src": "tubes/Painters House.png",
+      "atlas_x": 3,
+      "atlas_y": 1
+    },
+    {
+      "x": 36,
+      "y": 23,
+      "src": "tubes/Painters House.png",
+      "atlas_x": 4,
+      "atlas_y": 1
+    },
+    {
+      "x": 19,
+      "y": 24,
+      "src": "sprout/Wood_Bridge.png",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
+      "x": 32,
+      "y": 24,
+      "src": "tubes/Painters House.png",
+      "atlas_x": 0,
+      "atlas_y": 2
+    },
+    {
+      "x": 33,
+      "y": 24,
+      "src": "tubes/Painters House.png",
+      "atlas_x": 1,
+      "atlas_y": 2
+    },
+    {
+      "x": 34,
+      "y": 24,
+      "src": "tubes/Painters House.png",
+      "atlas_x": 2,
+      "atlas_y": 2
+    },
+    {
+      "x": 35,
+      "y": 24,
+      "src": "tubes/Painters House.png",
+      "atlas_x": 3,
+      "atlas_y": 2
+    },
+    {
+      "x": 36,
+      "y": 24,
+      "src": "tubes/Painters House.png",
+      "atlas_x": 4,
+      "atlas_y": 2
+    },
+    {
+      "x": 19,
+      "y": 25,
+      "src": "sprout/Wood_Bridge.png",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
+      "x": 32,
+      "y": 25,
+      "src": "tubes/Painters House.png",
+      "atlas_x": 0,
+      "atlas_y": 3
+    },
+    {
+      "x": 33,
+      "y": 25,
+      "src": "tubes/Painters House.png",
+      "atlas_x": 1,
+      "atlas_y": 3
+    },
+    {
+      "x": 34,
+      "y": 25,
+      "src": "tubes/Painters House.png",
+      "atlas_x": 2,
+      "atlas_y": 3
+    },
+    {
+      "x": 35,
+      "y": 25,
+      "src": "tubes/Painters House.png",
+      "atlas_x": 3,
+      "atlas_y": 3
+    },
+    {
+      "x": 36,
+      "y": 25,
+      "src": "tubes/Painters House.png",
+      "atlas_x": 4,
+      "atlas_y": 3
+    },
+    {
+      "x": 19,
+      "y": 26,
+      "src": "sprout/Wood_Bridge.png",
+      "atlas_x": 0,
+      "atlas_y": 2
+    },
+    {
+      "x": 27,
+      "y": 26,
+      "src": "tubes/Merchant House.png",
+      "atlas_x": 0,
+      "atlas_y": 0
+    },
+    {
+      "x": 28,
+      "y": 26,
+      "src": "tubes/Merchant House.png",
+      "atlas_x": 1,
+      "atlas_y": 0
+    },
+    {
+      "x": 29,
+      "y": 26,
+      "src": "tubes/Merchant House.png",
+      "atlas_x": 2,
+      "atlas_y": 0
+    },
+    {
+      "x": 30,
+      "y": 26,
+      "src": "tubes/Merchant House.png",
+      "atlas_x": 3,
+      "atlas_y": 0
+    },
+    {
+      "x": 31,
+      "y": 26,
+      "src": "tubes/Merchant House.png",
+      "atlas_x": 4,
+      "atlas_y": 0
+    },
+    {
+      "x": 32,
+      "y": 26,
+      "src": "tubes/Painters House.png",
+      "atlas_x": 0,
+      "atlas_y": 4
+    },
+    {
+      "x": 33,
+      "y": 26,
+      "src": "tubes/Painters House.png",
+      "atlas_x": 1,
+      "atlas_y": 4
+    },
+    {
+      "x": 34,
+      "y": 26,
+      "src": "tubes/Painters House.png",
+      "atlas_x": 2,
+      "atlas_y": 4
+    },
+    {
+      "x": 35,
+      "y": 26,
+      "src": "tubes/Painters House.png",
+      "atlas_x": 3,
+      "atlas_y": 4
+    },
+    {
+      "x": 36,
+      "y": 26,
+      "src": "tubes/Painters House.png",
+      "atlas_x": 4,
+      "atlas_y": 4
+    },
+    {
+      "x": 27,
+      "y": 27,
+      "src": "tubes/Merchant House.png",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
+      "x": 28,
+      "y": 27,
+      "src": "tubes/Merchant House.png",
+      "atlas_x": 1,
+      "atlas_y": 1
+    },
+    {
+      "x": 29,
+      "y": 27,
+      "src": "tubes/Merchant House.png",
+      "atlas_x": 2,
+      "atlas_y": 1
+    },
+    {
+      "x": 30,
+      "y": 27,
+      "src": "tubes/Merchant House.png",
+      "atlas_x": 3,
+      "atlas_y": 1
+    },
+    {
+      "x": 31,
+      "y": 27,
+      "src": "tubes/Merchant House.png",
+      "atlas_x": 4,
+      "atlas_y": 1
+    },
+    {
+      "x": 27,
+      "y": 28,
+      "src": "tubes/Merchant House.png",
+      "atlas_x": 0,
+      "atlas_y": 2
+    },
+    {
+      "x": 28,
+      "y": 28,
+      "src": "tubes/Merchant House.png",
+      "atlas_x": 1,
+      "atlas_y": 2
+    },
+    {
+      "x": 29,
+      "y": 28,
+      "src": "tubes/Merchant House.png",
+      "atlas_x": 2,
+      "atlas_y": 2
+    },
+    {
+      "x": 30,
+      "y": 28,
+      "src": "tubes/Merchant House.png",
+      "atlas_x": 3,
+      "atlas_y": 2
+    },
+    {
+      "x": 31,
+      "y": 28,
+      "src": "tubes/Merchant House.png",
+      "atlas_x": 4,
+      "atlas_y": 2
+    },
+    {
+      "x": 27,
+      "y": 29,
+      "src": "tubes/Merchant House.png",
+      "atlas_x": 0,
+      "atlas_y": 3
+    },
+    {
+      "x": 28,
+      "y": 29,
+      "src": "tubes/Merchant House.png",
+      "atlas_x": 1,
+      "atlas_y": 3
+    },
+    {
+      "x": 29,
+      "y": 29,
+      "src": "tubes/Merchant House.png",
+      "atlas_x": 2,
+      "atlas_y": 3
+    },
+    {
+      "x": 30,
+      "y": 29,
+      "src": "tubes/Merchant House.png",
+      "atlas_x": 3,
+      "atlas_y": 3
+    },
+    {
+      "x": 31,
+      "y": 29,
+      "src": "tubes/Merchant House.png",
+      "atlas_x": 4,
+      "atlas_y": 3
+    },
+    {
+      "x": 27,
+      "y": 30,
+      "src": "tubes/Merchant House.png",
+      "atlas_x": 0,
+      "atlas_y": 4
+    },
+    {
+      "x": 28,
+      "y": 30,
+      "src": "tubes/Merchant House.png",
+      "atlas_x": 1,
+      "atlas_y": 4
+    },
+    {
+      "x": 29,
+      "y": 30,
+      "src": "tubes/Merchant House.png",
+      "atlas_x": 2,
+      "atlas_y": 4
+    },
+    {
+      "x": 30,
+      "y": 30,
+      "src": "tubes/Merchant House.png",
+      "atlas_x": 3,
+      "atlas_y": 4
+    },
+    {
+      "x": 31,
+      "y": 30,
+      "src": "tubes/Merchant House.png",
+      "atlas_x": 4,
+      "atlas_y": 4
+    },
+    {
+      "x": 33,
+      "y": 30,
+      "src": "tubes/Workshop House.png",
+      "atlas_x": 1,
+      "atlas_y": 0
+    },
+    {
+      "x": 34,
+      "y": 30,
+      "src": "tubes/Workshop House.png",
+      "atlas_x": 2,
+      "atlas_y": 0
+    },
+    {
+      "x": 35,
+      "y": 30,
+      "src": "tubes/Workshop House.png",
+      "atlas_x": 3,
+      "atlas_y": 0
+    },
+    {
+      "x": 32,
+      "y": 31,
+      "src": "tubes/Workshop House.png",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
+      "x": 33,
+      "y": 31,
+      "src": "tubes/Workshop House.png",
+      "atlas_x": 1,
+      "atlas_y": 1
+    },
+    {
+      "x": 34,
+      "y": 31,
+      "src": "tubes/Workshop House.png",
+      "atlas_x": 2,
+      "atlas_y": 1
+    },
+    {
+      "x": 35,
+      "y": 31,
+      "src": "tubes/Workshop House.png",
+      "atlas_x": 3,
+      "atlas_y": 1
+    },
+    {
+      "x": 36,
+      "y": 31,
+      "src": "tubes/Workshop House.png",
+      "atlas_x": 4,
+      "atlas_y": 1
+    },
+    {
+      "x": 32,
+      "y": 32,
+      "src": "tubes/Workshop House.png",
+      "atlas_x": 0,
+      "atlas_y": 2
+    },
+    {
+      "x": 33,
+      "y": 32,
+      "src": "tubes/Workshop House.png",
+      "atlas_x": 1,
+      "atlas_y": 2
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "src": "tubes/Workshop House.png",
+      "atlas_x": 2,
+      "atlas_y": 2
+    },
+    {
+      "x": 35,
+      "y": 32,
+      "src": "tubes/Workshop House.png",
+      "atlas_x": 3,
+      "atlas_y": 2
+    },
+    {
+      "x": 36,
+      "y": 32,
+      "src": "tubes/Workshop House.png",
+      "atlas_x": 4,
+      "atlas_y": 2
+    },
+    {
+      "x": 32,
+      "y": 33,
+      "src": "tubes/Workshop House.png",
+      "atlas_x": 0,
+      "atlas_y": 3
+    },
+    {
+      "x": 33,
+      "y": 33,
+      "src": "tubes/Workshop House.png",
+      "atlas_x": 1,
+      "atlas_y": 3
+    },
+    {
+      "x": 34,
+      "y": 33,
+      "src": "tubes/Workshop House.png",
+      "atlas_x": 2,
+      "atlas_y": 3
+    },
+    {
+      "x": 35,
+      "y": 33,
+      "src": "tubes/Workshop House.png",
+      "atlas_x": 3,
+      "atlas_y": 3
+    },
+    {
+      "x": 36,
+      "y": 33,
+      "src": "tubes/Workshop House.png",
+      "atlas_x": 4,
+      "atlas_y": 3
+    },
+    {
+      "x": 32,
+      "y": 34,
+      "src": "tubes/Workshop House.png",
+      "atlas_x": 0,
+      "atlas_y": 4
+    },
+    {
+      "x": 33,
+      "y": 34,
+      "src": "tubes/Workshop House.png",
+      "atlas_x": 1,
+      "atlas_y": 4
+    },
+    {
+      "x": 34,
+      "y": 34,
+      "src": "tubes/Workshop House.png",
+      "atlas_x": 2,
+      "atlas_y": 4
+    },
+    {
+      "x": 35,
+      "y": 34,
+      "src": "tubes/Workshop House.png",
+      "atlas_x": 3,
+      "atlas_y": 4
+    },
+    {
+      "x": 36,
+      "y": 34,
+      "src": "tubes/Workshop House.png",
+      "atlas_x": 4,
+      "atlas_y": 4
+    },
+    {
+      "x": 1,
+      "y": 35,
+      "src": "Sprout Lands - Sprites - Basic pack/Sprout Lands - Sprites - Basic pack/Objects/Free_Chicken_House.png",
+      "atlas_x": 0,
+      "atlas_y": 0
+    },
+    {
+      "x": 2,
+      "y": 35,
+      "src": "Sprout Lands - Sprites - Basic pack/Sprout Lands - Sprites - Basic pack/Objects/Free_Chicken_House.png",
+      "atlas_x": 1,
+      "atlas_y": 0
+    },
+    {
+      "x": 3,
+      "y": 35,
+      "src": "Sprout Lands - Sprites - Basic pack/Sprout Lands - Sprites - Basic pack/Objects/Free_Chicken_House.png",
+      "atlas_x": 2,
+      "atlas_y": 0
+    },
+    {
+      "x": 0,
+      "y": 36,
+      "src": "sprout/Fences.png",
+      "atlas_x": 3,
+      "atlas_y": 0
+    },
+    {
+      "x": 1,
+      "y": 36,
+      "src": "Sprout Lands - Sprites - Basic pack/Sprout Lands - Sprites - Basic pack/Objects/Free_Chicken_House.png",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
+      "x": 2,
+      "y": 36,
+      "src": "Sprout Lands - Sprites - Basic pack/Sprout Lands - Sprites - Basic pack/Objects/Free_Chicken_House.png",
+      "atlas_x": 1,
+      "atlas_y": 1
+    },
+    {
+      "x": 3,
+      "y": 36,
+      "src": "Sprout Lands - Sprites - Basic pack/Sprout Lands - Sprites - Basic pack/Objects/Free_Chicken_House.png",
+      "atlas_x": 2,
+      "atlas_y": 1
+    },
+    {
+      "x": 4,
+      "y": 36,
+      "src": "sprout/Fences.png",
+      "atlas_x": 1,
+      "atlas_y": 0
+    },
+    {
+      "x": 7,
+      "y": 36,
+      "src": "sprout/Fences.png",
+      "atlas_x": 3,
+      "atlas_y": 0
+    },
+    {
+      "x": 1,
+      "y": 37,
+      "src": "Sprout Lands - Sprites - Basic pack/Sprout Lands - Sprites - Basic pack/Objects/Free_Chicken_House.png",
+      "atlas_x": 0,
+      "atlas_y": 2
+    },
+    {
+      "x": 2,
+      "y": 37,
+      "src": "Sprout Lands - Sprites - Basic pack/Sprout Lands - Sprites - Basic pack/Objects/Free_Chicken_House.png",
+      "atlas_x": 1,
+      "atlas_y": 2
+    },
+    {
+      "x": 3,
+      "y": 37,
+      "src": "Sprout Lands - Sprites - Basic pack/Sprout Lands - Sprites - Basic pack/Objects/Free_Chicken_House.png",
+      "atlas_x": 2,
+      "atlas_y": 2
+    },
+    {
+      "x": 7,
+      "y": 37,
+      "src": "sprout/Fences.png",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
+      "x": 7,
+      "y": 38,
+      "src": "sprout/Fences.png",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
+      "x": 7,
+      "y": 39,
+      "src": "sprout/Fences.png",
       "atlas_x": 0,
       "atlas_y": 1
     }

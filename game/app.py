@@ -252,10 +252,18 @@ class App:
 
         self.player = Player(self.map, self.events)
 
-        # 3 NPC di Peta (Opsi B: 1 Pengejar Utama + 2 Patroli Waypoint)
-        # NPC 1: Oyen (Pengejar Utama pada [SPACE])
-        self.npc = NPC(self.map, self.events, self.player, name="Oyen", sprite_dir=config.OYEN_DIR)
-        # NPC 2: Kuro (Patroli Wilayah Barat/Utara di tebing/gua)
+        # 3 NPC di Peta (Masing-masing berpatroli aktif di zona strategis):
+        # NPC 1: Oyen (Warrior) - Patroli Sektor Kiri Bawah (sekitar Chest B di 5, 24)
+        self.npc = NPC(
+            self.map,
+            self.events,
+            self.player,
+            name="Oyen",
+            is_patrol=True,
+            waypoints=[(5, 23), (8, 23), (8, 25), (4, 25)],
+            sprite_dir=config.OYEN_DIR,
+        )
+        # NPC 2: Kuro (Ranger - Serigala / Kucing Hitam) - Patroli Sektor Kanan (Jembatan & Area Timur)
         self.npc_kuro = NPC(
             self.map,
             self.events,
@@ -263,10 +271,10 @@ class App:
             name="Kuro",
             tint_color=(45, 45, 55),
             is_patrol=True,
-            waypoints=[(11, 4), (16, 4), (16, 7), (12, 5)],
+            waypoints=[(26, 20), (30, 20), (32, 19), (30, 18)],
             sprite_dir=config.KURO_DIR,
         )
-        # NPC 3: Shiro (Patroli Wilayah Timur/Selatan di dermaga/pulau)
+        # NPC 3: Shiro (Mage) - Patroli Sektor Utara / Tebing (sekitar Chest A di 9, 3)
         self.npc_shiro = NPC(
             self.map,
             self.events,
@@ -274,7 +282,7 @@ class App:
             name="Shiro",
             tint_color=(195, 205, 220),
             is_patrol=True,
-            waypoints=[(35, 20), (37, 20), (37, 23), (34, 23)],
+            waypoints=[(8, 2), (11, 2), (11, 5), (8, 5)],
             sprite_dir=config.SHIRO_DIR,
         )
 

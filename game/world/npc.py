@@ -167,7 +167,7 @@ class NPC:
             return dist <= 1
         return dist <= 5
 
-    def on_noise_heard(self, noise_pos: tuple) -> bool:
+    def on_noise_heard(self, noise_pos: tuple):
         """Merespons stimulus suara siulan [SPASI] (plan_dev.md Section 4.2)."""
         dist = abs(self.grid[0] - noise_pos[0]) + abs(self.grid[1] - noise_pos[1])
         if dist <= 7:
@@ -178,8 +178,6 @@ class NPC:
             self.speech_bubble = "Ada suara apa?!"
             self.speech_timer = 2.5
             self.find_path(self.investigate_target)
-            return True
-        return False
 
     def _patrol_step_towards(self, target_grid):
         if self.moving or self.grid == tuple(target_grid):
@@ -193,6 +191,8 @@ class NPC:
     def _on_movement_finished(self):
         if self.chasing and self.grid != self.player.grid:
             self.move_one_step_towards(self.player.grid)
+        elif getattr(self, "name", "") == "Oyen" and hasattr(self, "events") and self.events:
+            self.find_path(self.player.grid)
 
     # ------------------------------------------------------------------ #
     def toggle_chase(self):
@@ -203,12 +203,9 @@ class NPC:
 
     def set_algorithm(self, algo_name):
         self.algorithm = algo_name
-        if not self.is_patrol:
-            self.find_path(self.player.grid)
+        self.find_path(self.player.grid)
 
     def on_player_moved(self, player_grid):
-        if self.is_patrol and not self.chasing:
-            return
         result = self.find_path(player_grid)
         if self.chasing and not self.moving:
             path = result.get("path", [])
@@ -224,7 +221,7 @@ class NPC:
         path = result.get("path", [])
         self.current_path = path
 
-        if not self.is_patrol:
+        if getattr(self, "name", "") == "Oyen" or not self.is_patrol:
             self.events.path_calculated(
                 path,
                 result.get("visited_nodes", []),

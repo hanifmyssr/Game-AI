@@ -182,7 +182,7 @@ def convert():
                     elif "bridge" in name.lower() or "bridge" in img.lower():
                         bridge_tiles.add((gx, gy))
                         decorations.append(entry)
-                    elif "tile layer 1" in lname:
+                    elif "tile layer 1" in lname or any(k in name.lower() or k in img.lower() for k in ("grass", "dirt", "field", "road", "hill")):
                         ground.append(entry)
                     else:
                         decorations.append(entry)
@@ -191,6 +191,10 @@ def convert():
 
         if not is_obs_layer and layer_tiles:
             ordered_layers.append({"name": l["name"], "tiles": layer_tiles})
+
+    # Sel jembatan atau sel tanah (ground) yang digambar di atas air bukanlah air
+    land_or_bridge_coords = set((g["x"], g["y"]) for g in ground) | bridge_tiles
+    water = [w for w in water if (w["x"], w["y"]) not in land_or_bridge_coords]
 
     # Sel jembatan bukan obstacle
     final_obstacles = [o for o in obstacles if (o["x"], o["y"]) not in bridge_tiles]

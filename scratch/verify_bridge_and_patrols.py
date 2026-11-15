@@ -45,9 +45,9 @@ print(f"NPC Shiro pos: {app.npc_shiro.grid}, is_patrol: {app.npc_shiro.is_patrol
 assert app.npc.grid == (5, 23), f"Expected Oyen at (5, 23), got {app.npc.grid}"
 assert (5, 23) in app.npc.waypoints
 
-# Verify Kuro is in right area (bridge/east)
-assert app.npc_kuro.grid == (26, 20), f"Expected Kuro at (26, 20), got {app.npc_kuro.grid}"
-assert (26, 20) in app.npc_kuro.waypoints
+# Verify Kuro is in east area near chest C (34, 28)
+assert app.npc_kuro.grid == (33, 27), f"Expected Kuro at (33, 27), got {app.npc_kuro.grid}"
+assert (33, 27) in app.npc_kuro.waypoints
 
 # 4. Simulate a few patrol steps for all NPCs
 print("Simulating patrol updates...")

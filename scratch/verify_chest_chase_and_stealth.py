@@ -121,13 +121,13 @@ assert app.npc_kuro.chasing == False, "Kuro harus berhenti mengejar saat pemain 
 assert app.npc_kuro.is_returning_to_patrol == True, "Kuro harus mengaktifkan mode kembali cepat ke pos!"
 assert app.npc_kuro.speech_bubble == "Kehilangan jejak...", "Kuro harus berkata 'Kehilangan jejak...'"
 
-# Simulasikan gerakan kembali cepat Kuro selama beberapa langkah
-start_dist = abs(app.npc_kuro.grid[0] - 26) + abs(app.npc_kuro.grid[1] - 20)
+# Simulasikan gerakan kembali cepat Kuro selama beberapa langkah menuju waypoint pos dekat Peti C
+start_dist = abs(app.npc_kuro.grid[0] - 33) + abs(app.npc_kuro.grid[1] - 27)
 for _ in range(40):
     app.npc_kuro.update(0.1)
 
-end_dist = abs(app.npc_kuro.grid[0] - 26) + abs(app.npc_kuro.grid[1] - 20)
-print(f"Kuro bergerak kembali: posisi sekarang {app.npc_kuro.grid}, jarak ke waypoint (26, 20): {end_dist} (dari awal {start_dist})")
+end_dist = abs(app.npc_kuro.grid[0] - 33) + abs(app.npc_kuro.grid[1] - 27)
+print(f"Kuro bergerak kembali: posisi sekarang {app.npc_kuro.grid}, jarak ke waypoint (33, 27): {end_dist} (dari awal {start_dist})")
 assert end_dist < start_dist, "Kuro harus bergerak mendekat kembali ke rute patrolinya!"
 
 print("\n=======================================================")

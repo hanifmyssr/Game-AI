@@ -264,7 +264,7 @@ class App:
             waypoints=[(5, 23), (8, 23), (8, 25), (4, 25)],
             sprite_dir=config.OYEN_DIR,
         )
-        # NPC 2: Kuro (Ranger - Serigala / Kucing Hitam) - Patroli Sektor Kanan (Jembatan & Area Timur)
+        # NPC 2: Kuro (Ranger - Serigala / Kucing Hitam) - Patroli Sektor Kanan (Area Peti Timur, dekat Chest C di 34, 28)
         self.npc_kuro = NPC(
             self.map,
             self.events,
@@ -272,7 +272,7 @@ class App:
             name="Kuro",
             tint_color=(45, 45, 55),
             is_patrol=True,
-            waypoints=[(26, 20), (30, 20), (32, 19), (30, 18)],
+            waypoints=[(33, 27), (36, 27), (36, 29), (33, 29)],
             sprite_dir=config.KURO_DIR,
         )
         # NPC 3: Shiro (Mage) - Patroli Sektor Utara / Tebing (sekitar Chest A di 9, 3)
@@ -4032,7 +4032,9 @@ class App:
         if alpha < 255:
             scaled = scaled.copy()
             scaled.set_alpha(alpha)
-        rect = scaled.get_rect(center=(int(sx), int(sy)))
+        # Anchor kaki tepat di batas bawah ubin (midbottom) agar karakter berdiri pas di dalam ubinnya
+        tile_bottom_sy = sy + (self.map.cell_size * self.camera.zoom) / 2.0
+        rect = scaled.get_rect(midbottom=(int(round(sx)), int(round(tile_bottom_sy))))
         self.screen.blit(scaled, rect)
 
     def _draw_call_bubble(self):
@@ -4043,7 +4045,8 @@ class App:
         w = surf.get_width() + pad_x * 2
         h = surf.get_height() + pad_y * 2
         rect = pygame.Rect(0, 0, w, h)
-        rect.midbottom = (int(sx), int(sy - 22))
+        top_head_sy = sy + (self.map.cell_size * self.camera.zoom) / 2.0 - (32 * self.camera.zoom)
+        rect.midbottom = (int(sx), int(top_head_sy - 4))
         pygame.draw.rect(self.screen, (255, 255, 255), rect, border_radius=4)
         pygame.draw.rect(self.screen, (30, 30, 40), rect, 1, border_radius=4)
         self.screen.blit(surf, (rect.x + pad_x, rect.y + pad_y))
@@ -4058,7 +4061,8 @@ class App:
         w = surf.get_width() + pad_x * 2
         h = surf.get_height() + pad_y * 2
         badge_rect = pygame.Rect(0, 0, w, h)
-        badge_rect.midbottom = (int(sx), int(sy - 20))
+        top_head_sy = sy + (self.map.cell_size * self.camera.zoom) / 2.0 - (32 * self.camera.zoom)
+        badge_rect.midbottom = (int(sx), int(top_head_sy - 4))
         bg_surf = pygame.Surface((w, h), SRCALPHA)
         bg_surf.fill((30, 90, 45, 215))
         pygame.draw.rect(bg_surf, (110, 220, 140), bg_surf.get_rect(), 1, border_radius=4)
@@ -4154,7 +4158,8 @@ class App:
                 bw = surf.get_width() + pad_x * 2
                 bh = surf.get_height() + pad_y * 2
                 bx = int(sx - bw // 2)
-                by = int(sy - 26 - bh)
+                top_head_sy = sy + (self.map.cell_size * self.camera.zoom) / 2.0 - (32 * self.camera.zoom)
+                by = int(top_head_sy - 6 - bh)
                 b_surf = pygame.Surface((bw, bh), SRCALPHA)
                 b_surf.fill((255, 253, 246, 235))
                 pygame.draw.rect(b_surf, (200, 160, 110), b_surf.get_rect(), 1, border_radius=5)

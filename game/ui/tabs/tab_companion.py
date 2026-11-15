@@ -92,6 +92,9 @@ class TabCompanion:
         btn_prev_x = btn_next_x - 28
         self.btn_inv_prev.rect = pygame.Rect(btn_prev_x, inv_y + 6, 24, 22)
         self.btn_inv_next.rect = pygame.Rect(btn_next_x, inv_y + 6, 24, 22)
+        btn_w = self.rect.width - 24
+        call_y = max(inv_y + 144 + 14, self.rect.y + 540)
+        self.btn_call.rect = pygame.Rect(cx, call_y, btn_w, 38)
 
     def _on_call_chaser(self) -> None:
         if hasattr(self.app, "_trigger_chase"):
@@ -131,26 +134,42 @@ class TabCompanion:
         card_w = self.rect.width - 24
 
         # 1. KARTU PROFIL BOLU
-        hero_card_h = 115
-        hero_rect = pygame.Rect(cx, cy, card_w, hero_card_h)
-        draw_card(surface, hero_rect, config.COLOR_CARD_BG, border_color=config.COLOR_CARD_BORDER, border_radius=8)
-
-        # Nama & Role Badge
         title_surf = font_title.render("Bolu", True, config.COLOR_TEXT_PRIMARY)
-        surface.blit(title_surf, (cx + 14, cy + 10))
+        role_text = "Hero Petualang"
+        badge_pad_x = 10
+        badge_w = font_tiny.size(role_text)[0] + badge_pad_x * 2
+        badge_h = max(22, font_tiny.get_height() + 6)
+        top_h = max(title_surf.get_height(), badge_h)
 
-        role_badge = pygame.Rect(cx + 66, cy + 12, 105, 22)
-        draw_badge_pill(surface, role_badge, "Hero Petualang", (244, 236, 224), config.COLOR_TEXT_SECONDARY, font_tiny)
-
-        # Status HP Bar
         hp = getattr(self.app.player, "persistent_hp", config.MAX_HP)
         max_hp = config.MAX_HP
         hp_ratio = max(0.0, min(1.0, hp / float(max_hp)))
-
         hp_lbl = font_tiny.render(f"HP: {hp} / {max_hp}", True, config.COLOR_TEXT_PRIMARY)
-        surface.blit(hp_lbl, (cx + 14, cy + 40))
 
-        bar_rect = pygame.Rect(cx + 14, cy + 58, card_w - 28, 14)
+        potions = getattr(self.app.player, "persistent_potions", 0)
+        grid_pos = getattr(self.app.player, "grid", (0, 0))
+        sub_info = f"Ramuan: {potions}x   |   Posisi: ({grid_pos[0]}, {grid_pos[1]})"
+        sub_surf = font_tiny.render(sub_info, True, config.COLOR_TEXT_SECONDARY)
+
+        pad_y = 12
+        hero_card_h = pad_y + top_h + 8 + hp_lbl.get_height() + 6 + 14 + 8 + sub_surf.get_height() + pad_y
+        hero_rect = pygame.Rect(cx, cy, card_w, hero_card_h)
+        draw_card(surface, hero_rect, config.COLOR_CARD_BG, border_color=config.COLOR_CARD_BORDER, border_radius=8)
+
+        # Baris 1: Nama "Bolu" dan Badge "Hero Petualang"
+        cur_y = cy + pad_y
+        surface.blit(title_surf, (cx + 14, cur_y + (top_h - title_surf.get_height()) // 2))
+        role_x = cx + 14 + title_surf.get_width() + 10
+        role_badge = pygame.Rect(role_x, cur_y + (top_h - badge_h) // 2, badge_w, badge_h)
+        draw_badge_pill(surface, role_badge, role_text, (244, 236, 224), config.COLOR_TEXT_SECONDARY, font_tiny)
+
+        # Baris 2: Label HP
+        cur_y += top_h + 8
+        surface.blit(hp_lbl, (cx + 14, cur_y))
+
+        # Baris 3: HP Bar
+        cur_y += hp_lbl.get_height() + 6
+        bar_rect = pygame.Rect(cx + 14, cur_y, card_w - 28, 14)
         pygame.draw.rect(surface, (232, 224, 212), bar_rect, border_radius=7)
         fill_w = int(round(bar_rect.width * hp_ratio))
         if fill_w > 0:
@@ -158,17 +177,14 @@ class TabCompanion:
             pygame.draw.rect(surface, fill_color, pygame.Rect(bar_rect.x, bar_rect.y, fill_w, bar_rect.height), border_radius=7)
         pygame.draw.rect(surface, (195, 182, 165), bar_rect, width=1, border_radius=7)
 
-        # Potions & Koordinat (Bebas missing glyph / tofu emoji)
-        potions = getattr(self.app.player, "persistent_potions", 0)
-        grid_pos = getattr(self.app.player, "grid", (0, 0))
-        sub_info = f"Ramuan: {potions}x   |   Posisi: ({grid_pos[0]}, {grid_pos[1]})"
-        sub_surf = font_tiny.render(sub_info, True, config.COLOR_TEXT_SECONDARY)
-        surface.blit(sub_surf, (cx + 14, cy + 82))
+        # Baris 4: Ramuan & Posisi
+        cur_y += bar_rect.height + 8
+        surface.blit(sub_surf, (cx + 14, cur_y))
 
-        # 2. METRIK DUNIA EKSPORASI
+        # 2. METRIK DUNIA EKSPLORASI
         cy += hero_card_h + 12
         tile_w = (card_w - 10) // 2
-        tile_h = 46
+        tile_h = max(54, font_tiny.get_height() + font_sm.get_height() + 18)
 
         opened_chests = sum(1 for c in getattr(self.app, "chests", []) if c.get("opened", False))
         total_chests = len(getattr(self.app, "chests", []))
@@ -314,13 +330,6 @@ class TabCompanion:
 
         # 4. PANDUAN KONTROL CEPAT
         cy += inv_h + 12
-        guide_h = 145
-        guide_rect = pygame.Rect(cx, cy, card_w, guide_h)
-        draw_card(surface, guide_rect, config.COLOR_CARD_BG, border_color=config.COLOR_CARD_BORDER, border_radius=8)
-
-        gd_title = font_sm.render("Petunjuk Kontrol", True, config.COLOR_TEXT_PRIMARY)
-        surface.blit(gd_title, (cx + 14, cy + 8))
-
         keys_info = [
             ("W A S D / Arrow", "Gerak Karakter Bolu"),
             ("[E] / Dekati Peti", "Buka Peti & Gacha Buff"),
@@ -328,16 +337,23 @@ class TabCompanion:
             ("[Tab]", "Buka / Tutup Panel Inspektur"),
             ("[T]", "Buka Visualizer Pohon AI"),
         ]
+        line_h = max(22, font_tiny.get_height() + 6)
+        guide_h = 36 + len(keys_info) * line_h + 8
+        guide_rect = pygame.Rect(cx, cy, card_w, guide_h)
+        draw_card(surface, guide_rect, config.COLOR_CARD_BG, border_color=config.COLOR_CARD_BORDER, border_radius=8)
+
+        gd_title = font_sm.render("Petunjuk Kontrol", True, config.COLOR_TEXT_PRIMARY)
+        surface.blit(gd_title, (cx + 14, cy + 8))
 
         for idx, (k_btn, k_desc) in enumerate(keys_info):
-            ky = cy + 32 + idx * 21
+            ky = cy + 32 + idx * line_h
             kb_surf = font_tiny.render(k_btn, True, config.COLOR_ACCENT_GOLD)
             kd_surf = font_tiny.render(f": {k_desc}", True, config.COLOR_TEXT_PRIMARY)
             surface.blit(kb_surf, (cx + 14, ky))
             surface.blit(kd_surf, (cx + 14 + kb_surf.get_width(), ky))
 
-        cy += guide_h + 12
-        self.btn_call.rect = pygame.Rect(cx, cy, card_w, 38)
+        cy += guide_h + 14
+        self.btn_call.rect = pygame.Rect(cx, cy, card_w, 42)
         self.btn_call.draw(surface)
 
     def draw_popups(self, surface: pygame.Surface) -> None:

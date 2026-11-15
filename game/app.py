@@ -74,43 +74,80 @@ K_t = getattr(pygame, "K_t", 116)
 class Camera:
     """Kamera yang mengikuti player dengan zoom yang dapat diubah dan peredam halus (smooth lerp)."""
 
-    def __init__(self, win_w, win_h, map_w, map_h, margin=0.02):
-        self.zoom = 2.8
+    def __init__(self, win_w, win_h, map_w, map_h, margin=0.02, app_ref=None):
+        self._app_ref = app_ref
+        self._left_panel_w = config.TOTAL_DOCK_WIDTH
+        self.zoom = 3.0
         self.fit_zoom = 1.0
         self.map_w = map_w
         self.map_h = map_h
         self.win_w = win_w
         self.win_h = win_h
-        self.left_panel_w = config.NAV_RAIL_WIDTH
         self.offset_x = 0.0
         self.offset_y = 0.0
         self.reset(win_w, win_h, map_w, map_h, margin)
+
+    @property
+    def left_panel_w(self):
+        if self._app_ref and hasattr(self._app_ref, "overlay") and self._app_ref.overlay:
+            if hasattr(self._app_ref.overlay, "dock") and self._app_ref.overlay.dock.is_open:
+                return config.TOTAL_DOCK_WIDTH
+            return config.NAV_RAIL_WIDTH
+        return self._left_panel_w or config.TOTAL_DOCK_WIDTH
+
+    @left_panel_w.setter
+    def left_panel_w(self, val):
+        self._left_panel_w = val
 
     def reset(self, win_w, win_h, map_w, map_h, margin=0.02, left_panel_w=None):
         self.win_w = win_w
         self.win_h = win_h
         self.map_w = map_w
         self.map_h = map_h
-        self.left_panel_w = left_panel_w or config.NAV_RAIL_WIDTH
-        usable_w = max(100.0, win_w - self.left_panel_w)
-        self.fit_zoom = min(usable_w / map_w, win_h / map_h) * (1.0 - margin)
-        # Kamera dekat (close-up) default 2.8x bebas burik
-        self.zoom = 2.8
+        if left_panel_w is not None:
+            self._left_panel_w = left_panel_w
+
+        # Hitung usable width saat panel dock terbuka (lebar minimal area permainan)
+        dock_w = config.TOTAL_DOCK_WIDTH
+        usable_w_dock = max(100.0, win_w - dock_w)
+        self.fit_zoom = min(usable_w_dock / map_w, win_h / map_h) * (1.0 - margin)
+
+        # Hitung zoom agar kamera SELALU sangat dekat dengan pemain (close-up POV)
+        # Menampilkan sekitar 18 tile secara horizontal agar hanya sebagian kecil peta yang tampak
+        target_visible_tiles_x = 18.0
+        zoom_for_visible_tiles = usable_w_dock / (target_visible_tiles_x * 16.0)
+
+        # Pastikan skala selalu meluber (overflow) dari viewport layar
+        # sehingga tidak pernah ada celah/gap di samping tab atau tepi jendela
+        min_overflow_zoom_x = (usable_w_dock + 64.0) / map_w
+        min_overflow_zoom_y = (win_h + 64.0) / map_h
+        self.min_overflow_zoom = max(min_overflow_zoom_x, min_overflow_zoom_y)
+
+        # Default zoom: minimal 3.0x (pada 1280x800) dan menyesuaikan proporsional pada resolusi tinggi/fullscreen
+        self.base_zoom = max(3.0, max(zoom_for_visible_tiles, self.min_overflow_zoom))
+        self.zoom = self.base_zoom
         self._center_map()
 
     def _center_map(self):
         usable_w = max(100.0, self.win_w - self.left_panel_w)
         scaled_w = self.map_w * self.zoom
         scaled_h = self.map_h * self.zoom
-        self.offset_x = self.left_panel_w + (usable_w - scaled_w) / 2.0
-        self.offset_y = (self.win_h - scaled_h) / 2.0
+        if scaled_w <= usable_w:
+            self.offset_x = self.left_panel_w + (usable_w - scaled_w) / 2.0
+        else:
+            self.offset_x = self.left_panel_w
+        if scaled_h <= self.win_h:
+            self.offset_y = (self.win_h - scaled_h) / 2.0
+        else:
+            self.offset_y = 0.0
 
     def zoom_by(self, factor, focus_screen=None):
         old_zoom = self.zoom
-        min_zoom = max(1.2, self.fit_zoom * 0.8)
-        max_zoom = 4.5
+        min_zoom = max(self.base_zoom * 0.75, self.min_overflow_zoom)
+        max_zoom = self.base_zoom * 2.5
+        usable_w = max(100.0, self.win_w - self.left_panel_w)
         if focus_screen is None:
-            focus_screen = (config.SAFE_CAMERA_FOCUS_X, self.win_h / 2.0)
+            focus_screen = (self.left_panel_w + usable_w / 2.0, self.win_h / 2.0)
         focus_world = (
             (focus_screen[0] - self.offset_x) / self.zoom,
             (focus_screen[1] - self.offset_y) / self.zoom,
@@ -140,7 +177,8 @@ class Camera:
             self.offset_y = max(min_offset_y, min(self.offset_y, 0.0))
 
     def follow(self, world_pos, smooth=False, dt=0.016):
-        viewport_center_x = config.SAFE_CAMERA_FOCUS_X
+        usable_w = max(100.0, self.win_w - self.left_panel_w)
+        viewport_center_x = self.left_panel_w + usable_w / 2.0
         viewport_center_y = self.win_h / 2.0
         target_x = viewport_center_x - world_pos[0] * self.zoom
         target_y = viewport_center_y - world_pos[1] * self.zoom
@@ -322,6 +360,8 @@ class App:
         self._apply_viewport()
         self.npc.find_path(self.player.grid)
         self.overlay.set_app(self)
+        w, h = self.screen.get_size()
+        self._on_window_resized(w, h)
 
         # Modul Materi 07: Logic & Knowledge Representation
         self.inter_npc_manager = InterNPCManager(self)
@@ -450,25 +490,31 @@ class App:
                 self.overlay.graph_modal.reset_camera()
 
     # ------------------------------------------------------------------ #
-    def _build_fonts(self):
+    def _build_fonts(self, scale: float = 1.0):
         fonts = {}
+        sc = max(1.0, min(1.35, scale))
+        sz_tiny = int(round(12 * sc))
+        sz_sm = int(round(14 * sc))
+        sz_bubble = int(round(14 * sc))
+        sz_title = int(round(17 * sc))
+        sz_huge = int(round(22 * sc))
         try:
-            fonts["tiny"] = pygame.font.SysFont(["consolas", "segoeui", "arial"], 13, bold=True)
-            fonts["sm"] = pygame.font.SysFont(["consolas", "segoeui", "arial"], 16)
-            fonts["bubble"] = pygame.font.SysFont(["consolas", "segoeui", "arial"], 16, bold=True)
-            fonts["title"] = pygame.font.SysFont(["segoeui", "arial"], 19, bold=True)
-            fonts["huge"] = pygame.font.SysFont(["segoeui", "arial"], 26, bold=True)
+            fonts["tiny"] = pygame.font.SysFont(["dejavusans", "liberationsans", "ubuntusans", "arial"], sz_tiny, bold=True)
+            fonts["sm"] = pygame.font.SysFont(["dejavusans", "liberationsans", "ubuntusans", "arial"], sz_sm)
+            fonts["bubble"] = pygame.font.SysFont(["dejavusans", "liberationsans", "ubuntusans", "arial"], sz_bubble, bold=True)
+            fonts["title"] = pygame.font.SysFont(["dejavusans", "liberationsans", "ubuntusans", "arial"], sz_title, bold=True)
+            fonts["huge"] = pygame.font.SysFont(["dejavusans", "liberationsans", "ubuntusans", "arial"], sz_huge, bold=True)
         except (OSError, RuntimeError):
-            fonts["tiny"] = pygame.font.Font(None, 18)
-            fonts["sm"] = pygame.font.Font(None, 22)
-            fonts["bubble"] = pygame.font.Font(None, 24)
-            fonts["title"] = pygame.font.Font(None, 28)
-            fonts["huge"] = pygame.font.Font(None, 38)
+            fonts["tiny"] = pygame.font.Font(None, int(round(15 * sc)))
+            fonts["sm"] = pygame.font.Font(None, int(round(18 * sc)))
+            fonts["bubble"] = pygame.font.Font(None, int(round(18 * sc)))
+            fonts["title"] = pygame.font.Font(None, int(round(22 * sc)))
+            fonts["huge"] = pygame.font.Font(None, int(round(28 * sc)))
         return fonts
 
     def _apply_viewport(self):
         w, h = self.screen.get_size()
-        self.camera = Camera(w, h, self.map_w, self.map_h)
+        self.camera = Camera(w, h, self.map_w, self.map_h, app_ref=self)
         self.water_anim_timer = 0.0
         self.water_frame = 0
         self._refresh_scaled_map()
@@ -477,6 +523,9 @@ class App:
 
     def _on_window_resized(self, w: int, h: int) -> None:
         """Sinkronisasi kamera dan ukuran panel UI terpadu (NavRail & InspectorDock) saat resolusi berubah."""
+        ui_scale = config.update_ui_scale(w, h)
+        if hasattr(self, "fonts") and self.fonts:
+            self.fonts.update(self._build_fonts(ui_scale))
         self._apply_viewport()
         if hasattr(self, "overlay") and self.overlay:
             self.overlay.on_resize(w, h)
@@ -1450,7 +1499,8 @@ class App:
 
     # ------------------------------------------------------------------ #
     def _draw(self):
-        self.screen.fill(config.BG_COLOR)
+        if self.game_mode != "EXPLORATION":
+            self.screen.fill(config.BG_COLOR)
 
         # 1. Gambar peta di sisi kanan (khusus mode eksplorasi)
         assert self.scaled_map is not None
@@ -1511,7 +1561,7 @@ class App:
         npc_sx, npc_sy = self.camera.world_to_screen(self.npc.px, self.npc.py)
 
         # Batas area viewport kamera (sebelah kanan sidebar debug)
-        panel_w = config.DEBUG_LEFT_PANEL_WIDTH
+        panel_w = self.camera.left_panel_w
         margin = 32
         min_x = panel_w + margin
         max_x = self.screen.get_width() - margin
@@ -2811,10 +2861,10 @@ class App:
     def _draw_obtained_items_hud(self):
         """Menampilkan panel HUD item yang didapat di bagian bawah kiri layar map (mode searching)."""
         w, h = self.screen.get_size()
-        is_dock_open = getattr(self.overlay.dock, "is_open", False) if hasattr(self, "overlay") and hasattr(self.overlay, "dock") else False
-        panel_w = config.TOTAL_DOCK_WIDTH if is_dock_open else config.TOTAL_COLLAPSED_WIDTH
-        hud_x = panel_w + 14
-        hud_h = 78
+        panel_w = self.camera.left_panel_w
+        sc = getattr(config, "UI_SCALE", 1.0)
+        hud_x = panel_w + int(round(14 * sc))
+        hud_h = int(round(88 * sc))
 
         font_tiny = self.fonts.get("tiny", self.fonts.get("sm"))
         font_sm = self.fonts.get("sm", font_tiny)
@@ -2914,9 +2964,11 @@ class App:
         }
 
         slot_count = max(3, len(inventory))
-        slot_w, slot_h = 44, 44
-        slot_gap = 8
-        pad_x, pad_y = 12, 8
+        slot_w = int(round(48 * sc))
+        slot_h = int(round(48 * sc))
+        slot_gap = int(round(10 * sc))
+        pad_x = int(round(14 * sc))
+        pad_y = int(round(10 * sc))
 
         # Hitung kebutuhan lebar header
         title_text = "ITEM DIDAPAT"
@@ -2931,14 +2983,14 @@ class App:
             bonuses.append(f"DEF +{self.player.def_bonus}")
         b_surf = font_tiny.render(" • ".join(bonuses), True, (185, 110, 18)) if bonuses else None
 
-        header_req_w = t_surf.get_width() + c_surf.get_width() + 16
+        header_req_w = t_surf.get_width() + c_surf.get_width() + int(round(16 * sc))
         if b_surf:
-            header_req_w += b_surf.get_width() + 20
+            header_req_w += b_surf.get_width() + int(round(20 * sc))
 
         slots_total_w = slot_count * slot_w + (slot_count - 1) * slot_gap
-        min_hud_w = 260
+        min_hud_w = int(round(280 * sc))
         hud_w = max(min_hud_w, slots_total_w + pad_x * 2, header_req_w + pad_x * 2)
-        hud_y = h - hud_h - 14
+        hud_y = h - hud_h - int(round(14 * sc))
 
         # 1. Background Container Card (Cozy Adventurer Journal Tone)
         shadow_surf = pygame.Surface((hud_w, hud_h), SRCALPHA)
@@ -2958,7 +3010,7 @@ class App:
             self.screen.blit(b_surf, (hud_x + hud_w - pad_x - b_surf.get_width(), hud_y + 8))
 
         # 3. Item Slots
-        sy = hud_y + 26
+        sy = hud_y + int(round(30 * sc))
         mouse_pos = pygame.mouse.get_pos()
         hovered_meta = None
         hovered_rect = None
@@ -2990,7 +3042,11 @@ class App:
 
                 # Icon Item
                 if item_key in self.item_images:
-                    icon = pygame.transform.smoothscale(self.item_images[item_key], (30, 30))
+                    icon_sz = int(round(34 * sc))
+                    icon = pygame.transform.scale(self.item_images[item_key], (icon_sz, icon_sz))
+                    ix = sx + (slot_w - icon_sz) // 2
+                    iy = sy + (slot_h - icon_sz) // 2
+                    self.screen.blit(icon, (ix, iy))
                     ix = sx + (slot_w - 30) // 2
                     iy = sy + (slot_h - 30) // 2
                     self.screen.blit(icon, (ix, iy))
@@ -3592,11 +3648,18 @@ class App:
             self.screen.blit(surf, rect)
 
     def _draw_swaying_ground_foliage(self):
-        """Menggambar rumput, bunga, dan semak yang bergoyang lembut tertiup angin."""
+        """Menggambar rumput, bunga, dan semak yang bergoyang lembut tertiup angin (dengan Grid Frustum Culling)."""
         fol = getattr(self.map, "foliage", {})
         zoom = self.camera.zoom
         sf = getattr(self, "_scaled_foliage", {})
         tile_cache = getattr(self, "_scaled_foliage_tiles", {})
+
+        win_w, win_h = self.screen.get_size()
+        pad_px = 32.0
+        min_gx = int(((self.camera.left_panel_w - self.camera.offset_x) / zoom - pad_px) // 16)
+        max_gx = int(((win_w - self.camera.offset_x) / zoom + pad_px) // 16) + 1
+        min_gy = int(((0.0 - self.camera.offset_y) / zoom - pad_px) // 16)
+        max_gy = int(((win_h - self.camera.offset_y) / zoom + pad_px) // 16) + 1
 
         # 1. Grass Tufts & Hiasan Rumput (termasuk tile biom_things & grass.tsx)
         scaled_tuft_default = sf.get("grass_tuft")
@@ -3611,6 +3674,8 @@ class App:
                 gx, gy = gt[0], gt[1]
                 img = scaled_tuft_default
             if img:
+                if not (min_gx <= gx <= max_gx and min_gy <= gy <= max_gy):
+                    continue
                 sway_x = math.sin(self.wind_timer * 3.2 + gx * 0.7 + gy * 0.5) * (0.8 * zoom)
                 wx, wy = gx * 16, gy * 16
                 sx, sy = self.camera.world_to_screen(wx, wy)
@@ -3631,6 +3696,8 @@ class App:
                 fx, fy = fl[0], fl[1]
                 img = scaled_fl1 if (fx + fy) % 2 == 0 else (scaled_fl2 or scaled_fl)
             if img:
+                if not (min_gx <= fx <= max_gx and min_gy <= fy <= max_gy):
+                    continue
                 sway_x = math.sin(self.wind_timer * 3.4 + fx * 1.1 + fy * 0.4) * (1.0 * zoom)
                 wx, wy = fx * 16, fy * 16
                 sx, sy = self.camera.world_to_screen(wx, wy)
@@ -3640,6 +3707,8 @@ class App:
         scaled_sunflower = sf.get("sunflower")
         if scaled_sunflower:
             for sx_grid, sy_grid in fol.get("sunflowers", []):
+                if not (min_gx <= sx_grid <= max_gx and min_gy <= sy_grid <= max_gy):
+                    continue
                 sway_x = math.sin(self.wind_timer * 2.5 + sx_grid * 0.8) * (1.3 * zoom)
                 wx, wy = sx_grid * 16, sy_grid * 16
                 sx, sy = self.camera.world_to_screen(wx, wy)
@@ -3660,6 +3729,8 @@ class App:
                 ax_grid, ay_grid = amb[0], amb[1]
                 img = scaled_amb_green
             if img:
+                if not (min_gx <= ax_grid <= max_gx and min_gy <= ay_grid <= max_gy):
+                    continue
                 sway_x = math.sin(self.wind_timer * 2.8 + ax_grid * 0.9 + ay_grid * 0.5) * (1.2 * zoom)
                 wx, wy = ax_grid * 16, ay_grid * 16
                 sx, sy = self.camera.world_to_screen(wx, wy)
@@ -3669,6 +3740,8 @@ class App:
         scaled_bush = sf.get("bush")
         if scaled_bush:
             for bx, by in fol.get("bushes", []):
+                if not (min_gx <= bx <= max_gx and min_gy <= by <= max_gy):
+                    continue
                 sway_x = math.sin(self.wind_timer * 2.8 + bx * 0.9) * (1.0 * zoom)
                 wx, wy = bx * 16, by * 16
                 sx, sy = self.camera.world_to_screen(wx, wy)
@@ -3680,12 +3753,21 @@ class App:
         zoom = self.camera.zoom
         sf = getattr(self, "_scaled_foliage", {})
 
+        win_w, win_h = self.screen.get_size()
+        pad_px = 48.0
+        min_gx = int(((self.camera.left_panel_w - self.camera.offset_x) / zoom - pad_px) // 16)
+        max_gx = int(((win_w - self.camera.offset_x) / zoom + pad_px) // 16) + 1
+        min_gy = int(((0.0 - self.camera.offset_y) / zoom - pad_px) // 16)
+        max_gy = int(((win_h - self.camera.offset_y) / zoom + pad_px) // 16) + 1
+
         scaled_green = sf.get("tree")
         scaled_pink = sf.get("tree_pink") or scaled_green
         scaled_small = sf.get("tree_small")
 
         if scaled_green:
             for tx, ty in fol.get("trees", []):
+                if not (min_gx <= tx <= max_gx and min_gy <= ty <= max_gy):
+                    continue
                 sway_x = math.sin(self.wind_timer * 2.2 + tx * 0.6) * (1.5 * zoom)
                 wx = tx * 16
                 wy = ty * 16
@@ -3694,6 +3776,8 @@ class App:
 
         if scaled_pink:
             for tx, ty in fol.get("trees_pink", []):
+                if not (min_gx <= tx <= max_gx and min_gy <= ty <= max_gy):
+                    continue
                 sway_x = math.sin(self.wind_timer * 2.2 + tx * 0.6) * (1.5 * zoom)
                 wx = tx * 16
                 wy = ty * 16
@@ -3702,9 +3786,13 @@ class App:
 
         if scaled_small:
             for tx, ty in fol.get("trees_small", []):
+                if not (min_gx <= tx <= max_gx and min_gy <= ty <= max_gy):
+                    continue
                 sway_x = math.sin(self.wind_timer * 2.4 + tx * 0.8) * (1.2 * zoom)
                 wx = tx * 16
                 wy = ty * 16
+                sx, sy = self.camera.world_to_screen(wx, wy)
+                self.screen.blit(scaled_small, (int(sx + sway_x), int(sy)))
                 sx, sy = self.camera.world_to_screen(wx, wy)
                 self.screen.blit(scaled_small, (int(sx + sway_x), int(sy)))
 

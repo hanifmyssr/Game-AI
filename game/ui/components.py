@@ -98,12 +98,16 @@ def draw_metric_tile(surface: pygame.Surface, rect: pygame.Rect, label: str, val
     draw_card(surface, rect, bg_color, border_color=border_color, border_radius=6)
     old_clip = surface.get_clip()
     surface.set_clip(rect)
+    pad_y = 6
     if font_lbl:
         lbl_surf = font_lbl.render(str(label), True, config.COLOR_TEXT_SECONDARY)
-        surface.blit(lbl_surf, (rect.x + 8, rect.y + 3))
+        surface.blit(lbl_surf, (rect.x + 10, rect.y + pad_y))
+        val_y = rect.y + pad_y + lbl_surf.get_height() + 3
+    else:
+        val_y = rect.y + pad_y
     if font_val:
         val_surf = font_val.render(str(value), True, val_color)
-        surface.blit(val_surf, (rect.x + 8, rect.y + 19))
+        surface.blit(val_surf, (rect.x + 10, val_y))
     surface.set_clip(old_clip)
 
 

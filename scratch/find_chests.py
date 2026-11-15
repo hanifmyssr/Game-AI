@@ -1,6 +1,6 @@
 import json
 
-with open("Game-AI/assets/map_new.tmj", "r", encoding="utf-8") as f:
+with open("Game-AI/assets/new_map2.tmj", "r", encoding="utf-8") as f:
     tmj = json.load(f)
 
 tilesets = sorted(tmj.get("tilesets", []), key=lambda x: x["firstgid"])

@@ -41,8 +41,9 @@ class InspectorDock:
         self.app = app_ref
         self.active_tab_id = 0
         self.is_open = True  # Status buka / tutup drawer
+        self.header_h = 48
 
-        content_rect = pygame.Rect(self.rect.x, self.rect.y + 48, self.rect.width, self.rect.height - 48)
+        content_rect = pygame.Rect(self.rect.x, self.rect.y + self.header_h, self.rect.width, self.rect.height - self.header_h)
 
         # Inisialisasi 7 Tab
         self.tabs = {
@@ -82,10 +83,25 @@ class InspectorDock:
             self.active_tab_id = tab_id
             self.is_open = True  # Otomatis buka jika pemain memilih tab baru
 
-    def resize(self, height: int) -> None:
-        """Memperbarui tinggi Inspector Dock dan seluruh tab konten mengikuti window."""
+    def resize(self, height: int, width: Optional[int] = None, x: Optional[int] = None) -> None:
+        """Memperbarui tinggi & lebar Inspector Dock dan seluruh tab konten mengikuti window."""
         self.rect.height = height
-        content_rect = pygame.Rect(self.rect.x, self.rect.y + 48, self.rect.width, self.rect.height - 48)
+        if width is not None:
+            self.rect.width = width
+        if x is not None:
+            self.rect.x = x
+        base_w = float(getattr(config, "BASE_INSPECTOR_WIDTH", 460))
+        scale = max(1.0, self.rect.width / base_w)
+        self.header_h = max(48, int(round(48 * scale)))
+        btn_collapse_w = int(round(88 * scale))
+        btn_collapse_h = int(round(28 * scale))
+        self.btn_collapse.rect = pygame.Rect(
+            self.rect.right - btn_collapse_w - 12,
+            self.rect.y + (self.header_h - btn_collapse_h) // 2,
+            btn_collapse_w,
+            btn_collapse_h,
+        )
+        content_rect = pygame.Rect(self.rect.x, self.rect.y + self.header_h, self.rect.width, self.rect.height - self.header_h)
         for tab in self.tabs.values():
             if hasattr(tab, "resize"):
                 tab.resize(content_rect)
@@ -130,7 +146,7 @@ class InspectorDock:
                          (self.rect.right - 1, self.rect.y), (self.rect.right - 1, self.rect.bottom), 2)
 
         # 2. Header Pita Perkamen
-        header_rect = pygame.Rect(self.rect.x, self.rect.y, self.rect.width, 48)
+        header_rect = pygame.Rect(self.rect.x, self.rect.y, self.rect.width, self.header_h)
         draw_card(surface, header_rect, config.COLOR_HEADER_BG, border_color=None, border_radius=0)
         pygame.draw.line(surface, config.COLOR_INSPECTOR_BORDER,
                          (self.rect.x, header_rect.bottom - 1), (self.rect.right - 1, header_rect.bottom - 1), 1)
@@ -140,16 +156,17 @@ class InspectorDock:
         font_tiny = self.fonts.get("tiny", pygame.font.Font(None, 13))
 
         t_surf = font_title.render(title, True, config.COLOR_ACCENT_GOLD)
-        surface.blit(t_surf, (self.rect.x + 14, self.rect.y + 6))
-
         st_surf = font_tiny.render(subtitle, True, config.COLOR_TEXT_SECONDARY)
-        surface.blit(st_surf, (self.rect.x + 14, self.rect.y + 27))
+        tot_text_h = t_surf.get_height() + st_surf.get_height() + 2
+        t_y = self.rect.y + max(4, (self.header_h - tot_text_h) // 2)
+        surface.blit(t_surf, (self.rect.x + 14, t_y))
+        surface.blit(st_surf, (self.rect.x + 14, t_y + t_surf.get_height() + 2))
 
         # Tombol Lipat
         self.btn_collapse.draw(surface)
 
         # 3. Gambar Konten Tab Aktif dengan proteksi batas kliping
-        content_rect = pygame.Rect(self.rect.x, self.rect.y + 48, self.rect.width, self.rect.height - 48)
+        content_rect = pygame.Rect(self.rect.x, self.rect.y + self.header_h, self.rect.width, self.rect.height - self.header_h)
         orig_clip = surface.get_clip()
         surface.set_clip(content_rect)
         active_tab = self.tabs.get(self.active_tab_id)

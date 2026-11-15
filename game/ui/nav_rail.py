@@ -48,33 +48,43 @@ class NavRail:
         ]
 
         try:
-            self.font_glyph = pygame.font.SysFont(["segoeuisymbol", "segoeui", "arial"], 19, bold=True)
-            self.font_code = pygame.font.SysFont(["consolas", "segoeui", "arial"], 12, bold=True)
-            self.font_tooltip = pygame.font.SysFont(["segoeui", "arial"], 13)
-            self.font_badge = pygame.font.SysFont(["arial", "segoeui"], 10, bold=True)
+            self.font_code = pygame.font.SysFont(["dejavusansmono", "liberationsans", "ubuntu", "arial"], 15, bold=True)
+            self.font_tooltip = pygame.font.SysFont(["dejavusans", "liberationsans", "ubuntu", "arial"], 13)
+            self.font_badge = pygame.font.SysFont(["dejavusans", "liberationsans", "ubuntu", "arial"], 11, bold=True)
         except Exception:
-            self.font_glyph = pygame.font.Font(None, 22)
-            self.font_code = pygame.font.Font(None, 14)
+            self.font_code = pygame.font.Font(None, 16)
             self.font_tooltip = pygame.font.Font(None, 14)
-            self.font_badge = pygame.font.Font(None, 11)
+            self.font_badge = pygame.font.Font(None, 12)
 
         self.item_rects: Dict[int, pygame.Rect] = {}
         self._recompute_item_rects()
 
-    def resize(self, height: int) -> None:
-        """Memperbarui tinggi Nav Rail mengikuti ukuran window / fullscreen."""
+    def resize(self, height: int, width: Optional[int] = None) -> None:
+        """Memperbarui tinggi & lebar Nav Rail mengikuti ukuran window / fullscreen."""
         self.rect.height = height
+        if width is not None:
+            self.rect.width = width
+            scale = width / float(getattr(config, "BASE_NAV_RAIL_WIDTH", 68))
+            try:
+                self.font_code = pygame.font.SysFont(["dejavusansmono", "liberationsans", "ubuntu", "arial"], max(13, int(round(15 * scale))), bold=True)
+                self.font_tooltip = pygame.font.SysFont(["dejavusans", "liberationsans", "ubuntu", "arial"], max(12, int(round(13 * scale))))
+                self.font_badge = pygame.font.SysFont(["dejavusans", "liberationsans", "ubuntu", "arial"], max(10, int(round(11 * scale))), bold=True)
+            except Exception:
+                self.font_code = pygame.font.Font(None, max(14, int(round(16 * scale))))
+                self.font_tooltip = pygame.font.Font(None, max(12, int(round(14 * scale))))
+                self.font_badge = pygame.font.Font(None, max(11, int(round(12 * scale))))
         self._recompute_item_rects()
 
     def _recompute_item_rects(self) -> None:
-        btn_size = 46
-        pad_x = (self.rect.width - btn_size) // 2
-        start_y = 16
-        spacing = 54
+        scale = self.rect.width / float(getattr(config, "BASE_NAV_RAIL_WIDTH", 68))
+        btn_size = int(round(48 * scale))
+        pad_x = max(2, (self.rect.width - btn_size) // 2)
+        start_y = int(round(14 * scale))
+        spacing = int(round(56 * scale))
 
         for item in self.tabs:
             if item.tab_id == 6:
-                y = self.rect.bottom - btn_size - 16
+                y = self.rect.bottom - btn_size - int(round(16 * scale))
             else:
                 y = start_y + item.tab_id * spacing
             self.item_rects[item.tab_id] = pygame.Rect(self.rect.x + pad_x, y, btn_size, btn_size)
@@ -154,15 +164,9 @@ class NavRail:
                 accent_rect = pygame.Rect(self.rect.x, btn_rect.y + 7, 4, btn_rect.height - 14)
                 pygame.draw.rect(surface, config.COLOR_NAV_ACCENT, accent_rect, border_radius=2)
 
-            # Render Icon Glyph atau Huruf Kode
+            # Render Kode Tab (Singkatan 2 huruf yang bersih & bebas karakter undefined)
             icon_color = config.COLOR_NAV_ACCENT if is_active else ((255, 255, 255) if is_hover else (195, 178, 160))
-            try:
-                g_surf = self.font_glyph.render(item.glyph, True, icon_color)
-                if g_surf.get_width() < 5:
-                    g_surf = self.font_code.render(item.short_code, True, icon_color)
-            except Exception:
-                g_surf = self.font_code.render(item.short_code, True, icon_color)
-
+            g_surf = self.font_code.render(item.short_code, True, icon_color)
             gx = btn_rect.centerx - g_surf.get_width() // 2
             gy = btn_rect.centery - g_surf.get_height() // 2
             surface.blit(g_surf, (gx, gy))

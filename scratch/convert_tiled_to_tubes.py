@@ -6,17 +6,21 @@ Cara pakai:
 
 import json
 import os
+import sys
 import xml.etree.ElementTree as ET
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 GAME_AI_DIR = os.path.dirname(SCRIPT_DIR)
-TMJ_PATH = os.path.join(GAME_AI_DIR, "assets", "map_new.tmj")
-OUT_JSON = os.path.join(GAME_AI_DIR, "data", "map_tubes.json")
+TMJ_CANDIDATES = [
+    os.path.join(GAME_AI_DIR, "assets", "new_map2.tmj"),
+]
+TMJ_PATH = sys.argv[1] if len(sys.argv) > 1 and os.path.exists(sys.argv[1]) else next((p for p in TMJ_CANDIDATES if os.path.exists(p)), None)
+OUT_JSON = sys.argv[2] if len(sys.argv) > 2 else os.path.join(GAME_AI_DIR, "data", "map_tubes.json")
 
 
 def convert():
-    if not os.path.exists(TMJ_PATH):
-        print(f"Error: Berkas tidak ditemukan: {TMJ_PATH}")
+    if not TMJ_PATH or not os.path.exists(TMJ_PATH):
+        print(f"Error: Tidak ada berkas TMJ yang ditemukan di assets/")
         return
 
     base_dir = os.path.dirname(TMJ_PATH)
@@ -27,25 +31,35 @@ def convert():
     h = tmj["height"]
     cs = tmj["tilewidth"]
 
-    # 1. Parse seluruh tileset (.tsx) yang direferensikan
+    # 1. Parse seluruh tileset (.tsx maupun embedded) yang direferensikan
     ts_list = []
     for ts in tmj.get("tilesets", []):
         fgid = ts["firstgid"]
-        src = ts["source"]
-        tsx_path = os.path.normpath(os.path.join(base_dir, src))
-        if not os.path.exists(tsx_path):
-            print(f"Warning: .tsx tidak ditemukan di {tsx_path}")
-            continue
+        if "source" in ts:
+            src = ts["source"]
+            tsx_path = os.path.normpath(os.path.join(base_dir, src))
+            if not os.path.exists(tsx_path):
+                print(f"Warning: .tsx tidak ditemukan di {tsx_path}")
+                continue
 
-        tree = ET.parse(tsx_path)
-        root = tree.getroot()
-        img_elem = root.find("image")
-        img_src = img_elem.attrib["source"]
-        cols = int(root.attrib.get("columns", 1))
-        tile_count = int(root.attrib.get("tilecount", 1))
-        norm_img = img_src.replace("\\", "/").split("assets/")[-1]
+            tree = ET.parse(tsx_path)
+            root = tree.getroot()
+            img_elem = root.find("image")
+            img_src = img_elem.attrib["source"]
+            cols = int(root.attrib.get("columns", 1))
+            tile_count = int(root.attrib.get("tilecount", 1))
+            norm_img = img_src.replace("\\", "/").split("assets/")[-1]
 
-        ts_list.append((fgid, fgid + tile_count - 1, cols, norm_img, root.attrib.get("name", "")))
+            ts_list.append((fgid, fgid + tile_count - 1, cols, norm_img, root.attrib.get("name", "")))
+        elif "image" in ts:
+            img_src = ts["image"]
+            cols = int(ts.get("columns", 1))
+            tile_count = int(ts.get("tilecount", 1))
+            norm_img = img_src.replace("\\", "/").split("assets/")[-1]
+            # Pastikan jika formatnya .aseprite, arahkan ke .png
+            if norm_img.endswith(".aseprite"):
+                norm_img = norm_img[:-9] + ".png"
+            ts_list.append((fgid, fgid + tile_count - 1, cols, norm_img, ts.get("name", "")))
 
     ts_list.sort(key=lambda x: x[0])
 
@@ -79,6 +93,7 @@ def convert():
     chickens = []
 
     # 2. Ekstraksi layer dari Tiled
+    has_dedicated_obs_layer = any("obstacle" in l["name"].lower() or l["name"].lower() == "tile layer 4" for l in tmj.get("layers", []))
     for l in tmj["layers"]:
         lname = l["name"].lower()
         ltype = l["type"]
@@ -86,7 +101,7 @@ def convert():
             continue
         data = l["data"]
         layer_tiles = []
-        is_obs_layer = "obstacle" in lname
+        is_obs_layer = "obstacle" in lname or lname == "tile layer 4"
 
         for idx, gid in enumerate(data):
             if gid == 0:
@@ -161,7 +176,9 @@ def convert():
                     layer_tiles.append(entry)
                     if "water" in name.lower() or "water" in img.lower():
                         water.append(entry)
-                        obstacles.append({"x": gx, "y": gy, "src": "", "atlas_x": 0, "atlas_y": ay})
+                        # HANYA jadikan obstacle jika TIDAK ADA layer obstacle khusus dari Tiled
+                        if not has_dedicated_obs_layer:
+                            obstacles.append({"x": gx, "y": gy, "src": "", "atlas_x": 0, "atlas_y": ay})
                     elif "bridge" in name.lower() or "bridge" in img.lower():
                         bridge_tiles.add((gx, gy))
                         decorations.append(entry)
@@ -197,22 +214,26 @@ def convert():
         return (18, 17)
 
     used_spawns = set()
-    player_spawn = pick_spawn([(18, 17), (24, 18), (27, 18)])
+    player_spawn = pick_spawn([(20, 20), (20, 19), (21, 20), (19, 20), (18, 17)])
     used_spawns.add(player_spawn)
 
-    oyen_spawn = pick_spawn([(27, 10), (28, 10), (25, 12)])
-    used_spawns.add(oyen_spawn)
-
-    kuro_spawn = pick_spawn([(11, 4), (12, 5), (10, 6)])
+    # Kuro mengawal Sektor Barat Laut (dekat Peti A di 9, 3)
+    kuro_spawn = pick_spawn([(10, 4), (11, 4), (9, 4), (8, 4), (10, 5), (11, 2)])
     used_spawns.add(kuro_spawn)
 
-    shiro_spawn = pick_spawn([(29, 20), (36, 20), (25, 19)])
+    # Oyen mengawal Sektor Barat Daya (dekat Peti B di 5, 24)
+    oyen_spawn = pick_spawn([(6, 24), (7, 24), (5, 23), (6, 23), (6, 25)])
+    used_spawns.add(oyen_spawn)
+
+    # Shiro mengawal Sektor Tenggara (dekat Peti C di 34, 28)
+    shiro_spawn = pick_spawn([(33, 28), (35, 28), (34, 27), (32, 28), (35, 27)])
     used_spawns.add(shiro_spawn)
 
     # Format data/map_tubes.json
+    chest_items = ["item_sword", "item_shield", "health_potion"]
     map_document = {
         "schema_version": 1,
-        "name": "Map_From_Tiled_map_new",
+        "name": "Map_From_Tiled_new_map2",
         "cell_size": cs,
         "grid": {
             "min_x": 0,
@@ -239,18 +260,18 @@ def convert():
         "chickens": [{"x": cx, "y": cy} for cx, cy in chickens],
         "spawns": {
             "player": {"grid_x": player_spawn[0], "grid_y": player_spawn[1]},
-            "npc_oyen": {"grid_x": oyen_spawn[0], "grid_y": oyen_spawn[1]},
-            "npc_kuro": {"grid_x": kuro_spawn[0], "grid_y": kuro_spawn[1], "waypoints": [(kuro_spawn[0], kuro_spawn[1]), (kuro_spawn[0]+4, kuro_spawn[1])]},
-            "npc_shiro": {"grid_x": shiro_spawn[0], "grid_y": shiro_spawn[1], "waypoints": [(shiro_spawn[0], shiro_spawn[1]), (shiro_spawn[0]+4, shiro_spawn[1])]},
+            "npc_kuro": {"grid_x": kuro_spawn[0], "grid_y": kuro_spawn[1], "waypoints": [(kuro_spawn[0], kuro_spawn[1]), (kuro_spawn[0]+2, kuro_spawn[1])]},
+            "npc_oyen": {"grid_x": oyen_spawn[0], "grid_y": oyen_spawn[1], "waypoints": [(oyen_spawn[0], oyen_spawn[1]), (oyen_spawn[0], oyen_spawn[1]+2)]},
+            "npc_shiro": {"grid_x": shiro_spawn[0], "grid_y": shiro_spawn[1], "waypoints": [(shiro_spawn[0], shiro_spawn[1]), (shiro_spawn[0]-2, shiro_spawn[1])]},
             "chests": [
-                {"x": pos[0], "y": pos[1], "item": ["health_potion", "item_sword", "item_shield", "health_potion"][i % 4]}
+                {"x": pos[0], "y": pos[1], "item": chest_items[i % len(chest_items)]}
                 for i, pos in enumerate(chest_positions)
             ] or [
-                {"x": 27, "y": 2, "item": "health_potion"},
-                {"x": 11, "y": 3, "item": "item_sword"},
-                {"x": 41, "y": 24, "item": "item_shield"},
-                {"x": 10, "y": 28, "item": "health_potion"}
-            ]
+                {"x": 9, "y": 3, "item": "item_sword"},
+                {"x": 5, "y": 24, "item": "item_shield"},
+                {"x": 34, "y": 28, "item": "health_potion"}
+            ],
+            "boss_portal": {"x": 20, "y": 5}
         }
     }
 

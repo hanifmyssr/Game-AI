@@ -128,8 +128,8 @@ class DebugOverlay:
 
     def on_resize(self, w: int, h: int) -> None:
         """Menyesuaikan ukuran elemen Nav Rail & Inspector Dock saat resolusi layar berubah."""
-        self.nav_rail.resize(h)
-        self.dock.resize(h)
+        self.nav_rail.resize(h, width=config.NAV_RAIL_WIDTH)
+        self.dock.resize(h, width=config.INSPECTOR_WIDTH, x=config.NAV_RAIL_WIDTH)
 
     def set_pre_battle_data(self, config_dict: Any, stats: Any, algo_name: str = "HILL_CLIMBING") -> None:
         self.pre_battle_config = config_dict
@@ -200,9 +200,25 @@ class DebugOverlay:
             return
 
         tile_size = map_data.cell_size
-        exp_surf = pygame.Surface(surface.get_size(), SRCALPHA)
+        sz = int(round(tile_size * camera.zoom))
+        if sz <= 0:
+            return
+
+        win_w, win_h = surface.get_size()
+        min_x = camera.left_panel_w - sz
+        max_x = win_w
+        min_y = -sz
+        max_y = win_h
+
         expanded_position = len(self.expanded_nodes) * self.expanded_reveal
         pulse_alpha = int(75 + 35 * (0.5 + 0.5 * math.sin(self.animation_time * 2.0)))
+
+        # Cache surface tile kecil untuk ekspansi (menghindari alokasi surface full-screen 30MB tiap frame)
+        if not hasattr(self, "_cached_exp_tile") or getattr(self, "_cached_exp_sz", None) != sz:
+            self._cached_exp_sz = sz
+            self._cached_exp_tile = pygame.Surface((sz, sz), SRCALPHA)
+            self._cached_exp_fill = config.COLOR_EXPANDED_FILL[:3]
+            self._cached_exp_border = config.COLOR_EXPANDED_BORDER[:3]
 
         for index, node_pos in enumerate(self.expanded_nodes):
             node_reveal = max(0.0, min(1.0, expanded_position - index))
@@ -212,28 +228,34 @@ class DebugOverlay:
                 continue
             center = map_data.world_to_px(node_pos)
             half = tile_size / 2.0
-            topleft = (center[0] - half, center[1] - half)
-            screen_pos = camera.world_to_screen(topleft[0], topleft[1])
-            sz = tile_size * camera.zoom
-            rect = (screen_pos[0], screen_pos[1], sz, sz)
+            screen_pos = camera.world_to_screen(center[0] - half, center[1] - half)
+            # Frustum culling: hanya proses & gambar node yang masuk ke viewport kamera
+            if screen_pos[0] < min_x or screen_pos[0] > max_x or screen_pos[1] < min_y or screen_pos[1] > max_y:
+                continue
+
             expanded_alpha = int(pulse_alpha * node_reveal)
-            expanded_fill = (*config.COLOR_EXPANDED_FILL[:3], expanded_alpha)
-            expanded_border = (*config.COLOR_EXPANDED_BORDER[:3], min(255, expanded_alpha + 70))
-            pygame.draw.rect(exp_surf, expanded_fill, rect)
-            pygame.draw.rect(exp_surf, expanded_border, rect, 1)
+            self._cached_exp_tile.fill((0, 0, 0, 0))
+            pygame.draw.rect(self._cached_exp_tile, (*self._cached_exp_fill, expanded_alpha), (0, 0, sz, sz))
+            pygame.draw.rect(self._cached_exp_tile, (*self._cached_exp_border, min(255, expanded_alpha + 70)), (0, 0, sz, sz), 1)
+            surface.blit(self._cached_exp_tile, (int(screen_pos[0]), int(screen_pos[1])))
 
             if self.show_costs:
                 cost = map_data.get_step_cost(node_pos)
                 cost_text = self.fonts["sm"].render(f"{cost:.1f}", True, (255, 255, 255))
                 cost_text.set_alpha(int(255 * node_reveal))
                 cost_bg = cost_text.get_rect(center=(int(screen_pos[0] + sz / 2), int(screen_pos[1] + sz / 2)))
-                pygame.draw.rect(exp_surf, (80, 0, 0, int(190 * node_reveal)), cost_bg.inflate(4, 2), border_radius=2)
-                exp_surf.blit(cost_text, cost_bg)
-
-        surface.blit(exp_surf, (0, 0))
+                bg_surf = pygame.Surface((cost_bg.width + 4, cost_bg.height + 2), SRCALPHA)
+                bg_surf.fill((80, 0, 0, int(190 * node_reveal)))
+                surface.blit(bg_surf, (cost_bg.x - 2, cost_bg.y - 1))
+                surface.blit(cost_text, cost_bg)
 
         if self.path_nodes:
-            path_surf = pygame.Surface(surface.get_size(), SRCALPHA)
+            if not hasattr(self, "_cached_path_tile") or getattr(self, "_cached_path_sz", None) != sz:
+                self._cached_path_sz = sz
+                self._cached_path_tile = pygame.Surface((sz, sz), SRCALPHA)
+                self._cached_path_fill = config.COLOR_PATH[:3]
+                self._cached_path_border = config.COLOR_PATH_BORDER[:3]
+
             path_position = len(self.path_nodes) * self.path_reveal
             for index, node_pos in enumerate(self.path_nodes):
                 node_reveal = max(0.0, min(1.0, path_position - index))
@@ -243,17 +265,15 @@ class DebugOverlay:
                     continue
                 center = map_data.world_to_px(node_pos)
                 half = tile_size / 2.0
-                topleft = (center[0] - half, center[1] - half)
-                screen_pos = camera.world_to_screen(topleft[0], topleft[1])
-                sz = tile_size * camera.zoom
-                rect = (screen_pos[0], screen_pos[1], sz, sz)
-                path_alpha = int((55 + 80 * self.path_reveal) * node_reveal)
-                path_fill = (*config.COLOR_PATH[:3], path_alpha)
-                path_border = (*config.COLOR_PATH_BORDER[:3], min(255, path_alpha + 55))
-                pygame.draw.rect(path_surf, path_fill, rect)
-                pygame.draw.rect(path_surf, path_border, rect, 1)
+                screen_pos = camera.world_to_screen(center[0] - half, center[1] - half)
+                if screen_pos[0] < min_x or screen_pos[0] > max_x or screen_pos[1] < min_y or screen_pos[1] > max_y:
+                    continue
 
-            surface.blit(path_surf, (0, 0))
+                path_alpha = int((55 + 80 * self.path_reveal) * node_reveal)
+                self._cached_path_tile.fill((0, 0, 0, 0))
+                pygame.draw.rect(self._cached_path_tile, (*self._cached_path_fill, path_alpha), (0, 0, sz, sz))
+                pygame.draw.rect(self._cached_path_tile, (*self._cached_path_border, min(255, path_alpha + 55)), (0, 0, sz, sz), 1)
+                surface.blit(self._cached_path_tile, (int(screen_pos[0]), int(screen_pos[1])))
 
     # ------------------------------------------------------------------ #
     # Drawing: Bilah UI Kiri (Nav Rail & Collapsible Inspector Drawer)

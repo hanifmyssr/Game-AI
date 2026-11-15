@@ -59,6 +59,7 @@ class NPC:
         self.grid_manager = GridManager(map_data)
 
         self.chasing = False
+        self.is_returning_to_patrol = False
         self.grid = (0, 0)
         self.px = 0.0
         self.py = 0.0
@@ -144,11 +145,32 @@ class NPC:
                     self.investigate_target = None
                     self.speech_bubble = "Hanya suara angin..."
                     self.speech_timer = 2.0
+                    if self.is_patrol and self.waypoints:
+                        self.is_returning_to_patrol = True
         elif self.chasing and not self.moving:
-            self.chase_timer += dt
-            if self.chase_timer >= config.NPC_CHASE_INTERVAL:
-                self.chase_timer = 0.0
-                self.move_one_step_towards(self.player.grid)
+            if not self.can_detect_player(self.player):
+                self.chasing = False
+                self.speech_bubble = "Kehilangan jejak..."
+                self.speech_timer = 2.0
+                if self.is_patrol and self.waypoints:
+                    self.is_returning_to_patrol = True
+            else:
+                self.chase_timer += dt
+                if self.chase_timer >= config.NPC_CHASE_INTERVAL:
+                    self.chase_timer = 0.0
+                    self.move_one_step_towards(self.player.grid)
+        elif self.is_returning_to_patrol and not self.moving and self.waypoints:
+            # Kembali cepat ke pos rute patroli (0.28s per langkah vs 0.85s jalan santai)
+            self.patrol_timer += dt
+            if self.patrol_timer >= 0.28:
+                self.patrol_timer = 0.0
+                closest_wp = min(self.waypoints, key=lambda wp: abs(self.grid[0] - wp[0]) + abs(self.grid[1] - wp[1]))
+                if self.grid == closest_wp or self.grid in self.waypoints:
+                    self.is_returning_to_patrol = False
+                    self.speech_bubble = "Kembali ke pos!"
+                    self.speech_timer = 1.5
+                else:
+                    self._patrol_step_towards(closest_wp)
         elif self.is_patrol and not self.moving and self.waypoints:
             self.patrol_timer += dt
             if self.patrol_timer >= 0.85:
@@ -165,7 +187,8 @@ class NPC:
         if getattr(player, "is_hidden", False):
             # Pemain di semak hanya terdeteksi jika kontak fisik bersebelahan (dist <= 1)
             return dist <= 1
-        return dist <= 5
+        max_dist = 9 if self.chasing else 5
+        return dist <= max_dist
 
     def on_noise_heard(self, noise_pos: tuple):
         """Merespons stimulus suara siulan [SPASI] (plan_dev.md Section 4.2)."""
@@ -190,7 +213,14 @@ class NPC:
 
     def _on_movement_finished(self):
         if self.chasing and self.grid != self.player.grid:
-            self.move_one_step_towards(self.player.grid)
+            if not self.can_detect_player(self.player):
+                self.chasing = False
+                self.speech_bubble = "Kehilangan jejak..."
+                self.speech_timer = 2.0
+                if self.is_patrol and self.waypoints:
+                    self.is_returning_to_patrol = True
+            else:
+                self.move_one_step_towards(self.player.grid)
         elif getattr(self, "name", "") == "Oyen" and hasattr(self, "events") and self.events:
             self.find_path(self.player.grid)
 
@@ -206,6 +236,20 @@ class NPC:
         self.find_path(self.player.grid)
 
     def on_player_moved(self, player_grid):
+        # Jika pemain berada di radius pandang dan tidak sembunyi di semak, picu kejar
+        if not self.chasing and not getattr(self.player, "is_hidden", False) and self.can_detect_player(self.player):
+            self.chasing = True
+            self.is_returning_to_patrol = False
+            self.speech_bubble = "Ada penyusup!"
+            self.speech_timer = 2.0
+
+        if self.chasing and not self.can_detect_player(self.player):
+            self.chasing = False
+            self.speech_bubble = "Kehilangan jejak..."
+            self.speech_timer = 2.0
+            if self.is_patrol and self.waypoints:
+                self.is_returning_to_patrol = True
+
         result = self.find_path(player_grid)
         if self.chasing and not self.moving:
             path = result.get("path", [])

@@ -49,113 +49,130 @@ class KnowledgeBase:
         self._load_default_patrol_rules()
 
     def _load_default_patrol_rules(self) -> None:
-        """Memuat aturan-aturan CNF koordinasi 3 NPC menjaga 4 peti di seluruh peta."""
-        # Rule 1A: Jika Peti A dibuka, maka Kuro bersiaga
+        """Memuat aturan-aturan CNF koordinasi 3 NPC menjaga 3 peti di seluruh peta."""
+        # Rule 1A: Jika Peti A dibuka, maka Shiro bersiaga (sektor utara / tebing kiri atas)
         self.add_rule(
             rule_id="R1A",
             name="Deteksi Peti A Terbuka",
-            fol_str="ChestOpened(A) => Alert(Kuro)",
-            clause=frozenset({"~ChestOpened_A", "Alert_Kuro"}),
-            description="Kuro bersiaga jika Peti A (timur-laut) dijarah"
+            fol_str="ChestOpened(A) => Alert(Shiro)",
+            clause=frozenset({"~ChestOpened_A", "Alert_Shiro"}),
+            description="Shiro bersiaga jika Peti A (sektor utara) dijarah"
         )
 
-        # Rule 1B: Jika Peti B dibuka, maka Kuro bersiaga (sektor tebing barat)
+        # Rule 1B: Jika Peti B dibuka, maka Oyen bersiaga (sektor padang kiri bawah)
         self.add_rule(
             rule_id="R1B",
             name="Deteksi Peti B Terbuka",
-            fol_str="ChestOpened(B) => Alert(Kuro)",
-            clause=frozenset({"~ChestOpened_B", "Alert_Kuro"}),
-            description="Kuro bersiaga jika Peti B (barat-laut) dijarah"
+            fol_str="ChestOpened(B) => Alert(Oyen)",
+            clause=frozenset({"~ChestOpened_B", "Alert_Oyen"}),
+            description="Oyen bersiaga jika Peti B (sektor kiri bawah) dijarah"
         )
 
-        # Rule 1C: Jika Peti C dibuka, maka Shiro bersiaga (sektor dermaga tenggara)
+        # Rule 1C: Jika Peti C dibuka, maka Kuro bersiaga (sektor jembatan timur / kanan)
         self.add_rule(
             rule_id="R1C",
             name="Deteksi Peti C Terbuka",
-            fol_str="ChestOpened(C) => Alert(Shiro)",
-            clause=frozenset({"~ChestOpened_C", "Alert_Shiro"}),
-            description="Shiro bersiaga jika Peti C (dermaga tenggara) dijarah"
+            fol_str="ChestOpened(C) => Alert(Kuro)",
+            clause=frozenset({"~ChestOpened_C", "Alert_Kuro"}),
+            description="Kuro bersiaga jika Peti C (sektor timur/kanan) dijarah"
         )
 
-        # Rule 1D: Jika Peti D dibuka, maka Shiro bersiaga (sektor selatan)
-        self.add_rule(
-            rule_id="R1D",
-            name="Deteksi Peti D Terbuka",
-            fol_str="ChestOpened(D) => Alert(Shiro)",
-            clause=frozenset({"~ChestOpened_D", "Alert_Shiro"}),
-            description="Shiro bersiaga jika Peti D (selatan) dijarah"
-        )
-
-        # Rule 2A: Jika Kuro siaga dan Player mengambil jarahan, tugaskan Kuro mengejar Player
+        # Rule 2A: Jika Shiro siaga dan Player mengambil jarahan, tugaskan Shiro mengejar Player
         self.add_rule(
             rule_id="R2A",
-            name="Penugasan Pemburu Kuro",
-            fol_str="Alert(Kuro) ∧ HasLootedItem(Player) => AssignChaser(Kuro)",
-            clause=frozenset({"~Alert_Kuro", "~HasLootedItem_Player", "AssignChaser_Kuro"}),
-            description="Kuro beralih menjadi pemburu agresif untuk memotong jalur Bolu"
-        )
-
-        # Rule 2B: Jika Shiro siaga dan Player mengambil jarahan, tugaskan Shiro mengejar Player
-        self.add_rule(
-            rule_id="R2B",
             name="Penugasan Pemburu Shiro",
             fol_str="Alert(Shiro) ∧ HasLootedItem(Player) => AssignChaser(Shiro)",
             clause=frozenset({"~Alert_Shiro", "~HasLootedItem_Player", "AssignChaser_Shiro"}),
-            description="Shiro beralih menjadi pemburu agresif untuk memotong jalur Bolu"
+            description="Shiro beralih menjadi pemburu aktif menjaga sektor utara"
         )
 
-        # Rule 3A: Jika Kuro ditugaskan mengejar, kirim alarm ke Shiro
+        # Rule 2B: Jika Oyen siaga dan Player mengambil jarahan, tugaskan Oyen mengejar Player
         self.add_rule(
-            rule_id="R3A",
-            name="Sinyal Bahaya dari Kuro ke Shiro",
-            fol_str="AssignChaser(Kuro) => BroadcastAlarm(Shiro)",
-            clause=frozenset({"~AssignChaser_Kuro", "BroadcastAlarm_Shiro"}),
-            description="Kuro mengabari Shiro untuk memperketat pertahanan pulau"
+            rule_id="R2B",
+            name="Penugasan Pemburu Oyen",
+            fol_str="Alert(Oyen) ∧ HasLootedItem(Player) => AssignChaser(Oyen)",
+            clause=frozenset({"~Alert_Oyen", "~HasLootedItem_Player", "AssignChaser_Oyen"}),
+            description="Oyen beralih menjadi pemburu aktif menjaga sektor kiri bawah"
         )
 
-        # Rule 3B: Jika Shiro ditugaskan mengejar, kirim alarm ke Kuro
+        # Rule 2C: Jika Kuro siaga dan Player mengambil jarahan, tugaskan Kuro mengejar Player
         self.add_rule(
-            rule_id="R3B",
-            name="Sinyal Bahaya dari Shiro ke Kuro",
+            rule_id="R2C",
+            name="Penugasan Pemburu Kuro",
+            fol_str="Alert(Kuro) ∧ HasLootedItem(Player) => AssignChaser(Kuro)",
+            clause=frozenset({"~Alert_Kuro", "~HasLootedItem_Player", "AssignChaser_Kuro"}),
+            description="Kuro beralih menjadi pemburu aktif menjaga sektor timur/kanan"
+        )
+
+        # Rule 3A: Jika Shiro mengejar, kirim alarm ke Kuro & Oyen
+        self.add_rule(
+            rule_id="R3A1",
+            name="Alarm dari Shiro ke Kuro",
             fol_str="AssignChaser(Shiro) => BroadcastAlarm(Kuro)",
             clause=frozenset({"~AssignChaser_Shiro", "BroadcastAlarm_Kuro"}),
-            description="Shiro mengabari Kuro untuk memperketat pertahanan tebing"
+            description="Shiro mengabari Kuro untuk memperketat pertahanan timur"
+        )
+        self.add_rule(
+            rule_id="R3A2",
+            name="Alarm dari Shiro ke Oyen",
+            fol_str="AssignChaser(Shiro) => BroadcastAlarm(Oyen)",
+            clause=frozenset({"~AssignChaser_Shiro", "BroadcastAlarm_Oyen"}),
+            description="Shiro mengabari Oyen untuk memperketat pertahanan selatan"
         )
 
-        # Rule 4A: Jika Shiro menerima alarm dan Peti B belum dibuka, kunci sektor Peti B
+        # Rule 3B: Jika Oyen mengejar, kirim alarm ke Shiro & Kuro
+        self.add_rule(
+            rule_id="R3B1",
+            name="Alarm dari Oyen ke Shiro",
+            fol_str="AssignChaser(Oyen) => BroadcastAlarm(Shiro)",
+            clause=frozenset({"~AssignChaser_Oyen", "BroadcastAlarm_Shiro"}),
+            description="Oyen mengabari Shiro untuk memperketat pertahanan utara"
+        )
+        self.add_rule(
+            rule_id="R3B2",
+            name="Alarm dari Oyen ke Kuro",
+            fol_str="AssignChaser(Oyen) => BroadcastAlarm(Kuro)",
+            clause=frozenset({"~AssignChaser_Oyen", "BroadcastAlarm_Kuro"}),
+            description="Oyen mengabari Kuro untuk memperketat pertahanan timur"
+        )
+
+        # Rule 3C: Jika Kuro mengejar, kirim alarm ke Shiro & Oyen
+        self.add_rule(
+            rule_id="R3C1",
+            name="Alarm dari Kuro ke Shiro",
+            fol_str="AssignChaser(Kuro) => BroadcastAlarm(Shiro)",
+            clause=frozenset({"~AssignChaser_Kuro", "BroadcastAlarm_Shiro"}),
+            description="Kuro mengabari Shiro untuk memperketat pertahanan utara"
+        )
+        self.add_rule(
+            rule_id="R3C2",
+            name="Alarm dari Kuro ke Oyen",
+            fol_str="AssignChaser(Kuro) => BroadcastAlarm(Oyen)",
+            clause=frozenset({"~AssignChaser_Kuro", "BroadcastAlarm_Oyen"}),
+            description="Kuro mengabari Oyen untuk memperketat pertahanan selatan"
+        )
+
+        # Rule 4: Kunci sektor peti yang belum dibuka
         self.add_rule(
             rule_id="R4A",
-            name="Kunci Sektor Peti B oleh Shiro",
-            fol_str="BroadcastAlarm(Shiro) ∧ Unopened(B) => AssignTightGuard(Shiro)",
-            clause=frozenset({"~BroadcastAlarm_Shiro", "~Unopened_B", "AssignTightGuard_Shiro"}),
-            description="Shiro siaga mengunci perimeter dermaga & jembatan"
+            name="Kunci Sektor Peti A oleh Shiro",
+            fol_str="BroadcastAlarm(Shiro) ∧ Unopened(A) => AssignTightGuard(Shiro)",
+            clause=frozenset({"~BroadcastAlarm_Shiro", "~Unopened_A", "AssignTightGuard_Shiro"}),
+            description="Shiro siaga mengunci perimeter Peti A utara"
         )
-
-        # Rule 4B: Jika Kuro menerima alarm dan Peti A belum dibuka, kunci sektor Peti A
         self.add_rule(
             rule_id="R4B",
-            name="Kunci Sektor Peti A oleh Kuro",
-            fol_str="BroadcastAlarm(Kuro) ∧ Unopened(A) => AssignTightGuard(Kuro)",
-            clause=frozenset({"~BroadcastAlarm_Kuro", "~Unopened_A", "AssignTightGuard_Kuro"}),
-            description="Kuro siaga mengunci perimeter tebing utara"
+            name="Kunci Sektor Peti B oleh Oyen",
+            fol_str="BroadcastAlarm(Oyen) ∧ Unopened(B) => AssignTightGuard(Oyen)",
+            clause=frozenset({"~BroadcastAlarm_Oyen", "~Unopened_B", "AssignTightGuard_Oyen"}),
+            description="Oyen siaga mengunci perimeter Peti B kiri bawah"
         )
-
-        # Rule 5A: Jika ada alarm Shiro dan Peti C belum dibuka, amankan Peti C oleh Oyen
         self.add_rule(
-            rule_id="R5A",
-            name="Kunci Sektor Peti C oleh Oyen",
-            fol_str="BroadcastAlarm(Shiro) ∧ Unopened(C) => AssignTightGuard(Oyen)",
-            clause=frozenset({"~BroadcastAlarm_Shiro", "~Unopened_C", "AssignTightGuard_Oyen"}),
-            description="Oyen siaga penuh mengamankan peti di markas utama"
-        )
-
-        # Rule 5B: Jika ada alarm Kuro dan Peti C belum dibuka, amankan Peti C oleh Oyen
-        self.add_rule(
-            rule_id="R5B",
-            name="Kunci Sektor Peti C oleh Oyen (dari Kuro)",
-            fol_str="BroadcastAlarm(Kuro) ∧ Unopened(C) => AssignTightGuard(Oyen)",
-            clause=frozenset({"~BroadcastAlarm_Kuro", "~Unopened_C", "AssignTightGuard_Oyen"}),
-            description="Oyen siaga penuh mengamankan peti di markas utama"
+            rule_id="R4C",
+            name="Kunci Sektor Peti C oleh Kuro",
+            fol_str="BroadcastAlarm(Kuro) ∧ Unopened(C) => AssignTightGuard(Kuro)",
+            clause=frozenset({"~BroadcastAlarm_Kuro", "~Unopened_C", "AssignTightGuard_Kuro"}),
+            description="Kuro siaga mengunci perimeter Peti C timur/kanan"
         )
 
         # Rule 6: Portal Kuno Menara Ditinggalkan Membutuhkan 3 Kunci Rune (plan_dev.md)

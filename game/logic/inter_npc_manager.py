@@ -65,9 +65,16 @@ class InterNPCManager:
                 self.kb.retract(f"Unopened_{t}")
 
         # 2. ASK: Tentukan siapa pemburu aktif
-        # Peti A/B di sektor utara/barat -> Kuro adalah pemburu tercepat
-        # Peti C/D di sektor selatan/timur -> Shiro adalah pemburu tercepat
-        preferred_chaser = "Kuro" if chest_tag in ("A", "B") else "Shiro"
+        # Peti A di sektor utara -> Shiro adalah penjaga lokal
+        # Peti B di sektor kiri bawah -> Oyen adalah penjaga lokal
+        # Peti C di sektor timur/kanan -> Kuro adalah penjaga lokal
+        if chest_tag == "A":
+            preferred_chaser = "Shiro"
+        elif chest_tag == "B":
+            preferred_chaser = "Oyen"
+        else:
+            preferred_chaser = "Kuro"
+
         query_chaser = f"AssignChaser_{preferred_chaser}"
         success_chaser, steps_chaser, summary_chaser = self.engine.prove(self.kb, query_chaser)
 
@@ -76,26 +83,15 @@ class InterNPCManager:
             self.latest_steps = steps_chaser
             self.latest_proof_summary = summary_chaser
         else:
-            # Fallback jika query kedua berhasil
-            alt_chaser = "Shiro" if preferred_chaser == "Kuro" else "Kuro"
-            success_alt, steps_alt, summary_alt = self.engine.prove(self.kb, f"AssignChaser_{alt_chaser}")
-            if success_alt:
-                self.chaser_assigned = alt_chaser
-                self.latest_steps = steps_alt
-                self.latest_proof_summary = summary_alt
-            else:
-                self.chaser_assigned = "Kuro"
+            self.chaser_assigned = preferred_chaser
 
         # 3. ASK: Buktikan penugasan sekutu menjaga sisa peti
-        other_guard = "Shiro" if self.chaser_assigned == "Kuro" else "Kuro"
-        success_guard, _, _ = self.engine.prove(self.kb, f"AssignTightGuard_{other_guard}")
-        if success_guard and other_guard not in self.guardians_assigned:
-            self.guardians_assigned.append(other_guard)
-
-        # 4. ASK: Buktikan penugasan Oyen mengamankan markas
-        success_oyen, _, _ = self.engine.prove(self.kb, "AssignTightGuard_Oyen")
-        if success_oyen and "Oyen" not in self.guardians_assigned:
-            self.guardians_assigned.append("Oyen")
+        self.guardians_assigned = []
+        for candidate in ("Shiro", "Oyen", "Kuro"):
+            if candidate != self.chaser_assigned:
+                success_guard, _, _ = self.engine.prove(self.kb, f"AssignTightGuard_{candidate}")
+                if success_guard:
+                    self.guardians_assigned.append(candidate)
 
         # 5. Sinkronkan perilaku NPC di dunia game jika referensi app ada
         if self.app:
@@ -111,29 +107,41 @@ class InterNPCManager:
 
     def _apply_npc_behaviors(self) -> None:
         """Menerapkan hasil inferensi logika ke objek NPC nyata di game/app.py."""
-        # 1. Jika Kuro ditugaskan mengejar: aktifkan pengejaran & arahkan rute ke Bolu
-        if hasattr(self.app, "npc_kuro"):
-            if self.chaser_assigned == "Kuro":
-                self.app.npc_kuro.chasing = True
-                if hasattr(self.app, "player"):
-                    self.app.npc_kuro.find_path(self.app.player.grid)
-            else:
-                self.app.npc_kuro.chasing = False
-
-        # 2. Jika Shiro ditugaskan mengejar: aktifkan pengejaran & arahkan rute ke Bolu
+        # 1. Shiro (penjaga Peti A di utara)
         if hasattr(self.app, "npc_shiro"):
             if self.chaser_assigned == "Shiro":
                 self.app.npc_shiro.chasing = True
+                self.app.npc_shiro.is_returning_to_patrol = False
+                self.app.npc_shiro.speech_bubble = "Peti A dijarah! Berhenti!"
+                self.app.npc_shiro.speech_timer = 2.5
                 if hasattr(self.app, "player"):
                     self.app.npc_shiro.find_path(self.app.player.grid)
             else:
                 self.app.npc_shiro.chasing = False
 
-        # 3. Pengejar utama (Oyen) juga ikut memburu untuk mempersempit pergerakan
-        if hasattr(self.app, "npc") and not self.app.npc.chasing:
-            self.app.npc.chasing = True
-            if hasattr(self.app, "player"):
-                self.app.npc.find_path(self.app.player.grid)
+        # 2. Oyen (penjaga Peti B di kiri bawah)
+        if hasattr(self.app, "npc"):
+            if self.chaser_assigned == "Oyen":
+                self.app.npc.chasing = True
+                self.app.npc.is_returning_to_patrol = False
+                self.app.npc.speech_bubble = "Peti B dicuri! Serang!"
+                self.app.npc.speech_timer = 2.5
+                if hasattr(self.app, "player"):
+                    self.app.npc.find_path(self.app.player.grid)
+            else:
+                self.app.npc.chasing = False
+
+        # 3. Kuro (penjaga Peti C di kanan/timur)
+        if hasattr(self.app, "npc_kuro"):
+            if self.chaser_assigned == "Kuro":
+                self.app.npc_kuro.chasing = True
+                self.app.npc_kuro.is_returning_to_patrol = False
+                self.app.npc_kuro.speech_bubble = "Peti C dibobol! Kejar!"
+                self.app.npc_kuro.speech_timer = 2.5
+                if hasattr(self.app, "player"):
+                    self.app.npc_kuro.find_path(self.app.player.grid)
+            else:
+                self.app.npc_kuro.chasing = False
 
     def can_open_portal(self) -> Tuple[bool, List[ResolutionStep], Optional[Dict[str, Any]]]:
         """Mengevaluasi pembuktian resolusi refutasi klausa PortalActive (Materi 07: Logic KB)."""

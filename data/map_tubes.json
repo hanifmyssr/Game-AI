@@ -14213,13 +14213,6 @@
           "atlas_y": 9
         },
         {
-          "x": 15,
-          "y": 0,
-          "src": "tubes/Ext_10a_DEMO.png",
-          "atlas_x": 11,
-          "atlas_y": 9
-        },
-        {
           "x": 17,
           "y": 0,
           "src": "sprout/Basic_Grass_Biom_things.png",
@@ -14374,13 +14367,6 @@
           "atlas_y": 0
         },
         {
-          "x": 15,
-          "y": 1,
-          "src": "tubes/Ext_10a_DEMO.png",
-          "atlas_x": 11,
-          "atlas_y": 10
-        },
-        {
           "x": 18,
           "y": 1,
           "src": "tubes/Ext_10a_DEMO.png",
@@ -14526,13 +14512,6 @@
           "src": "sprout/Fences.png",
           "atlas_x": 0,
           "atlas_y": 0
-        },
-        {
-          "x": 15,
-          "y": 2,
-          "src": "tubes/Ext_10a_DEMO.png",
-          "atlas_x": 11,
-          "atlas_y": 9
         },
         {
           "x": 18,
@@ -14703,13 +14682,6 @@
           "atlas_y": 0
         },
         {
-          "x": 15,
-          "y": 3,
-          "src": "tubes/Ext_10a_DEMO.png",
-          "atlas_x": 11,
-          "atlas_y": 10
-        },
-        {
           "x": 20,
           "y": 3,
           "src": "sprout/Tilled_Dirt.png",
@@ -14878,13 +14850,6 @@
           "atlas_y": 6
         },
         {
-          "x": 12,
-          "y": 4,
-          "src": "tubes/Ext_10a_DEMO.png",
-          "atlas_x": 9,
-          "atlas_y": 11
-        },
-        {
           "x": 13,
           "y": 4,
           "src": "sprout/Fences.png",
@@ -15018,32 +14983,11 @@
           "atlas_y": 5
         },
         {
-          "x": 11,
-          "y": 5,
-          "src": "tubes/Ext_10a_DEMO.png",
-          "atlas_x": 9,
-          "atlas_y": 11
-        },
-        {
-          "x": 12,
-          "y": 5,
-          "src": "tubes/Ext_10a_DEMO.png",
-          "atlas_x": 9,
-          "atlas_y": 11
-        },
-        {
           "x": 13,
           "y": 5,
           "src": "sprout/Fences.png",
           "atlas_x": 0,
           "atlas_y": 0
-        },
-        {
-          "x": 15,
-          "y": 5,
-          "src": "tubes/Ext_10a_DEMO.png",
-          "atlas_x": 11,
-          "atlas_y": 9
         },
         {
           "x": 19,
@@ -15177,13 +15121,6 @@
           "src": "sprout/Fences.png",
           "atlas_x": 3,
           "atlas_y": 0
-        },
-        {
-          "x": 15,
-          "y": 6,
-          "src": "tubes/Ext_10a_DEMO.png",
-          "atlas_x": 11,
-          "atlas_y": 10
         },
         {
           "x": 17,
@@ -15627,20 +15564,6 @@
           "atlas_y": 5
         },
         {
-          "x": 9,
-          "y": 9,
-          "src": "tubes/Ext_10a_DEMO.png",
-          "atlas_x": 9,
-          "atlas_y": 11
-        },
-        {
-          "x": 14,
-          "y": 9,
-          "src": "tubes/Ext_10a_DEMO.png",
-          "atlas_x": 11,
-          "atlas_y": 9
-        },
-        {
           "x": 19,
           "y": 9,
           "src": "sprout/Tilled_Dirt.png",
@@ -15730,27 +15653,6 @@
           "src": "sprout/Tilled_Dirt.png",
           "atlas_x": 1,
           "atlas_y": 5
-        },
-        {
-          "x": 9,
-          "y": 10,
-          "src": "tubes/Ext_10a_DEMO.png",
-          "atlas_x": 9,
-          "atlas_y": 11
-        },
-        {
-          "x": 10,
-          "y": 10,
-          "src": "tubes/Ext_10a_DEMO.png",
-          "atlas_x": 9,
-          "atlas_y": 11
-        },
-        {
-          "x": 14,
-          "y": 10,
-          "src": "tubes/Ext_10a_DEMO.png",
-          "atlas_x": 11,
-          "atlas_y": 10
         },
         {
           "x": 15,
@@ -16458,20 +16360,6 @@
           "src": "sprout/Basic_Grass_Biom_things.png",
           "atlas_x": 8,
           "atlas_y": 1
-        },
-        {
-          "x": 9,
-          "y": 16,
-          "src": "tubes/Ext_10a_DEMO.png",
-          "atlas_x": 9,
-          "atlas_y": 11
-        },
-        {
-          "x": 10,
-          "y": 16,
-          "src": "tubes/Ext_10a_DEMO.png",
-          "atlas_x": 9,
-          "atlas_y": 11
         },
         {
           "x": 12,
@@ -35193,13 +35081,6 @@
       "atlas_y": 9
     },
     {
-      "x": 15,
-      "y": 0,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 11,
-      "atlas_y": 9
-    },
-    {
       "x": 37,
       "y": 0,
       "src": "tubes/Abandoned Tower.png",
@@ -35312,13 +35193,6 @@
       "atlas_y": 0
     },
     {
-      "x": 15,
-      "y": 1,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 11,
-      "atlas_y": 10
-    },
-    {
       "x": 18,
       "y": 1,
       "src": "tubes/Ext_10a_DEMO.png",
@@ -35394,13 +35268,6 @@
       "src": "sprout/Fences.png",
       "atlas_x": 0,
       "atlas_y": 0
-    },
-    {
-      "x": 15,
-      "y": 2,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 11,
-      "atlas_y": 9
     },
     {
       "x": 18,
@@ -35480,13 +35347,6 @@
       "atlas_y": 0
     },
     {
-      "x": 15,
-      "y": 3,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 11,
-      "atlas_y": 10
-    },
-    {
       "x": 37,
       "y": 3,
       "src": "tubes/Abandoned Tower.png",
@@ -35541,13 +35401,6 @@
       "src": "tubes/Ext_10a_DEMO.png",
       "atlas_x": 4,
       "atlas_y": 13
-    },
-    {
-      "x": 12,
-      "y": 4,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 11
     },
     {
       "x": 13,
@@ -35613,32 +35466,11 @@
       "atlas_y": 14
     },
     {
-      "x": 11,
-      "y": 5,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 11
-    },
-    {
-      "x": 12,
-      "y": 5,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 11
-    },
-    {
       "x": 13,
       "y": 5,
       "src": "sprout/Fences.png",
       "atlas_x": 0,
       "atlas_y": 0
-    },
-    {
-      "x": 15,
-      "y": 5,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 11,
-      "atlas_y": 9
     },
     {
       "x": 2,
@@ -35688,13 +35520,6 @@
       "src": "sprout/Fences.png",
       "atlas_x": 3,
       "atlas_y": 0
-    },
-    {
-      "x": 15,
-      "y": 6,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 11,
-      "atlas_y": 10
     },
     {
       "x": 17,
@@ -35816,20 +35641,6 @@
       "atlas_y": 9
     },
     {
-      "x": 9,
-      "y": 9,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 11
-    },
-    {
-      "x": 14,
-      "y": 9,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 11,
-      "atlas_y": 9
-    },
-    {
       "x": 4,
       "y": 10,
       "src": "tubes/Ext_10a_DEMO.png",
@@ -35844,27 +35655,6 @@
       "atlas_y": 10
     },
     {
-      "x": 9,
-      "y": 10,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 11
-    },
-    {
-      "x": 10,
-      "y": 10,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 11
-    },
-    {
-      "x": 14,
-      "y": 10,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 11,
-      "atlas_y": 10
-    },
-    {
       "x": 0,
       "y": 11,
       "src": "tubes/Ext_10a_DEMO.png",
@@ -36094,20 +35884,6 @@
       "src": "tubes/Ext_10a_DEMO.png",
       "atlas_x": 10,
       "atlas_y": 9
-    },
-    {
-      "x": 9,
-      "y": 16,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 11
-    },
-    {
-      "x": 10,
-      "y": 16,
-      "src": "tubes/Ext_10a_DEMO.png",
-      "atlas_x": 9,
-      "atlas_y": 11
     },
     {
       "x": 14,
@@ -42316,6 +42092,134 @@
       ]
     ],
     "ambushes": [
+      {
+        "x": 15,
+        "y": 0,
+        "src": "tubes/Ext_10a_DEMO.png",
+        "atlas_x": 11,
+        "atlas_y": 9,
+        "type": "wide_bush"
+      },
+      {
+        "x": 15,
+        "y": 1,
+        "src": "tubes/Ext_10a_DEMO.png",
+        "atlas_x": 11,
+        "atlas_y": 10,
+        "type": "wide_bush"
+      },
+      {
+        "x": 15,
+        "y": 2,
+        "src": "tubes/Ext_10a_DEMO.png",
+        "atlas_x": 11,
+        "atlas_y": 9,
+        "type": "wide_bush"
+      },
+      {
+        "x": 15,
+        "y": 3,
+        "src": "tubes/Ext_10a_DEMO.png",
+        "atlas_x": 11,
+        "atlas_y": 10,
+        "type": "wide_bush"
+      },
+      {
+        "x": 12,
+        "y": 4,
+        "src": "tubes/Ext_10a_DEMO.png",
+        "atlas_x": 9,
+        "atlas_y": 11,
+        "type": "green"
+      },
+      {
+        "x": 11,
+        "y": 5,
+        "src": "tubes/Ext_10a_DEMO.png",
+        "atlas_x": 9,
+        "atlas_y": 11,
+        "type": "green"
+      },
+      {
+        "x": 12,
+        "y": 5,
+        "src": "tubes/Ext_10a_DEMO.png",
+        "atlas_x": 9,
+        "atlas_y": 11,
+        "type": "green"
+      },
+      {
+        "x": 15,
+        "y": 5,
+        "src": "tubes/Ext_10a_DEMO.png",
+        "atlas_x": 11,
+        "atlas_y": 9,
+        "type": "wide_bush"
+      },
+      {
+        "x": 15,
+        "y": 6,
+        "src": "tubes/Ext_10a_DEMO.png",
+        "atlas_x": 11,
+        "atlas_y": 10,
+        "type": "wide_bush"
+      },
+      {
+        "x": 9,
+        "y": 9,
+        "src": "tubes/Ext_10a_DEMO.png",
+        "atlas_x": 9,
+        "atlas_y": 11,
+        "type": "green"
+      },
+      {
+        "x": 14,
+        "y": 9,
+        "src": "tubes/Ext_10a_DEMO.png",
+        "atlas_x": 11,
+        "atlas_y": 9,
+        "type": "wide_bush"
+      },
+      {
+        "x": 9,
+        "y": 10,
+        "src": "tubes/Ext_10a_DEMO.png",
+        "atlas_x": 9,
+        "atlas_y": 11,
+        "type": "green"
+      },
+      {
+        "x": 10,
+        "y": 10,
+        "src": "tubes/Ext_10a_DEMO.png",
+        "atlas_x": 9,
+        "atlas_y": 11,
+        "type": "green"
+      },
+      {
+        "x": 14,
+        "y": 10,
+        "src": "tubes/Ext_10a_DEMO.png",
+        "atlas_x": 11,
+        "atlas_y": 10,
+        "type": "wide_bush"
+      },
+      {
+        "x": 9,
+        "y": 16,
+        "src": "tubes/Ext_10a_DEMO.png",
+        "atlas_x": 9,
+        "atlas_y": 11,
+        "type": "green"
+      },
+      {
+        "x": 10,
+        "y": 16,
+        "src": "tubes/Ext_10a_DEMO.png",
+        "atlas_x": 9,
+        "atlas_y": 11,
+        "type": "green"
+      },
       {
         "x": 23,
         "y": 19,

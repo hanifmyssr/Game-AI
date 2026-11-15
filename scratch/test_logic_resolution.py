@@ -32,20 +32,20 @@ def test_kb_and_resolution():
     kb.tell("HasLootedItem_Player")
     print("Fakta TELL ditambahkan: ChestOpened_A, HasLootedItem_Player")
 
-    # 4. Inferensi ASK: AssignChaser_Kuro
-    proved_chaser, steps_chaser, summary_chaser = engine.prove(kb, "AssignChaser_Kuro")
-    print(f"Hasil Pembuktian AssignChaser(Kuro): {proved_chaser}")
+    # 4. Inferensi ASK: AssignChaser_Shiro (Penjaga Peti A di sektor utara)
+    proved_chaser, steps_chaser, summary_chaser = engine.prove(kb, "AssignChaser_Shiro")
+    print(f"Hasil Pembuktian AssignChaser(Shiro): {proved_chaser}")
     print(f"Jumlah langkah resolusi: {len(steps_chaser)}")
     for st in summary_chaser["proof_trace"]:
         print(f"  {st}")
-    assert proved_chaser, "Kuro WAJIB terbukti menjadi pemburu via refutasi []!"
+    assert proved_chaser, "Shiro WAJIB terbukti menjadi pemburu via refutasi []!"
 
-    # 5. Inferensi ASK Sinyal Sekutu: BroadcastAlarm_Shiro & AssignTightGuard_Shiro
-    kb.tell("AssignChaser_Kuro")
-    kb.tell("Unopened_B")
-    proved_guard, steps_guard, _ = engine.prove(kb, "AssignTightGuard_Shiro")
-    print(f"\nHasil Pembuktian AssignTightGuard(Shiro): {proved_guard}")
-    assert proved_guard, "Shiro WAJIB terbukti menjadi Tight Guard via refutasi []!"
+    # 5. Inferensi ASK Sinyal Sekutu: BroadcastAlarm_Kuro & AssignTightGuard_Kuro
+    kb.tell("AssignChaser_Shiro")
+    kb.tell("Unopened_C")
+    proved_guard, steps_guard, _ = engine.prove(kb, "AssignTightGuard_Kuro")
+    print(f"\nHasil Pembuktian AssignTightGuard(Kuro): {proved_guard}")
+    assert proved_guard, "Kuro WAJIB terbukti menjadi Tight Guard via refutasi []!"
 
     # 6. Uji InterNPCManager
     print("\n--- Uji InterNPCManager End-to-End ---")
@@ -55,8 +55,8 @@ def test_kb_and_resolution():
     print(f"Chaser: {res['chaser']}")
     print(f"Guardians: {res['guardians']}")
     print(f"Proved: {res['proved']}")
-    assert res["chaser"] == "Kuro"
-    assert "Shiro" in res["guardians"]
+    assert res["chaser"] == "Shiro"
+    assert "Kuro" in res["guardians"]
 
     print("\n==================================================")
     print("SEMUA PENGUJIAN LOGIC & RESOLUTION 100% LULUS!")

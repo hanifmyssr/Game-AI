@@ -40214,6 +40214,20 @@
       "atlas_y": 1
     },
     {
+      "x": 9,
+      "y": 25,
+      "src": "",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
+      "x": 10,
+      "y": 25,
+      "src": "",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
       "x": 18,
       "y": 25,
       "src": "",
@@ -41075,6 +41089,41 @@
       "atlas_y": 1
     },
     {
+      "x": 3,
+      "y": 32,
+      "src": "",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
+      "x": 4,
+      "y": 32,
+      "src": "",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
+      "x": 7,
+      "y": 32,
+      "src": "",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
+      "x": 8,
+      "y": 32,
+      "src": "",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
+      "x": 9,
+      "y": 32,
+      "src": "",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
       "x": 10,
       "y": 32,
       "src": "",
@@ -41154,6 +41203,41 @@
     {
       "x": 38,
       "y": 32,
+      "src": "",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
+      "x": 0,
+      "y": 33,
+      "src": "",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
+      "x": 1,
+      "y": 33,
+      "src": "",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
+      "x": 2,
+      "y": 33,
+      "src": "",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
+      "x": 3,
+      "y": 33,
+      "src": "",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
+      "x": 4,
+      "y": 33,
       "src": "",
       "atlas_x": 0,
       "atlas_y": 1
@@ -42219,6 +42303,22 @@
         "type": "wide_bush"
       },
       {
+        "x": 5,
+        "y": 13,
+        "src": "tubes/Ext_10a_DEMO.png",
+        "atlas_x": 9,
+        "atlas_y": 11,
+        "type": "green"
+      },
+      {
+        "x": 5,
+        "y": 14,
+        "src": "tubes/Ext_10a_DEMO.png",
+        "atlas_x": 9,
+        "atlas_y": 11,
+        "type": "green"
+      },
+      {
         "x": 9,
         "y": 16,
         "src": "tubes/Ext_10a_DEMO.png",
@@ -42267,6 +42367,14 @@
         "type": "green"
       },
       {
+        "x": 32,
+        "y": 21,
+        "src": "sprout/Basic_Grass_Biom_things.png",
+        "atlas_x": 1,
+        "atlas_y": 3,
+        "type": "green"
+      },
+      {
         "x": 21,
         "y": 22,
         "src": "sprout/Basic_Grass_Biom_things.png",
@@ -42277,6 +42385,14 @@
       {
         "x": 22,
         "y": 22,
+        "src": "sprout/Basic_Grass_Biom_things.png",
+        "atlas_x": 1,
+        "atlas_y": 3,
+        "type": "green"
+      },
+      {
+        "x": 37,
+        "y": 23,
         "src": "sprout/Basic_Grass_Biom_things.png",
         "atlas_x": 1,
         "atlas_y": 3,
@@ -42307,6 +42423,14 @@
         "type": "green"
       },
       {
+        "x": 39,
+        "y": 29,
+        "src": "sprout/Basic_Grass_Biom_things.png",
+        "atlas_x": 1,
+        "atlas_y": 3,
+        "type": "green"
+      },
+      {
         "x": 41,
         "y": 29,
         "src": "sprout/Basic_Grass_Biom_things.png",
@@ -42331,6 +42455,22 @@
         "type": "green"
       },
       {
+        "x": 3,
+        "y": 31,
+        "src": "sprout/Basic_Grass_Biom_things.png",
+        "atlas_x": 1,
+        "atlas_y": 3,
+        "type": "green"
+      },
+      {
+        "x": 15,
+        "y": 33,
+        "src": "sprout/Basic_Grass_Biom_things.png",
+        "atlas_x": 1,
+        "atlas_y": 3,
+        "type": "green"
+      },
+      {
         "x": 30,
         "y": 33,
         "src": "sprout/Basic_Grass_Biom_things.png",
@@ -42347,8 +42487,24 @@
         "type": "green"
       },
       {
+        "x": 17,
+        "y": 34,
+        "src": "sprout/Basic_Grass_Biom_things.png",
+        "atlas_x": 1,
+        "atlas_y": 3,
+        "type": "green"
+      },
+      {
         "x": 30,
         "y": 34,
+        "src": "sprout/Basic_Grass_Biom_things.png",
+        "atlas_x": 1,
+        "atlas_y": 3,
+        "type": "green"
+      },
+      {
+        "x": 17,
+        "y": 35,
         "src": "sprout/Basic_Grass_Biom_things.png",
         "atlas_x": 1,
         "atlas_y": 3,
@@ -43513,14 +43669,6 @@
         "type": "grass"
       },
       {
-        "x": 5,
-        "y": 13,
-        "src": "sprout/Grass.png",
-        "atlas_x": 0,
-        "atlas_y": 5,
-        "type": "grass"
-      },
-      {
         "x": 8,
         "y": 13,
         "src": "sprout/Grass.png",
@@ -43594,14 +43742,6 @@
       },
       {
         "x": 4,
-        "y": 14,
-        "src": "sprout/Grass.png",
-        "atlas_x": 0,
-        "atlas_y": 5,
-        "type": "grass"
-      },
-      {
-        "x": 5,
         "y": 14,
         "src": "sprout/Grass.png",
         "atlas_x": 0,
@@ -44097,14 +44237,6 @@
         "type": "grass"
       },
       {
-        "x": 32,
-        "y": 21,
-        "src": "sprout/Grass.png",
-        "atlas_x": 0,
-        "atlas_y": 5,
-        "type": "grass"
-      },
-      {
         "x": 33,
         "y": 21,
         "src": "sprout/Grass.png",
@@ -44198,14 +44330,6 @@
         "src": "sprout/Grass.png",
         "atlas_x": 0,
         "atlas_y": 5,
-        "type": "grass"
-      },
-      {
-        "x": 37,
-        "y": 23,
-        "src": "sprout/Grass.png",
-        "atlas_x": 3,
-        "atlas_y": 6,
         "type": "grass"
       },
       {
@@ -44609,14 +44733,6 @@
         "type": "grass"
       },
       {
-        "x": 3,
-        "y": 31,
-        "src": "sprout/Grass.png",
-        "atlas_x": 0,
-        "atlas_y": 5,
-        "type": "grass"
-      },
-      {
         "x": 4,
         "y": 31,
         "src": "sprout/Grass.png",
@@ -44913,14 +45029,6 @@
         "type": "grass"
       },
       {
-        "x": 15,
-        "y": 33,
-        "src": "sprout/Grass.png",
-        "atlas_x": 0,
-        "atlas_y": 5,
-        "type": "grass"
-      },
-      {
         "x": 18,
         "y": 33,
         "src": "sprout/Grass.png",
@@ -45009,14 +45117,6 @@
         "type": "grass"
       },
       {
-        "x": 17,
-        "y": 34,
-        "src": "sprout/Grass.png",
-        "atlas_x": 0,
-        "atlas_y": 5,
-        "type": "grass"
-      },
-      {
         "x": 28,
         "y": 34,
         "src": "sprout/Grass.png",
@@ -45098,14 +45198,6 @@
       },
       {
         "x": 9,
-        "y": 35,
-        "src": "sprout/Grass.png",
-        "atlas_x": 0,
-        "atlas_y": 5,
-        "type": "grass"
-      },
-      {
-        "x": 17,
         "y": 35,
         "src": "sprout/Grass.png",
         "atlas_x": 0,

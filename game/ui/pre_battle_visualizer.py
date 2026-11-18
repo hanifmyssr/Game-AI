@@ -66,6 +66,10 @@ COLOR_CARD_BG = (255, 253, 248)
 COLOR_CARD_SUB_BG = (250, 245, 236)
 COLOR_CARD_BORDER = (215, 200, 178)
 
+# Dimensi dasar simpul pohon CSP (diselaraskan dengan compute_tree_layout)
+CSP_NODE_W = 360.0
+CSP_NODE_H = 104.0
+
 
 def _get_bezier_points_horizontal(p0: Tuple[float, float], p3: Tuple[float, float], steps: int = 20) -> List[Tuple[int, int]]:
     """Menghasilkan titik-titik kurva Bezier kubik horizontal (mengalir halus dari kiri ke kanan)."""
@@ -234,26 +238,28 @@ class PreBattleVisualizerModal:
         self.is_playing = not self.is_playing
 
     def reset_view(self):
-        """Mereset posisi pan dan zoom ke posisi optimal awal (kiri tengah)."""
+        """Mereset posisi pan dan zoom ke posisi optimal awal (kotak besar jelas terbaca)."""
         if self.rect_canvas.width > 0:
             if self.active_tab == "CSP":
                 if self.csp_tree_h > 0:
                     scale_fit_y = (self.rect_canvas.height - 80) / float(max(1, self.csp_tree_h))
                     scale_fit_x = (self.rect_canvas.width - 80) / float(max(1, self.csp_tree_w))
-                    self.zoom = max(0.45, min(1.0, min(scale_fit_y, scale_fit_x * 1.1)))
+                    # Pertahankan zoom minimum 0.82 agar kotak simpul besar, teks terbaca jelas,
+                    # serta kolom induk + cabang anak tetap muat berdampingan di kanvas.
+                    self.zoom = max(0.82, min(1.05, min(scale_fit_y, scale_fit_x * 1.15)))
                 else:
-                    self.zoom = 1.0
+                    self.zoom = 0.95
                 # Mulai dari kiri kanvas dengan padding yang rapi
-                self.pan_x = 40.0
-                self.pan_y = max(30.0, (self.rect_canvas.height - self.csp_tree_h * self.zoom) / 2.0)
+                self.pan_x = 32.0
+                self.pan_y = max(24.0, (self.rect_canvas.height - self.csp_tree_h * self.zoom) / 2.0)
             else:
                 self.zoom = 1.0
                 self.pan_x = 30.0
                 self.pan_y = 30.0
         else:
-            self.zoom = 1.0
-            self.pan_x = 40.0
-            self.pan_y = 40.0
+            self.zoom = 0.95
+            self.pan_x = 32.0
+            self.pan_y = 32.0
         self.target_pan_x = self.pan_x
         self.target_pan_y = self.pan_y
 
@@ -498,8 +504,8 @@ class PreBattleVisualizerModal:
         mx, my = screen_pos
         cx = self.rect_canvas.x + self.pan_x
         cy = self.rect_canvas.y + self.pan_y
-        node_w = 310 * self.zoom
-        node_h = 86 * self.zoom
+        node_w = CSP_NODE_W * self.zoom
+        node_h = CSP_NODE_H * self.zoom
 
         # Hanya periksa node yang telah muncul sampai step saat ini
         visible_node_ids = self._get_visible_csp_node_ids()
@@ -540,13 +546,18 @@ class PreBattleVisualizerModal:
             nid = cur_step_info.get("node_id")
             if nid is not None and nid in self.csp_tree:
                 nd = self.csp_tree[nid]
-                node_w_base = 310.0
-                node_h_base = 86.0
-                node_center_x = (nd["x"] + node_w_base * 0.5) * self.zoom
-                node_center_y = (nd["y"] + node_h_base * 0.5) * self.zoom
+                node_center_x = (nd["x"] + CSP_NODE_W * 0.5) * self.zoom
+                node_center_y = (nd["y"] + CSP_NODE_H * 0.5) * self.zoom
 
-                # Posisikan simpul aktif di sekitar 40% horizontal dan 48% vertikal kanvas
-                target_x = (self.rect_canvas.width * 0.40) - node_center_x
+                # Pada ROOT/BACKTRACK tempatkan di kiri kanvas agar cabang anak di kanan ikut terlihat;
+                # pada simpul daun/baru geser ke 54% agar koneksi dari induk tetap tampak.
+                node_status = nd.get("status", "ASSIGN")
+                half_w = (CSP_NODE_W * 0.5) * self.zoom
+                if node_status in ("ROOT", "BACKTRACK"):
+                    anchor_x = max(24.0 + half_w, self.rect_canvas.width * 0.25)
+                else:
+                    anchor_x = self.rect_canvas.width * 0.54
+                target_x = anchor_x - node_center_x
                 target_y = (self.rect_canvas.height * 0.48) - node_center_y
                 self.target_pan_x = target_x
                 self.target_pan_y = target_y
@@ -900,10 +911,8 @@ class PreBattleVisualizerModal:
 
         cx = self.rect_canvas.x + self.pan_x
         cy = self.rect_canvas.y + self.pan_y
-        node_w_base = 310
-        node_h_base = 86
-        node_w = int(node_w_base * self.zoom)
-        node_h = int(node_h_base * self.zoom)
+        node_w = int(CSP_NODE_W * self.zoom)
+        node_h = int(CSP_NODE_H * self.zoom)
 
         visible_nids = self._get_visible_csp_node_ids()
         current_step_info = self.csp_timeline[self.csp_current_step] if self.csp_timeline else {}
@@ -915,8 +924,8 @@ class PreBattleVisualizerModal:
             pid = nd.get("parent_id")
             if pid is not None and pid in visible_nids:
                 p_node = self.csp_tree[pid]
-                p0 = (cx + (p_node["x"] + node_w_base) * self.zoom, cy + (p_node["y"] + node_h_base / 2.0) * self.zoom)
-                p3 = (cx + nd["x"] * self.zoom, cy + (nd["y"] + node_h_base / 2.0) * self.zoom)
+                p0 = (cx + (p_node["x"] + CSP_NODE_W) * self.zoom, cy + (p_node["y"] + CSP_NODE_H / 2.0) * self.zoom)
+                p3 = (cx + nd["x"] * self.zoom, cy + (nd["y"] + CSP_NODE_H / 2.0) * self.zoom)
 
                 is_sol = (nid in self.solution_path_ids and pid in self.solution_path_ids and nd["status"] == "SOLUTION")
                 is_prun = (nd["status"] == "PRUNED")
@@ -935,10 +944,10 @@ class PreBattleVisualizerModal:
                     return sub
             return ""
 
-        # 2. Gambar Node Rounded Box Horizontal Berisi 3 Baris Detail Lega
-        font_node_title = font_bubble if self.zoom >= 0.85 else (font_sm if self.zoom >= 0.65 else font_tiny)
-        font_node_sub = font_sm if self.zoom >= 0.80 else font_tiny
-        font_node_detail = font_sm if self.zoom >= 0.85 else font_tiny
+        # 2. Pemilihan Font Adaptif Sesuai Ukuran Aktual Kotak
+        font_node_title = font_bubble if node_h >= 82 else (font_sm if node_h >= 62 else font_tiny)
+        font_node_sub = font_sm if node_h >= 78 else font_tiny
+        font_node_detail = font_tiny
 
         for nid in visible_nids:
             nd = self.csp_tree[nid]
@@ -1000,33 +1009,32 @@ class PreBattleVisualizerModal:
             pygame.draw.rect(screen, bg_col, node_rect, border_radius=8)
             pygame.draw.rect(screen, border_col, node_rect, max(1, int(2 * self.zoom)), border_radius=8)
 
-            # Teks Node Berisi 3 Baris Rinci (Dilindungi clipping agar tidak keluar kotak)
-            if self.zoom >= 0.40:
+            # Teks Node Terdistribusi Dinamis Anti-Tumpang Tindih
+            if self.zoom >= 0.38:
                 clip_node = node_rect.clip(self.rect_canvas)
                 screen.set_clip(clip_node)
 
-                max_txt_w = max(10, node_rect.width - int(18 * self.zoom))
+                max_txt_w = max(16, node_rect.width - 20)
                 var_name = nd.get("var", "")
                 val_str = str(nd.get("val", ""))
 
-                # Baris 1: Variabel & Nilai Eksplisit
                 header_raw = f"{var_name} = {val_str}" if var_name != "ROOT" else "START CSP (ROOT)"
-                lbl_top = fit_text(font_node_title, header_raw, max_txt_w)
-                if lbl_top:
-                    s_top = font_node_title.render(lbl_top, True, COLOR_TEXT_PRIMARY)
-                    screen.blit(s_top, (node_rect.x + (node_rect.width - s_top.get_width()) // 2, node_rect.y + int(8 * self.zoom)))
+                rows = [
+                    (fit_text(font_node_title, header_raw, max_txt_w), font_node_title, COLOR_TEXT_PRIMARY),
+                    (fit_text(font_node_sub, badge_txt, max_txt_w), font_node_sub, badge_col),
+                ]
+                if node_h >= 64:
+                    rows.append((fit_text(font_node_detail, detail_txt, max_txt_w), font_node_detail, detail_col))
 
-                # Baris 2: Badge Status & Keputusan Algoritma
-                lbl_mid = fit_text(font_node_sub, badge_txt, max_txt_w)
-                if lbl_mid:
-                    s_mid = font_node_sub.render(lbl_mid, True, badge_col)
-                    screen.blit(s_mid, (node_rect.x + (node_rect.width - s_mid.get_width()) // 2, node_rect.y + int(33 * self.zoom)))
-
-                # Baris 3: Alasan Pruning / Kondisi Konsistensi LCV
-                lbl_bot = fit_text(font_node_detail, detail_txt, max_txt_w)
-                if lbl_bot:
-                    s_bot = font_node_detail.render(lbl_bot, True, detail_col)
-                    screen.blit(s_bot, (node_rect.x + (node_rect.width - s_bot.get_width()) // 2, node_rect.y + int(57 * self.zoom)))
+                rendered_rows = [fnt.render(txt, True, col) for txt, fnt, col in rows if txt]
+                if rendered_rows:
+                    total_txt_h = sum(s.get_height() for s in rendered_rows)
+                    gap_v = max(2, (node_rect.height - total_txt_h) // (len(rendered_rows) + 1))
+                    block_h = total_txt_h + gap_v * (len(rendered_rows) - 1)
+                    cur_y = node_rect.y + max(3, (node_rect.height - block_h) // 2)
+                    for r_surf in rendered_rows:
+                        screen.blit(r_surf, (node_rect.x + (node_rect.width - r_surf.get_width()) // 2, cur_y))
+                        cur_y += r_surf.get_height() + gap_v
 
                 screen.set_clip(self.rect_canvas)
 

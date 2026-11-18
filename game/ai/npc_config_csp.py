@@ -593,10 +593,10 @@ class NPCConfigCSP:
 def compute_tree_layout(
     tree: Dict[int, Dict[str, Any]],
     root_id: int = 0,
-    node_w: int = 310,
-    node_h: int = 86,
-    gap_x: int = 90,
-    gap_y: int = 30
+    node_w: int = 360,
+    node_h: int = 104,
+    gap_x: int = 72,
+    gap_y: int = 26
 ) -> Tuple[int, int]:
     """Menghitung tata letak pohon secara horizontal (kiri ke kanan) anti-tumpang tindih.
     

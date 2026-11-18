@@ -59,6 +59,7 @@ class NPC:
         self.grid_manager = GridManager(map_data)
 
         self.chasing = False
+        self.forced_chase_timer = 0.0
         self.is_returning_to_patrol = False
         self.grid = (0, 0)
         self.px = 0.0
@@ -130,6 +131,9 @@ class NPC:
 
         self.sprite.update(dt, self.moving)
 
+        if self.forced_chase_timer > 0.0:
+            self.forced_chase_timer = max(0.0, self.forced_chase_timer - dt)
+
         if self.speech_timer > 0.0:
             self.speech_timer = max(0.0, self.speech_timer - dt)
             if self.speech_timer <= 0.0:
@@ -148,7 +152,7 @@ class NPC:
                     if self.is_patrol and self.waypoints:
                         self.is_returning_to_patrol = True
         elif self.chasing and not self.moving:
-            if not self.can_detect_player(self.player):
+            if self.forced_chase_timer <= 0.0 and not self.can_detect_player(self.player):
                 self.chasing = False
                 self.speech_bubble = "Kehilangan jejak..."
                 self.speech_timer = 2.0
@@ -222,7 +226,7 @@ class NPC:
 
     def _on_movement_finished(self):
         if self.chasing and self.grid != self.player.grid:
-            if not self.can_detect_player(self.player):
+            if self.forced_chase_timer <= 0.0 and not self.can_detect_player(self.player):
                 self.chasing = False
                 self.speech_bubble = "Kehilangan jejak..."
                 self.speech_timer = 2.0
@@ -255,7 +259,7 @@ class NPC:
             self.speech_bubble = "Ada penyusup!"
             self.speech_timer = 2.0
 
-        if self.chasing and not self.can_detect_player(self.player):
+        if self.chasing and self.forced_chase_timer <= 0.0 and not self.can_detect_player(self.player):
             self.chasing = False
             self.speech_bubble = "Kehilangan jejak..."
             self.speech_timer = 2.0

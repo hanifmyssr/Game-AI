@@ -107,41 +107,27 @@ class InterNPCManager:
 
     def _apply_npc_behaviors(self) -> None:
         """Menerapkan hasil inferensi logika ke objek NPC nyata di game/app.py."""
-        # 1. Shiro (penjaga Peti A di utara)
-        if hasattr(self.app, "npc_shiro"):
-            if self.chaser_assigned == "Shiro":
-                self.app.npc_shiro.chasing = True
-                self.app.npc_shiro.is_returning_to_patrol = False
-                self.app.npc_shiro.speech_bubble = "Peti A dijarah! Berhenti!"
-                self.app.npc_shiro.speech_timer = 2.5
+        specs = [
+            ("Shiro", getattr(self.app, "npc_shiro", None), "Peti A dijarah! Berhenti!"),
+            ("Oyen", getattr(self.app, "npc", None), "Peti B dicuri! Serang!"),
+            ("Kuro", getattr(self.app, "npc_kuro", None), "Peti C dibobol! Kejar!"),
+        ]
+        for npc_name, npc_obj, alert_msg in specs:
+            if not npc_obj:
+                continue
+            if self.chaser_assigned == npc_name:
+                npc_obj.chasing = True
+                npc_obj.forced_chase_timer = 2.5
+                npc_obj.investigating = False
+                npc_obj.investigate_target = None
+                npc_obj.is_returning_to_patrol = False
+                npc_obj.speech_bubble = alert_msg
+                npc_obj.speech_timer = 2.5
                 if hasattr(self.app, "player"):
-                    self.app.npc_shiro.find_path(self.app.player.grid)
+                    npc_obj.find_path(self.app.player.grid)
             else:
-                self.app.npc_shiro.chasing = False
-
-        # 2. Oyen (penjaga Peti B di kiri bawah)
-        if hasattr(self.app, "npc"):
-            if self.chaser_assigned == "Oyen":
-                self.app.npc.chasing = True
-                self.app.npc.is_returning_to_patrol = False
-                self.app.npc.speech_bubble = "Peti B dicuri! Serang!"
-                self.app.npc.speech_timer = 2.5
-                if hasattr(self.app, "player"):
-                    self.app.npc.find_path(self.app.player.grid)
-            else:
-                self.app.npc.chasing = False
-
-        # 3. Kuro (penjaga Peti C di kanan/timur)
-        if hasattr(self.app, "npc_kuro"):
-            if self.chaser_assigned == "Kuro":
-                self.app.npc_kuro.chasing = True
-                self.app.npc_kuro.is_returning_to_patrol = False
-                self.app.npc_kuro.speech_bubble = "Peti C dibobol! Kejar!"
-                self.app.npc_kuro.speech_timer = 2.5
-                if hasattr(self.app, "player"):
-                    self.app.npc_kuro.find_path(self.app.player.grid)
-            else:
-                self.app.npc_kuro.chasing = False
+                npc_obj.chasing = False
+                npc_obj.forced_chase_timer = 0.0
 
     def can_open_portal(self) -> Tuple[bool, List[ResolutionStep], Optional[Dict[str, Any]]]:
         """Mengevaluasi pembuktian resolusi refutasi klausa PortalActive (Materi 07: Logic KB)."""

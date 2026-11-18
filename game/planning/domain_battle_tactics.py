@@ -11,7 +11,7 @@ from .pddl_types import Predicate, State, ActionSchema
 
 
 def create_battle_tactics_problem(warrior_name: str = "Oyen",
-                                  tank_name: str = "Kage",
+                                  tank_name: str = "Kuro",
                                   healer_name: str = "Shiro") -> Tuple[State, Set[Predicate], List[ActionSchema]]:
     """Membangun Initial State (s0), Goal, dan Aksi STRIPS untuk skenario Battle Tag-Team."""
 

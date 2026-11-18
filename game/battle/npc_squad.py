@@ -13,10 +13,10 @@ CLASS_DISPLAY_NAMES = {
     "ranger": "Ranger (Kuro - Pemanah)",
     "mage": "Mage (Shiro - Penyihir)",
     "tank": "Tank (Penahan)",
-    "assassin": "Assassin (Kage - Penyelinap)",
+    "assassin": "Assassin (Shadow - Penyelinap)",
 }
 
-DEFAULT_NAMES = ["Oyen", "Kuro", "Shiro", "Kage"]
+DEFAULT_NAMES = ["Oyen", "Kuro", "Shiro", "Shadow"]
 
 
 class NPCMember:
@@ -32,6 +32,7 @@ class NPCMember:
         def_bonus: int = 0,
         eval_profile: str = "BALANCED",
         current_hp: Optional[int] = None,
+        allow_boss_assets: bool = False,
     ):
         self.name = name
         self.char_type = char_type
@@ -41,24 +42,26 @@ class NPCMember:
         self.atk_bonus = atk_bonus
         self.def_bonus = def_bonus
         self.eval_profile = eval_profile
+        self.allow_boss_assets = allow_boss_assets
         self.portrait: Optional[pygame.Surface] = None
         self.battle_sprite: Optional[pygame.Surface] = None
         self._load_portrait()
         self._load_battle_sprite()
 
     def _load_portrait(self):
-        # 1. Prioritaskan aset spesifik berdasarkan nama NPC (misal: portrait_kuro.png, portrait_shiro.png)
+        # 1. Prioritaskan aset spesifik berdasarkan nama NPC (misal: portrait_shiro.png; portrait_kage hanya untuk Boss)
         first_name = self.name.split()[0].lower() if self.name else ""
-        name_path = os.path.join(config.ASSET_DIR, "portraits", f"portrait_{first_name}.png")
-        if os.path.exists(name_path):
-            try:
-                img = pygame.image.load(name_path).convert_alpha()
-                self.portrait = pygame.transform.smoothscale(img, (96, 96))
-                return
-            except Exception:
-                pass
+        if first_name and (self.allow_boss_assets or first_name not in ("kage", "boss")):
+            name_path = os.path.join(config.ASSET_DIR, "portraits", f"portrait_{first_name}.png")
+            if os.path.exists(name_path):
+                try:
+                    img = pygame.image.load(name_path).convert_alpha()
+                    self.portrait = pygame.transform.smoothscale(img, (96, 96))
+                    return
+                except Exception:
+                    pass
 
-        # 2. Fallback ke tipe role karakter (misal: portrait_ranger.png)
+        # 2. Fallback ke tipe role karakter (misal: portrait_ranger.png, portrait_assassin.png)
         portrait_map = {
             "warrior": "portrait_warrior.png",
             "tank": "portrait_warrior.png",
@@ -76,15 +79,16 @@ class NPCMember:
                 self.portrait = None
 
     def _load_battle_sprite(self):
-        # 1. Prioritaskan aset spesifik berdasarkan nama NPC (misal: battle_kuro.png, battle_shiro.png)
+        # 1. Prioritaskan aset spesifik berdasarkan nama NPC (battle_kage.png khusus Boss Menara Kuno)
         first_name = self.name.split()[0].lower() if self.name else ""
-        name_path = os.path.join(config.ASSET_DIR, "battle_sprites", f"battle_{first_name}.png")
-        if os.path.exists(name_path):
-            try:
-                self.battle_sprite = pygame.image.load(name_path).convert_alpha()
-                return
-            except Exception:
-                pass
+        if first_name and (self.allow_boss_assets or first_name not in ("kage", "boss")):
+            name_path = os.path.join(config.ASSET_DIR, "battle_sprites", f"battle_{first_name}.png")
+            if os.path.exists(name_path):
+                try:
+                    self.battle_sprite = pygame.image.load(name_path).convert_alpha()
+                    return
+                except Exception:
+                    pass
 
         # 2. Fallback ke tipe role karakter (misal: battle_ranger.png)
         filename = f"battle_{self.char_type}.png"
@@ -136,7 +140,7 @@ class NPCSquad:
             elif ctype == "tank":
                 base_name = "Oyen"
             elif ctype == "assassin":
-                base_name = "Kage"
+                base_name = "Shadow"
             else:
                 base_name = DEFAULT_NAMES[i % len(DEFAULT_NAMES)]
             member_name = f"{base_name} the {ctype.capitalize()}"
@@ -168,6 +172,7 @@ class NPCSquad:
             atk_bonus=8,
             def_bonus=5,
             eval_profile="AGGRESSIVE",
+            allow_boss_assets=True,
         )
         minion_1 = NPCMember(
             name="Shadow Ranger",

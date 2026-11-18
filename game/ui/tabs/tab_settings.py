@@ -152,7 +152,7 @@ class TabSettings:
         surface.blit(lbl_nfo, (cx + 12, cy + 8))
 
         infos = [
-            "Proyek Game AI: Bolu Kesepian",
+            "Proyek Game AI: Bakekok",
             "Mata Kuliah: Kecerdasan Buatan (SEM 3)",
             "Universitas Pendidikan Indonesia",
             "Materi: Search (01-03), Minimax (04),",

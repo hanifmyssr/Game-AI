@@ -1,4 +1,4 @@
-"""Konfigurasi global untuk port Python game BoluKesepian."""
+"""Konfigurasi global untuk port Python game Bakekok."""
 
 import os
 

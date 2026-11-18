@@ -231,7 +231,7 @@ class GuideModal:
         pygame.draw.rect(surface, COLOR_HEADER_BG, (mx, my, mw, hdr_h), border_top_left_radius=12, border_top_right_radius=12)
         pygame.draw.line(surface, COLOR_HEADER_LINE, (mx, my + hdr_h), (mx + mw, my + hdr_h), 1)
 
-        title_str = "SELAMAT DATANG DI BOLU KESEPIAN — MISI & PANDUAN" if self.welcome_mode else "BUKU PANDUAN PETUALANG & INSPEKTOR AI"
+        title_str = "SELAMAT DATANG DI BAKEKOK — MISI & PANDUAN" if self.welcome_mode else "BUKU PANDUAN PETUALANG & INSPEKTOR AI"
         sub_str = "Baca alur misi, kontrol dasar, fungsi tab sebelah kiri, serta ringkasan metode AI"
         surface.blit(font_title.render(title_str, True, COLOR_HEADING), (mx + 20, my + 10))
         surface.blit(font_tiny.render(sub_str, True, COLOR_TEXT_SUB), (mx + 20, my + 36))

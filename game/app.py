@@ -198,7 +198,7 @@ class App:
         self.screen = pygame.display.set_mode(
             (config.WINDOW_WIDTH, config.WINDOW_HEIGHT), RESIZABLE
         )
-        pygame.display.set_caption("BoluKesepian - AI Pathfinding & Minimax Duel")
+        pygame.display.set_caption("Bakekok - AI Pathfinding & Minimax Duel")
         self.clock = pygame.time.Clock()
         self.running = True
 

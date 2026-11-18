@@ -1,4 +1,4 @@
-"""Audio and Sound Manager for BoluKesepian.
+"""Audio and Sound Manager for Bakekok.
 
 Mengelola pemutaran musik latar (BGM) dan efek suara (SFX) seperti:
 - Langkah kaki (dirt & grass footsteps)

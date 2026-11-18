@@ -190,17 +190,19 @@ class NPC:
         max_dist = 9 if self.chasing else 5
         return dist <= max_dist
 
-    def on_noise_heard(self, noise_pos: tuple):
+    def on_noise_heard(self, noise_pos: tuple) -> bool:
         """Merespons stimulus suara siulan [SPASI] (plan_dev.md Section 4.2)."""
         dist = abs(self.grid[0] - noise_pos[0]) + abs(self.grid[1] - noise_pos[1])
-        if dist <= 7:
+        if dist <= config.WHISTLE_RADIUS:
             self.investigating = True
-            self.investigate_timer = 4.0
+            self.investigate_timer = 5.0
             self.investigate_target = tuple(noise_pos)
             self.chasing = False
             self.speech_bubble = "Ada suara apa?!"
             self.speech_timer = 2.5
             self.find_path(self.investigate_target)
+            return True
+        return False
 
     def _patrol_step_towards(self, target_grid):
         if self.moving or self.grid == tuple(target_grid):
@@ -210,6 +212,13 @@ class NPC:
         path = result.get("path", [])
         if len(path) > 1:
             self.move_to_grid(path[1])
+
+    def _is_search_focused(self) -> bool:
+        """Cek apakah NPC ini yang menjadi fokus visualisasi pathfinding & metrik Tab Search."""
+        getter = getattr(self.events, "get_focused_npc", None) if self.events else None
+        if callable(getter):
+            return getter() is self
+        return getattr(self, "name", "") == "Oyen" or not self.is_patrol
 
     def _on_movement_finished(self):
         if self.chasing and self.grid != self.player.grid:
@@ -221,8 +230,9 @@ class NPC:
                     self.is_returning_to_patrol = True
             else:
                 self.move_one_step_towards(self.player.grid)
-        elif getattr(self, "name", "") == "Oyen" and hasattr(self, "events") and self.events:
-            self.find_path(self.player.grid)
+        elif self._is_search_focused() and hasattr(self, "events") and self.events:
+            target = self.investigate_target if (self.investigating and self.investigate_target) else self.player.grid
+            self.find_path(target)
 
     # ------------------------------------------------------------------ #
     def toggle_chase(self):
@@ -233,7 +243,9 @@ class NPC:
 
     def set_algorithm(self, algo_name):
         self.algorithm = algo_name
-        self.find_path(self.player.grid)
+        if self._is_search_focused():
+            target = self.investigate_target if (self.investigating and self.investigate_target) else self.player.grid
+            self.find_path(target)
 
     def on_player_moved(self, player_grid):
         # Jika pemain berada di radius pandang dan tidak sembunyi di semak, picu kejar
@@ -265,7 +277,7 @@ class NPC:
         path = result.get("path", [])
         self.current_path = path
 
-        if getattr(self, "name", "") == "Oyen" or not self.is_patrol:
+        if self._is_search_focused():
             self.events.path_calculated(
                 path,
                 result.get("visited_nodes", []),
@@ -273,57 +285,57 @@ class NPC:
                 self.grid,
             )
 
-        # --- Hitung perbandingan UCS vs algoritma terpilih ---
-        selected_key = self.algorithm
-        selected_label = ""
-        selected_heuristic = "—"
-        for key, label in config.ALGORITHMS:
-            if key == selected_key:
-                selected_label = label
-                break
+            # --- Hitung perbandingan UCS vs algoritma terpilih untuk NPC fokus ---
+            selected_key = self.algorithm
+            selected_label = ""
+            selected_heuristic = "—"
+            for key, label in config.ALGORITHMS:
+                if key == selected_key:
+                    selected_label = label
+                    break
 
-        if "MANHATTAN" in selected_key:
-            selected_heuristic = "Manhattan: |Δx| + |Δy|"
-        elif "EUCLIDEAN" in selected_key:
-            selected_heuristic = "Euclidean: √(Δx² + Δy²)"
-        elif "CHEBYSHEV" in selected_key:
-            selected_heuristic = "Chebyshev: max(|Δx|, |Δy|)"
+            if "MANHATTAN" in selected_key:
+                selected_heuristic = "Manhattan: |Δx| + |Δy|"
+            elif "EUCLIDEAN" in selected_key:
+                selected_heuristic = "Euclidean: √(Δx² + Δy²)"
+            elif "CHEBYSHEV" in selected_key:
+                selected_heuristic = "Chebyshev: max(|Δx|, |Δy|)"
 
-        # Jalankan UCS sebagai baseline jika algoritma terpilih bukan UCS
-        if selected_key != "UCS":
-            ucs_result = UCS.search(self.grid, target_pos, self.grid_manager)
-            ucs_expanded = ucs_result.get("total_expanded", 0)
-            ucs_time = ucs_result.get("execution_time_ms", 0.0)
-            ucs_path = ucs_result.get("path", [])
-            ucs_steps = max(0, len(ucs_path) - 1)
-            ucs_cost = ucs_result.get("total_cost", 0.0)
-        else:
-            ucs_expanded = result.get("total_expanded", 0)
-            ucs_time = result.get("execution_time_ms", 0.0)
-            ucs_steps = max(0, len(path) - 1)
-            ucs_cost = result.get("total_cost", 0.0)
+            # Jalankan UCS sebagai baseline jika algoritma terpilih bukan UCS
+            if selected_key != "UCS":
+                ucs_result = UCS.search(self.grid, target_pos, self.grid_manager)
+                ucs_expanded = ucs_result.get("total_expanded", 0)
+                ucs_time = ucs_result.get("execution_time_ms", 0.0)
+                ucs_path = ucs_result.get("path", [])
+                ucs_steps = max(0, len(ucs_path) - 1)
+                ucs_cost = ucs_result.get("total_cost", 0.0)
+            else:
+                ucs_expanded = result.get("total_expanded", 0)
+                ucs_time = result.get("execution_time_ms", 0.0)
+                ucs_steps = max(0, len(path) - 1)
+                ucs_cost = result.get("total_cost", 0.0)
 
-        comparison = {
-            "ucs_expanded": ucs_expanded,
-            "ucs_time_ms": ucs_time,
-            "ucs_path_len": ucs_steps,
-            "ucs_cost": ucs_cost,
-            "cur_expanded": result.get("total_expanded", 0),
-            "cur_time_ms": result.get("execution_time_ms", 0.0),
-            "cur_path_len": max(0, len(path) - 1),
-            "cur_cost": result.get("total_cost", 0.0),
-            "cur_label": selected_label,
-            "cur_heuristic": selected_heuristic,
-        }
+            comparison = {
+                "ucs_expanded": ucs_expanded,
+                "ucs_time_ms": ucs_time,
+                "ucs_path_len": ucs_steps,
+                "ucs_cost": ucs_cost,
+                "cur_expanded": result.get("total_expanded", 0),
+                "cur_time_ms": result.get("execution_time_ms", 0.0),
+                "cur_path_len": max(0, len(path) - 1),
+                "cur_cost": result.get("total_cost", 0.0),
+                "cur_label": selected_label,
+                "cur_heuristic": selected_heuristic,
+            }
 
-        # Kirim data ke overlay melalui events
-        overlay = getattr(self.events, "debug_overlay", None)
-        if overlay:
-            overlay.set_comparison_data(comparison)
-            overlay.update_stats(
-                result.get("total_expanded", 0),
-                result.get("execution_time_ms", 0.0),
-            )
+            # Kirim data ke overlay melalui events
+            overlay = getattr(self.events, "debug_overlay", None)
+            if overlay:
+                overlay.set_comparison_data(comparison)
+                overlay.update_stats(
+                    result.get("total_expanded", 0),
+                    result.get("execution_time_ms", 0.0),
+                )
 
         return result
 

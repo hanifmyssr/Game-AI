@@ -94,6 +94,7 @@ PLAYER_MOVE_DURATION = 0.12
 NPC_STEP_DURATION = 0.2
 NPC_CHASE_INTERVAL = 0.35
 CALL_BUBBLE_TIME = 1.5
+WHISTLE_RADIUS = 12  # Jangkauan dengar peluit [SPASI] dalam ubin (Manhattan)
 
 # 1 siklus walk (4 frame) pas 1 langkah ubin
 WALK_FRAME_DURATION = PLAYER_MOVE_DURATION / 4

@@ -4,6 +4,7 @@
 class GameManager:
     def __init__(self):
         self.debug_overlay = None
+        self.get_focused_npc = None
         self._player_moved_listeners = []
         self._algorithm_changed_listeners = []
 

@@ -297,6 +297,12 @@ class App:
         self.events.subscribe_algorithm_changed(self.npc_kuro.set_algorithm)
         self.events.subscribe_algorithm_changed(self.npc_shiro.set_algorithm)
 
+        # Fokus NPC untuk visualisasi pathfinding & metrik Tab Search (Opsi B: Auto + Pilih Manual)
+        self.search_focus_mode = "AUTO"
+        self._last_focused_npc_id = None
+        self.events.get_focused_npc = self.get_focused_search_npc
+        self.refresh_search_focus(force=True)
+
         # Audio Manager & BGM (Musik Latar)
         self.audio = AudioManager()
         self.audio.play_bgm(volume=0.15)
@@ -463,6 +469,36 @@ class App:
         self.ai_ticker_info = None
         self.is_boss_battle = False
         self._tower_prompted = False
+        self.refresh_search_focus(force=True)
+
+    def get_focused_search_npc(self):
+        """Mengembalikan NPC yang menjadi fokus visualisasi pathfinding & metrik Tab Search."""
+        npcs = [n for n in (getattr(self, "npc", None), getattr(self, "npc_kuro", None), getattr(self, "npc_shiro", None)) if n is not None]
+        if not npcs:
+            return None
+        mode = getattr(self, "search_focus_mode", "AUTO")
+        if mode != "AUTO":
+            for n in npcs:
+                if getattr(n, "name", "") == mode:
+                    return n
+        p_grid = self.player.grid
+        active = [n for n in npcs if getattr(n, "chasing", False) or getattr(n, "investigating", False)]
+        pool = active if active else npcs
+        return min(pool, key=lambda n: abs(n.grid[0] - p_grid[0]) + abs(n.grid[1] - p_grid[1]))
+
+    def refresh_search_focus(self, force: bool = False):
+        """Menyegarkan visualisasi jalur kuning-biru & metrik Tab Search jika fokus NPC berubah."""
+        focused = self.get_focused_search_npc()
+        if focused is None:
+            return
+        if force or id(focused) != getattr(self, "_last_focused_npc_id", None):
+            self._last_focused_npc_id = id(focused)
+            target = (
+                focused.investigate_target
+                if (getattr(focused, "investigating", False) and getattr(focused, "investigate_target", None))
+                else self.player.grid
+            )
+            focused.find_path(target)
 
     def open_graph_modal(self, mode="MINIMAX"):
         """Membuka modal visualizer pohon keputusan AI universal (Minimax, Logic Refutation, PDDL Planning)."""
@@ -810,6 +846,7 @@ class App:
             self.npc.update(dt)
             self.npc_kuro.update(dt)
             self.npc_shiro.update(dt)
+            self.refresh_search_focus()
 
             if not self.player.moving and not self.gacha_active and not self.gacha_showcase:
                 self._process_continuous_player_movement()
@@ -4341,8 +4378,8 @@ class App:
         self.whistle_waves.append({
             "pos": (self.player.px, self.player.py),
             "radius": 12.0,
-            "max_radius": 7.0 * config.TILE_SIZE,
-            "speed": 160.0,
+            "max_radius": float(config.WHISTLE_RADIUS) * config.TILE_SIZE,
+            "speed": 240.0,
             "alpha": 220,
         })
         if hasattr(self, "audio") and hasattr(self.audio, "play_chest_prompt"):
@@ -4356,14 +4393,15 @@ class App:
                     heard_count += 1
 
         if heard_count > 0:
+            self.refresh_search_focus(force=True)
             self.ai_ticker_info = {
                 "title": f"[SOUND PERCEPT] Siulan Bolu Didengar ({heard_count} NPC Menyelidiki)!",
-                "detail": "Stimulus audio memicu peralihan state NPC ke INVESTIGATING (4.0s) menuju titik siulan.",
+                "detail": "Stimulus audio memicu peralihan state NPC ke INVESTIGATING (5.0s) menuju titik siulan.",
                 "timer": 3.8,
             }
         else:
             self.ai_ticker_info = {
-                "title": "[SOUND PERCEPT] Siulan Bolu Berbunyi -> Tidak ada NPC dalam jangkauan dengar (7 ubin).",
+                "title": f"[SOUND PERCEPT] Siulan Bolu Berbunyi -> Tidak ada NPC dalam jangkauan dengar ({config.WHISTLE_RADIUS} ubin).",
                 "detail": "Suara peluit tidak mencapai radius pendengaran NPC di sekeliling peta.",
                 "timer": 2.5,
             }

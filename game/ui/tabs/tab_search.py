@@ -30,6 +30,21 @@ class TabSearch:
             font=fonts.get("sm", pygame.font.Font(None, 16)),
         )
 
+        focus_options = [
+            ("AUTO", "Auto (Aktif / Terdekat)"),
+            ("Oyen", "Oyen (Kiri Bawah)"),
+            ("Kuro", "Kuro (Kanan Bawah)"),
+            ("Shiro", "Shiro (Kiri Atas)"),
+        ]
+        focus_rect = pygame.Rect(self.rect.x + 12, self.rect.y + 114, self.rect.width - 24, 34)
+        self.dropdown_focus = UIDropdown(
+            focus_rect,
+            focus_options,
+            on_select=self._on_focus_selected,
+            initial_idx=0,
+            font=fonts.get("sm", pygame.font.Font(None, 16)),
+        )
+
         btn_w = self.rect.width - 24
         self.show_path_line = True
         self.btn_toggle_path = UIButton(
@@ -49,9 +64,17 @@ class TabSearch:
     def _on_algorithm_selected(self, index: int, key: str) -> None:
         if hasattr(self.app, "events") and self.app.events:
             self.app.events.emit_algorithm_changed(key)
-        if hasattr(self.app, "npc") and hasattr(self.app, "player"):
+        if hasattr(self.app, "refresh_search_focus"):
+            self.app.refresh_search_focus(force=True)
+        elif hasattr(self.app, "npc") and hasattr(self.app, "player"):
             self.app.npc.set_algorithm(key)
             self.app.npc.find_path(self.app.player.grid)
+
+    def _on_focus_selected(self, index: int, key: str) -> None:
+        if hasattr(self.app, "search_focus_mode"):
+            self.app.search_focus_mode = key
+        if hasattr(self.app, "refresh_search_focus"):
+            self.app.refresh_search_focus(force=True)
 
     def _on_toggle_path_vis(self) -> None:
         self.show_path_line = not self.show_path_line
@@ -60,7 +83,15 @@ class TabSearch:
             setattr(self.app.overlay, "show_path_visualization", self.show_path_line)
 
     def handle_event(self, event: pygame.event.Event) -> bool:
+        if getattr(self.dropdown_focus, "is_open", False) and self.dropdown_focus.handle_event(event):
+            return True
         if self.dropdown_algo.handle_event(event):
+            if getattr(self.dropdown_algo, "is_open", False):
+                self.dropdown_focus.is_open = False
+            return True
+        if self.dropdown_focus.handle_event(event):
+            if getattr(self.dropdown_focus, "is_open", False):
+                self.dropdown_algo.is_open = False
             return True
         if self.btn_toggle_path.handle_event(event):
             return True
@@ -78,15 +109,21 @@ class TabSearch:
         cy = self.rect.y + 12
         card_w = self.rect.width - 24
 
-        # 1. KARTU PILIH ALGORITMA
-        card_algo_h = 82
+        # 1. KARTU PILIH ALGORITMA & TARGET NPC FOKUS
+        card_algo_h = 144
         draw_card(surface, pygame.Rect(cx, cy, card_w, card_algo_h), config.COLOR_CARD_BG,
                   border_color=config.COLOR_CARD_BORDER, border_radius=8)
         lbl_algo = font_sm.render("Pilih Algoritma AI:", True, config.COLOR_TEXT_PRIMARY)
         surface.blit(lbl_algo, (cx + 12, cy + 8))
 
-        self.dropdown_algo.rect = pygame.Rect(cx + 10, cy + 34, card_w - 20, 36)
+        self.dropdown_algo.rect = pygame.Rect(cx + 10, cy + 32, card_w - 20, 34)
         self.dropdown_algo.draw(surface)
+
+        lbl_focus = font_sm.render("Target NPC Fokus:", True, config.COLOR_TEXT_PRIMARY)
+        surface.blit(lbl_focus, (cx + 12, cy + 74))
+
+        self.dropdown_focus.rect = pygame.Rect(cx + 10, cy + 98, card_w - 20, 34)
+        self.dropdown_focus.draw(surface)
 
         # 2. KARTU METRIK JALUR (GRID 2x2)
         cy += card_algo_h + 12
@@ -94,7 +131,10 @@ class TabSearch:
         draw_card(surface, pygame.Rect(cx, cy, card_w, card_m_h), config.COLOR_CARD_BG,
                   border_color=config.COLOR_CARD_BORDER, border_radius=8)
 
-        m_title = font_tiny.render("── METRIK PENCARIAN REAL-TIME ──", True, config.COLOR_TEXT_SECONDARY)
+        focused_npc = self.app.get_focused_search_npc() if hasattr(self.app, "get_focused_search_npc") else None
+        focused_name = getattr(focused_npc, "name", "Oyen") if focused_npc else "Oyen"
+        focus_tag = f"{focused_name.upper()} (AUTO)" if getattr(self.app, "search_focus_mode", "AUTO") == "AUTO" else focused_name.upper()
+        m_title = font_tiny.render(f"── METRIK: {focus_tag} ──", True, config.COLOR_TEXT_SECONDARY)
         surface.blit(m_title, (cx + (card_w - m_title.get_width()) // 2, cy + 6))
 
         overlay = getattr(self.app, "overlay", None)
@@ -193,4 +233,5 @@ class TabSearch:
         self.btn_toggle_path.draw(surface)
 
     def draw_popups(self, surface: pygame.Surface) -> None:
+        self.dropdown_focus.draw_menu(surface)
         self.dropdown_algo.draw_menu(surface)

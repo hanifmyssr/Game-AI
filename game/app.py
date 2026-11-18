@@ -29,9 +29,11 @@ from .planning.domain_battle_tactics import create_battle_tactics_problem
 from .planning.task_executor import TaskExecutor
 from .ui.logic_overlay import LogicOverlay
 from .ui.planning_overlay import PlanningOverlay
+from .ui.guide_modal import GuideModal
 
 MOUSEWHEEL = getattr(pygame, "MOUSEWHEEL", 1027)
 K_F11 = getattr(pygame, "K_F11", 292)
+K_h = getattr(pygame, "K_h", 104)
 K_k = getattr(pygame, "K_k", 107)
 K_p = getattr(pygame, "K_p", 112)
 K_EQUALS = getattr(pygame, "K_EQUALS", 61)
@@ -385,6 +387,12 @@ class App:
         self.task_executor = TaskExecutor(self)
         self.latest_plan_result = None
         self.planning_overlay = PlanningOverlay(self.fonts, self)
+
+        # Modal Panduan Awal & Buku Panduan 3-Tab [H]
+        self.guide_modal = GuideModal(self.fonts)
+        self.btn_guide_pill = pygame.Rect(0, 0, 0, 0)
+        if hasattr(self.overlay, "nav_rail"):
+            self.overlay.nav_rail.on_guide_clicked = self.guide_modal.toggle
 
         # State Fitur Tahap 4 / Plan Dev: Stealth, Whistle & Boss Portal Menara Kuno
         self.whistle_waves = []
@@ -817,6 +825,8 @@ class App:
 
     # ------------------------------------------------------------------ #
     def run(self):
+        if os.environ.get("SDL_VIDEODRIVER") != "dummy" and hasattr(self, "guide_modal"):
+            self.guide_modal.open_welcome()
         while self.running:
             dt = self.clock.tick(config.FPS) / 1000.0
             self._handle_events()
@@ -826,6 +836,9 @@ class App:
 
     def _update(self, dt):
         self.overlay.update_animation(dt)
+
+        if getattr(self, "guide_modal", None) and self.guide_modal.is_open:
+            return
 
         # Update gelombang suara siulan [SPASI] (plan_dev.md Section 4.2)
         for wave in self.whistle_waves[:]:
@@ -1331,6 +1344,12 @@ class App:
     # ------------------------------------------------------------------ #
     def _handle_events(self):
         for event in pygame.event.get():
+            if event.type == QUIT:
+                self.running = False
+                continue
+            if getattr(self, "guide_modal", None) and self.guide_modal.is_open:
+                if self.guide_modal.handle_event(event):
+                    continue
             # Modal Visualizer Pohon AI Universal (Full-Screen)
             if hasattr(self, "overlay") and hasattr(self.overlay, "tree_overlay") and self.overlay.tree_overlay.visible:
                 if self.overlay.tree_overlay.handle_event(event):
@@ -1442,6 +1461,9 @@ class App:
                     if getattr(self, "gacha_showcase", None):
                         self.gacha_showcase = None
                         return
+                    if getattr(self, "btn_guide_pill", None) and self.btn_guide_pill.collidepoint(pos):
+                        self.guide_modal.toggle()
+                        return
                     self.overlay.handle_event(event)
             elif event.type in (MOUSEBUTTONUP, MOUSEMOTION):
                 if self.game_mode == "BATTLE" and self.overlay.tree_overlay.visible:
@@ -1500,6 +1522,10 @@ class App:
             self._zoom_camera(1 / 1.1)
             return
 
+        if key == K_h:
+            if hasattr(self, "guide_modal"):
+                self.guide_modal.toggle()
+                return
         if key == K_k:
             if hasattr(self, "logic_overlay"):
                 self.logic_overlay.toggle()
@@ -1680,6 +1706,7 @@ class App:
                 self._draw_call_bubble()
             self._draw_npc_offscreen_indicator()
             self._draw_obtained_items_hud()
+            self._draw_guide_pill_button()
             self._draw_ai_ticker_banner()
             if self.gacha_active or getattr(self, "gacha_showcase", None) or self.gacha_message_timer > 0:
                 self._draw_gacha_popup()
@@ -1712,7 +1739,33 @@ class App:
         if hasattr(self, "overlay") and hasattr(self.overlay, "graph_modal") and self.overlay.graph_modal.visible:
             self.overlay.graph_modal.draw(self.screen)
 
+        # 9. Modal Panduan Awal & Buku Panduan [H] di layer paling atas
+        if hasattr(self, "guide_modal") and self.guide_modal.is_open:
+            self.guide_modal.draw(self.screen)
+
         pygame.display.flip()
+
+    def _draw_guide_pill_button(self):
+        """Merender tombol cepat Buku Panduan [H] di pojok kanan atas area peta eksplorasi."""
+        sw = self.screen.get_width()
+        font_sm = self.fonts.get("tiny", self.fonts["sm"])
+        lbl = "[H] Buku Panduan"
+        t_surf = font_sm.render(lbl, True, (115, 62, 16))
+        bw = t_surf.get_width() + 26
+        bh = 30
+        bx = sw - bw - 14
+        by = 14
+        self.btn_guide_pill = pygame.Rect(bx, by, bw, bh)
+
+        hov = self.btn_guide_pill.collidepoint(pygame.mouse.get_pos())
+        bg_col = (255, 252, 244, 245) if hov else (248, 242, 228, 232)
+        bd_col = (205, 135, 25) if hov else (196, 174, 144)
+
+        pill = pygame.Surface((bw, bh), SRCALPHA)
+        pill.fill(bg_col)
+        pygame.draw.rect(pill, bd_col, pill.get_rect(), 1, border_radius=8)
+        self.screen.blit(pill, self.btn_guide_pill.topleft)
+        self.screen.blit(t_surf, t_surf.get_rect(center=self.btn_guide_pill.center))
 
     def _draw_npc_offscreen_indicator(self):
         # Batas area viewport kamera (sebelah kanan sidebar debug)

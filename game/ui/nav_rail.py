@@ -35,8 +35,11 @@ class NavRail:
         self.rect = pygame.Rect(rect)
         self.on_tab_changed = on_tab_changed
         self.on_tab_toggled = on_tab_toggled
+        self.on_guide_clicked: Optional[Callable[[], None]] = None
         self.active_tab = 0
         self.hovered_tab = -1
+        self.guide_hovered = False
+        self.guide_rect = pygame.Rect(0, 0, 0, 0)
         self.tabs: List[NavTabItem] = [
             NavTabItem(0, "Hero", "★", "HR", "Status Hero & Inventaris (Game)"),
             NavTabItem(1, "Search", "🔍", "SR", "Materi 01-03: Pathfinding (A*, UCS, Greedy)"),
@@ -93,6 +96,11 @@ class NavRail:
                 y = start_y + item.tab_id * spacing
             self.item_rects[item.tab_id] = pygame.Rect(self.rect.x + pad_x, y, btn_size, btn_size)
 
+        settings_r = self.item_rects.get(6)
+        if settings_r:
+            gy = settings_r.y - btn_size - int(round(10 * scale))
+            self.guide_rect = pygame.Rect(self.rect.x + pad_x, gy, btn_size, btn_size)
+
     def set_badge(self, tab_id: int, active: bool = True, color: Tuple = config.COLOR_STATUS_DANGER) -> None:
         for item in self.tabs:
             if item.tab_id == tab_id:
@@ -109,14 +117,21 @@ class NavRail:
     def handle_event(self, event: pygame.event.Event) -> bool:
         if event.type == MOUSEMOTION:
             prev_hover = self.hovered_tab
+            prev_guide = self.guide_hovered
             self.hovered_tab = -1
-            for tab_id, btn_rect in self.item_rects.items():
-                if btn_rect.collidepoint(event.pos):
-                    self.hovered_tab = tab_id
-                    break
-            return self.hovered_tab != prev_hover
+            self.guide_hovered = self.guide_rect.collidepoint(event.pos)
+            if not self.guide_hovered:
+                for tab_id, btn_rect in self.item_rects.items():
+                    if btn_rect.collidepoint(event.pos):
+                        self.hovered_tab = tab_id
+                        break
+            return (self.hovered_tab != prev_hover) or (self.guide_hovered != prev_guide)
 
         if event.type == MOUSEBUTTONDOWN and event.button == 1:
+            if self.guide_rect.collidepoint(event.pos):
+                if self.on_guide_clicked:
+                    self.on_guide_clicked()
+                return True
             for tab_id, btn_rect in self.item_rects.items():
                 if btn_rect.collidepoint(event.pos):
                     if tab_id == self.active_tab:
@@ -139,12 +154,23 @@ class NavRail:
         pygame.draw.line(surface, config.COLOR_NAV_BORDER,
                          (self.rect.right - 1, self.rect.y), (self.rect.right - 1, self.rect.bottom), 1)
 
-        # Garis pemisah sebelum tab Settings di bawah
-        sep_y = self.rect.bottom - 72
+        # Garis pemisah sebelum tombol Panduan & Settings di bawah
+        sep_anchor = self.guide_rect.y if self.guide_rect.height > 0 else (self.rect.bottom - 72)
+        sep_y = sep_anchor - 10
         pygame.draw.line(surface, (68, 52, 38), (self.rect.x + 10, sep_y), (self.rect.right - 10, sep_y), 1)
 
         # 2. Gambar tiap tombol item
         tooltip_to_draw = None
+
+        if self.guide_rect.height > 0:
+            g_bg = config.COLOR_NAV_HOVER if self.guide_hovered else (46, 38, 28)
+            g_bd = config.COLOR_NAV_ACCENT if self.guide_hovered else (120, 92, 54)
+            draw_card(surface, self.guide_rect, g_bg, border_color=g_bd, border_radius=8)
+            g_col = (255, 255, 255) if self.guide_hovered else config.COLOR_NAV_ACCENT
+            q_surf = self.font_code.render("?", True, g_col)
+            surface.blit(q_surf, q_surf.get_rect(center=self.guide_rect.center))
+            if self.guide_hovered:
+                tooltip_to_draw = (self.guide_rect, "Buku Panduan & Metode AI [H]")
 
         for item in self.tabs:
             btn_rect = self.item_rects[item.tab_id]

@@ -174,31 +174,80 @@ def build_planning_graph_nodes(plan_result: PlanningResult) -> Any:
     """Membangun visualisasi simpul GraphNode untuk pohon rencana PDDL di graph_modal.py."""
     from ..ui.graph_modal import GraphNode
 
-    title = f"PDDL PLAN: {plan_result.engine_name}"
-    status_label = f"Total Aksi: {len(plan_result.plan)} │ Simpul: {plan_result.nodes_expanded}"
+    s0_list = sorted((repr(p) for p in plan_result.s0.predicates)) if plan_result.s0 else []
+    goal_list = sorted((repr(p) for p in plan_result.goal)) if plan_result.goal else []
+    curr_state = plan_result.s0
+
+    h0 = len(plan_result.goal - curr_state.predicates) if (curr_state and plan_result.goal) else 0
     root = GraphNode(
         node_id="root_plan",
-        label=title,
-        sub_label=status_label,
-        score_str=f"{plan_result.time_ms:.1f}ms",
+        label="STATE AWAL (s0)",
+        sub_label=plan_result.engine_name,
+        score_str=f"{len(plan_result.plan)} Aksi | {plan_result.nodes_expanded} Simpul | {plan_result.time_ms:.2f}ms",
         node_type="MAX" if plan_result.success else "DEFAULT",
-        is_best=plan_result.success
+        is_best=False,
     )
+    root.meta = {
+        "role": "ROOT",
+        "title": "State Awal (s0) — Titik Mulai PDDL",
+        "engine": plan_result.engine_name,
+        "total_actions": len(plan_result.plan),
+        "nodes_expanded": plan_result.nodes_expanded,
+        "time_ms": plan_result.time_ms,
+        "total_cost": plan_result.cost,
+        "g": 0.0,
+        "h": h0,
+        "f": float(h0),
+        "description": "Kondisi dunia awal (Initial State s0) sebelum sekuens aksi STRIPS dijalankan menuju sasaran (Goal).",
+        "state_fluents": s0_list,
+        "goal_fluents": goal_list,
+        "goal_remaining": sorted(repr(p) for p in (plan_result.goal - curr_state.predicates)) if (curr_state and plan_result.goal) else goal_list,
+    }
 
     curr_parent = root
+    cum_g = 0.0
     for idx, act in enumerate(plan_result.plan, start=1):
-        pre_str = ", ".join(repr(p) for p in act.preconditions) or "None"
-        add_str = ", ".join(repr(p) for p in act.add_list)
+        pre_list = sorted(repr(p) for p in act.preconditions)
+        add_list = sorted(repr(p) for p in act.add_list)
+        del_list = sorted(repr(p) for p in act.del_list)
+        cum_g += float(act.cost)
+        if curr_state is not None:
+            curr_state = curr_state.apply(act)
+        rem_goal = sorted(repr(p) for p in (plan_result.goal - curr_state.predicates)) if (curr_state and plan_result.goal) else []
+        sat_goal = sorted(repr(p) for p in (plan_result.goal & curr_state.predicates)) if (curr_state and plan_result.goal) else []
+        h_val = len(rem_goal)
+        f_val = cum_g + h_val
         is_last = (idx == len(plan_result.plan))
+
+        params_txt = f"({', '.join(act.parameters)})" if act.parameters else ""
+        score_txt = f"[OK] GOAL REACHED (g={cum_g:.0f}, h=0)" if is_last else f"Step {idx} | g={cum_g:.0f} h={h_val} f={f_val:.0f}"
 
         act_node = curr_parent.add_child(GraphNode(
             node_id=f"act_{idx}",
-            label=f"{idx}. {repr(act)}",
-            sub_label=f"Pre: {pre_str} │ Add: {add_str}",
-            score_str="GOAL REACHED" if is_last else f"Step {idx}",
-            node_type="TERMINAL" if is_last else "DEFAULT",
-            is_best=is_last
+            label=f"{idx}. {act.name}",
+            sub_label=params_txt or (act.description[:40] if act.description else ""),
+            score_str=score_txt,
+            node_type="TERMINAL" if is_last else "MIN",
+            is_best=is_last,
         ))
+        act_node.meta = {
+            "role": "GOAL" if is_last else "STEP",
+            "step_idx": idx,
+            "title": f"Langkah {idx}: {repr(act)}",
+            "action_name": act.name,
+            "parameters": ", ".join(act.parameters) if act.parameters else "-",
+            "description": act.description or "Eksekusi aksi STRIPS.",
+            "cost": float(act.cost),
+            "g": cum_g,
+            "h": h_val,
+            "f": f_val,
+            "preconditions": pre_list,
+            "add_list": add_list,
+            "del_list": del_list,
+            "state_fluents": sorted(repr(p) for p in curr_state.predicates) if curr_state else [],
+            "goal_satisfied": sat_goal,
+            "goal_remaining": rem_goal,
+        }
         curr_parent = act_node
 
     return root

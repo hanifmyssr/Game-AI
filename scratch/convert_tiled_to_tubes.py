@@ -159,7 +159,7 @@ def convert():
                     foliage_sunflowers.append((gx, gy))
                     is_swaying_foliage = True
                 elif ("basic_grass_biom" in img_lower and lid in (27, 28, 36, 37)) or \
-                     ("ext_10a" in img_lower and (lid == 141 or lid in (119, 131) or 96 <= lid <= 103)):  # Ambush semak berry/hijau/lebar/ext_10a
+                     ("ext_10a" in img_lower and lid == 141):  # Ambush semak berry/hijau/lebar/ext_10a (lid 141 = semak, 119/131 = pohon ramping)
                     atype = "berry" if lid == 27 else ("green" if (lid == 28 or lid == 141) else "wide_bush")
                     foliage_ambushes.append({"x": gx, "y": gy, "src": img, "atlas_x": ax, "atlas_y": ay, "type": atype})
                     is_swaying_foliage = True

@@ -152,8 +152,9 @@ class MapData:
             elif isinstance(item, (list, tuple)) and len(item) >= 2:
                 self.bush_set.add((int(item[0]), int(item[1])))
 
-        # 2. Pengecualian semak dari rintangan keras (agar pemain & NPC bisa masuk untuk stealth)
-        self.obstacle_set.difference_update(self.bush_set)
+        # 2. Pastikan rintangan keras (Layer 4 Obstacle) selalu diprioritaskan;
+        #    ubin yang ditandai obstacle tidak boleh menjadi semak stealth yang bisa dimasuki
+        self.bush_set.difference_update(self.obstacle_set)
 
         # Sel yang memiliki ubin tanah/ground nyata atau jembatan tidak dianggap air
         for k in list(self.water.keys()):
@@ -169,7 +170,7 @@ class MapData:
                 continue
             self.walkable_set.add(key)
         for key in self.bush_set:
-            if key in self.ground_set and (key not in self.water or key in bridge_set):
+            if key in self.ground_set and key not in self.obstacle_set and (key not in self.water or key in bridge_set):
                 self.walkable_set.add(key)
 
     def _load_layer(self, cells, target):

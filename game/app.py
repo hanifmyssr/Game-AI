@@ -1715,9 +1715,6 @@ class App:
         pygame.display.flip()
 
     def _draw_npc_offscreen_indicator(self):
-        # Hitung posisi screen NPC
-        npc_sx, npc_sy = self.camera.world_to_screen(self.npc.px, self.npc.py)
-
         # Batas area viewport kamera (sebelah kanan sidebar debug)
         panel_w = self.camera.left_panel_w
         margin = 32
@@ -1725,75 +1722,80 @@ class App:
         max_x = self.screen.get_width() - margin
         min_y = margin
         max_y = self.screen.get_height() - margin
-
-        # Cek apakah NPC berada di luar layar yang terlihat
-        is_offscreen = (
-            npc_sx < min_x or npc_sx > max_x or
-            npc_sy < min_y or npc_sy > max_y
-        )
-
-        if not is_offscreen:
-            return
-
-        # Batasi posisi indikator di pinggir layar
-        edge_x = max(min_x, min(max_x, npc_sx))
-        edge_y = max(min_y, min(max_y, npc_sy))
-
-        # Arah panah dari pusat layar ke NPC
         center_x = (min_x + max_x) / 2.0
         center_y = (min_y + max_y) / 2.0
-        angle = math.atan2(npc_sy - center_y, npc_sx - center_x)
+        viewport_rect = pygame.Rect(min_x, min_y, max_x - min_x, max_y - min_y)
 
-        # Jarak dalam langkah ubin
-        dist_grid = abs(self.player.grid[0] - self.npc.grid[0]) + abs(self.player.grid[1] - self.npc.grid[1])
-
-        # Efek denyut (pulsing animation)
+        # Efek denyut (pulsing animation) & font seragam untuk seluruh NPC
         pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() * 0.008)
         radius = int(18 + pulse * 3)
-
-        # Glow surface transparan
-        glow_surf = pygame.Surface((radius * 2 + 16, radius * 2 + 16), SRCALPHA)
-        glow_center = (glow_surf.get_width() // 2, glow_surf.get_height() // 2)
-
-        pygame.draw.circle(glow_surf, (255, 140, 0, int(80 + pulse * 60)), glow_center, radius + 5)
-        pygame.draw.circle(glow_surf, (255, 120, 0, 230), glow_center, radius)
-        pygame.draw.circle(glow_surf, (255, 230, 110, 240), glow_center, radius, width=2)
-        self.screen.blit(glow_surf, glow_surf.get_rect(center=(int(edge_x), int(edge_y))))
-
-        # Segitiga panah penunjuk arah NPC
-        arrow_len = 12
-        p1 = (
-            int(edge_x + math.cos(angle) * (radius + arrow_len)),
-            int(edge_y + math.sin(angle) * (radius + arrow_len)),
-        )
-        p2 = (
-            int(edge_x + math.cos(angle + 2.5) * radius),
-            int(edge_y + math.sin(angle + 2.5) * radius),
-        )
-        p3 = (
-            int(edge_x + math.cos(angle - 2.5) * radius),
-            int(edge_y + math.sin(angle - 2.5) * radius),
-        )
-        pygame.draw.polygon(self.screen, (255, 225, 50), [p1, p2, p3])
-        pygame.draw.polygon(self.screen, (210, 80, 0), [p1, p2, p3], 1)
-
-        # Label Teks Badge "🐱 Bolu (X meter)"
         font = self.fonts.get("bubble", self.fonts["sm"])
-        txt_surf = font.render(f"🐱 {self.npc.name} ({dist_grid} meter)", True, (150, 75, 15))
+        placed_badges = []
 
-        txt_x = int(edge_x)
-        txt_y = int(edge_y + radius + 16)
-        if txt_y > max_y - 10:
-            txt_y = int(edge_y - radius - 16)
+        for npc in (getattr(self, "npc", None), getattr(self, "npc_kuro", None), getattr(self, "npc_shiro", None)):
+            if not npc:
+                continue
 
-        bg_rect = txt_surf.get_rect(center=(txt_x, txt_y))
-        bg_rect.clamp_ip(pygame.Rect(min_x, min_y, max_x - min_x, max_y - min_y))
+            npc_sx, npc_sy = self.camera.world_to_screen(npc.px, npc.py)
+            is_offscreen = (
+                npc_sx < min_x or npc_sx > max_x or
+                npc_sy < min_y or npc_sy > max_y
+            )
+            if not is_offscreen:
+                continue
 
-        card_bg = pygame.Surface((bg_rect.width + 12, bg_rect.height + 6), SRCALPHA)
-        card_bg.fill((255, 253, 248, 245))
-        pygame.draw.rect(card_bg, (215, 140, 30), card_bg.get_rect(), 1, border_radius=5)
-        self.screen.blit(card_bg, card_bg.get_rect(center=bg_rect.center))
-        self.screen.blit(txt_surf, bg_rect)
+            edge_x = max(min_x, min(max_x, npc_sx))
+            edge_y = max(min_y, min(max_y, npc_sy))
+            angle = math.atan2(npc_sy - center_y, npc_sx - center_x)
+            dist_grid = abs(self.player.grid[0] - npc.grid[0]) + abs(self.player.grid[1] - npc.grid[1])
+
+            # Glow surface transparan
+            glow_surf = pygame.Surface((radius * 2 + 16, radius * 2 + 16), SRCALPHA)
+            glow_center = (glow_surf.get_width() // 2, glow_surf.get_height() // 2)
+
+            pygame.draw.circle(glow_surf, (255, 140, 0, int(80 + pulse * 60)), glow_center, radius + 5)
+            pygame.draw.circle(glow_surf, (255, 120, 0, 230), glow_center, radius)
+            pygame.draw.circle(glow_surf, (255, 230, 110, 240), glow_center, radius, width=2)
+            self.screen.blit(glow_surf, glow_surf.get_rect(center=(int(edge_x), int(edge_y))))
+
+            # Segitiga panah penunjuk arah NPC
+            arrow_len = 12
+            p1 = (
+                int(edge_x + math.cos(angle) * (radius + arrow_len)),
+                int(edge_y + math.sin(angle) * (radius + arrow_len)),
+            )
+            p2 = (
+                int(edge_x + math.cos(angle + 2.5) * radius),
+                int(edge_y + math.sin(angle + 2.5) * radius),
+            )
+            p3 = (
+                int(edge_x + math.cos(angle - 2.5) * radius),
+                int(edge_y + math.sin(angle - 2.5) * radius),
+            )
+            pygame.draw.polygon(self.screen, (255, 225, 50), [p1, p2, p3])
+            pygame.draw.polygon(self.screen, (210, 80, 0), [p1, p2, p3], 1)
+
+            # Label Teks Badge "🐱 Nama (X meter)"
+            txt_surf = font.render(f"🐱 {npc.name} ({dist_grid} meter)", True, (150, 75, 15))
+            txt_x = int(edge_x)
+            txt_y = int(edge_y + radius + 16)
+            if txt_y > max_y - 10:
+                txt_y = int(edge_y - radius - 16)
+
+            bg_rect = txt_surf.get_rect(center=(txt_x, txt_y))
+            bg_rect.clamp_ip(viewport_rect)
+            for prev in placed_badges:
+                if bg_rect.colliderect(prev.inflate(6, 6)):
+                    shift = prev.height + 10
+                    bg_rect.y = prev.y - shift if bg_rect.centery > max_y // 2 else prev.bottom + 8
+                    bg_rect.clamp_ip(viewport_rect)
+            placed_badges.append(bg_rect)
+
+            card_bg = pygame.Surface((bg_rect.width + 12, bg_rect.height + 6), SRCALPHA)
+            card_bg.fill((255, 253, 248, 245))
+            pygame.draw.rect(card_bg, (215, 140, 30), card_bg.get_rect(), 1, border_radius=5)
+            self.screen.blit(card_bg, card_bg.get_rect(center=bg_rect.center))
+            self.screen.blit(txt_surf, bg_rect)
 
     def _draw_battle_arena(self):
         # Tampilkan arena pertempuran di area kerja kanan

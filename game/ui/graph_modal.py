@@ -18,6 +18,7 @@ Fitur Utama:
 from typing import Dict, Any, Optional, List, Tuple
 import pygame
 from ..core import config
+from .components import draw_card, draw_metric_tile, draw_badge_pill
 
 MOUSEBUTTONDOWN = getattr(pygame, "MOUSEBUTTONDOWN", 1025)
 MOUSEBUTTONUP = getattr(pygame, "MOUSEBUTTONUP", 1026)
@@ -693,34 +694,28 @@ class UnifiedGraphModal:
             lbl_s = font_sm.render(label, True, txt_c)
             surface.blit(lbl_s, lbl_s.get_rect(center=btn.center))
 
-        # Area Konten Scrollable Sidebar
+        # Area Konten Scrollable Sidebar (Berbasis Card & Grid)
         body_rect = pygame.Rect(sb.x + pad, tab_y + 38, sb.width - pad * 2, sb.height - 58)
+        content_w = body_rect.width - 10
+        x0 = body_rect.x
+
+        cards: List[Tuple[str, Any]] = []
+        if self.sidebar_tab == "THEORY":
+            cards = self._layout_theory_cards(x0, content_w, font_bubble, font_sm, font_tiny)
+        else:
+            cards = self._layout_detail_cards(x0, content_w, font_bubble, font_sm, font_tiny)
+
+        total_h = cards[-1][0].bottom - body_rect.y + 8 if cards else 0
+        self.sidebar_max_scroll = max(0.0, float(total_h - body_rect.height))
+        self.sidebar_scroll_y = max(0.0, min(self.sidebar_max_scroll, self.sidebar_scroll_y))
+        scroll_off = int(self.sidebar_scroll_y)
+
         old_clip = surface.get_clip()
         surface.set_clip(body_rect)
-
-        max_w = body_rect.width - 10
-        entries: List[Tuple[str, pygame.font.Font, Tuple[int, int, int], int]] = []
-
-        def add_block(text: str, fnt: pygame.font.Font, col: Tuple[int, int, int], space_after: int = 4):
-            for ln in _wrap_lines(fnt, text, max_w):
-                entries.append((ln, fnt, col, space_after))
-
-        if self.sidebar_tab == "THEORY":
-            self._build_theory_entries(add_block, font_bubble, font_sm, font_tiny)
-        else:
-            self._build_detail_entries(add_block, font_bubble, font_sm, font_tiny)
-
-        total_h = sum(fnt.get_height() + sp for (_, fnt, _, sp) in entries)
-        self.sidebar_max_scroll = max(0.0, float(total_h - body_rect.height + 12))
-        self.sidebar_scroll_y = max(0.0, min(self.sidebar_max_scroll, self.sidebar_scroll_y))
-
-        cur_y = body_rect.y - int(self.sidebar_scroll_y)
-        for (ln, fnt, col, sp) in entries:
-            h_ln = fnt.get_height()
-            if cur_y + h_ln >= body_rect.y and cur_y <= body_rect.bottom:
-                surface.blit(fnt.render(ln, True, col), (body_rect.x + 2, cur_y))
-            cur_y += h_ln + sp
-
+        for (c_rect, draw_fn) in cards:
+            shifted = c_rect.move(0, -scroll_off)
+            if shifted.bottom >= body_rect.y and shifted.y <= body_rect.bottom:
+                draw_fn(surface, shifted)
         surface.set_clip(old_clip)
 
         # Scrollbar indikator jika konten melebihi tinggi panel
@@ -732,109 +727,237 @@ class UnifiedGraphModal:
             thumb_y = body_rect.y + int((body_rect.height - thumb_h) * (self.sidebar_scroll_y / self.sidebar_max_scroll))
             pygame.draw.rect(surface, (185, 165, 140), (track.x, thumb_y, 4, thumb_h), border_radius=2)
 
-    def _build_detail_entries(self, add_block, font_bubble, font_sm, font_tiny) -> None:
+    def _make_list_card_drawer(
+        self,
+        title: str,
+        items: List[Tuple[str, Tuple[int, int, int]]],
+        title_col: Tuple[int, int, int],
+        bg_col: Tuple[int, int, int],
+        border_col: Tuple[int, int, int],
+        font_sm: pygame.font.Font,
+        font_tiny: pygame.font.Font,
+        card_w: int,
+    ) -> Tuple[int, Any]:
+        """Menghitung tinggi & membuat drawer kartu daftar ber-header rapi."""
+        inner_w = card_w - 20
+        wrapped: List[Tuple[str, Tuple[int, int, int]]] = []
+        for txt, col in items:
+            for ln in _wrap_lines(font_tiny, txt, inner_w):
+                wrapped.append((ln, col))
+        line_h = font_tiny.get_height() + 3
+        card_h = 34 + max(1, len(wrapped)) * line_h + 8
+
+        def _draw(surf: pygame.Surface, rect: pygame.Rect):
+            draw_card(surf, rect, bg_col, border_color=border_col, border_radius=7)
+            hdr = pygame.Rect(rect.x + 1, rect.y + 1, rect.width - 2, 24)
+            pygame.draw.rect(surf, COLOR_HEADER_BG, hdr, border_top_left_radius=6, border_top_right_radius=6)
+            pygame.draw.line(surf, border_col, (rect.x, rect.y + 25), (rect.right, rect.y + 25), 1)
+            t_s = font_tiny.render(title, True, title_col)
+            surf.blit(t_s, (rect.x + 10, rect.y + 5))
+            cy = rect.y + 31
+            for ln, col in wrapped:
+                surf.blit(font_tiny.render(ln, True, col), (rect.x + 10, cy))
+                cy += line_h
+
+        return card_h, _draw
+
+    def _layout_detail_cards(
+        self, x0: int, w: int,
+        font_bubble: pygame.font.Font, font_sm: pygame.font.Font, font_tiny: pygame.font.Font
+    ) -> List[Tuple[pygame.Rect, Any]]:
         nd = self.selected_node or self.root_node
+        cards: List[Tuple[pygame.Rect, Any]] = []
+        cy = self.rect_sidebar.y + 48
+
         if not nd:
-            add_block("Belum ada data simpul pohon.", font_sm, COLOR_TEXT_SECONDARY, 4)
-            return
+            r = pygame.Rect(x0, cy, w, 60)
+            cards.append((r, lambda s, rc: draw_card(s, rc, COLOR_CARD_BG, border_color=COLOR_CARD_BORDER, border_radius=7)))
+            return cards
 
         meta = nd.meta or {}
         if self.mode_tag == "PLANNING" and meta:
             role = meta.get("role", "STEP")
-            add_block(meta.get("title", nd.label), font_bubble, COLOR_TEXT_HEADING, 4)
+            badge_txt = "STATE AWAL" if role == "ROOT" else ("GOAL REACHED" if role == "GOAL" else f"LANGKAH #{meta.get('step_idx', '-')}")
+            badge_bg = (252, 243, 218) if role == "ROOT" else ((232, 248, 236) if role == "GOAL" else (235, 245, 255))
+            badge_fg = COLOR_TEXT_WARNING if role == "ROOT" else (COLOR_TEXT_SUCCESS if role == "GOAL" else COLOR_TEXT_ACCENT)
+
+            # 1. Kartu Header Simpul + Deskripsi
+            desc_lines = _wrap_lines(font_tiny, meta.get("description", "-"), w - 24)
+            title_lines = _wrap_lines(font_sm, meta.get("title", nd.label), w - 120)
+            c1_h = 18 + max(1, len(title_lines)) * (font_sm.get_height() + 2) + len(desc_lines) * (font_tiny.get_height() + 2) + 14
+            r1 = pygame.Rect(x0, cy, w, c1_h)
+
+            def draw_c1(surf, rc, tl=title_lines, dl=desc_lines, bt=badge_txt, bbg=badge_bg, bfg=badge_fg):
+                draw_card(surf, rc, COLOR_CARD_BG, border_color=COLOR_CARD_BORDER, border_radius=8)
+                pill_r = pygame.Rect(rc.right - 112, rc.y + 8, 100, 22)
+                draw_badge_pill(surf, pill_r, bt, bbg, bfg, font_tiny, border_color=bfg)
+                ty = rc.y + 10
+                for ln in tl:
+                    surf.blit(font_sm.render(ln, True, COLOR_TEXT_HEADING), (rc.x + 12, ty))
+                    ty += font_sm.get_height() + 2
+                ty += 4
+                for ln in dl:
+                    surf.blit(font_tiny.render(ln, True, COLOR_TEXT_SECONDARY), (rc.x + 12, ty))
+                    ty += font_tiny.get_height() + 2
+
+            cards.append((r1, draw_c1))
+            cy += c1_h + 10
+
+            # 2. Grid 3-Kolom Metrik (g, h, f atau Total Aksi, Simpul, Waktu)
+            gap = 8
+            tw = (w - gap * 2) // 3
+            th = 46
+            r_grid = pygame.Rect(x0, cy, w, th)
             if role == "ROOT":
-                add_block(f"Mesin: {meta.get('engine', '-')}", font_sm, COLOR_TEXT_ACCENT, 2)
-                add_block(f"Total Aksi: {meta.get('total_actions', 0)}  |  Simpul Diekspansi: {meta.get('nodes_expanded', 0)}  |  Waktu: {meta.get('time_ms', 0.0):.2f} ms", font_tiny, COLOR_TEXT_SECONDARY, 8)
-                add_block("Apa arti simpul ini?", font_sm, COLOR_TEXT_PRIMARY, 2)
-                add_block(meta.get("description", ""), font_tiny, COLOR_TEXT_SECONDARY, 8)
-
-                add_block("INITIAL STATE (s0) — Fakta Awal:", font_sm, COLOR_TEXT_ACCENT, 3)
-                for p in meta.get("state_fluents", []):
-                    add_block(f"• {p}", font_tiny, COLOR_TEXT_PRIMARY, 2)
-                add_block("", font_tiny, COLOR_TEXT_PRIMARY, 4)
-                add_block("GOAL STATE (G) — Sasaran Akhir:", font_sm, COLOR_TEXT_SUCCESS, 3)
-                for p in meta.get("goal_fluents", []):
-                    add_block(f"• {p}", font_tiny, COLOR_TEXT_SUCCESS, 2)
+                tiles = [
+                    ("TOTAL AKSI", f"{meta.get('total_actions', 0)} step", COLOR_TEXT_ACCENT),
+                    ("SIMPUL A*", f"{meta.get('nodes_expanded', 0)} node", COLOR_TEXT_WARNING),
+                    ("WAKTU", f"{meta.get('time_ms', 0.0):.2f} ms", COLOR_TEXT_SUCCESS),
+                ]
             else:
-                badge = "[GOAL TERCAPAI]" if role == "GOAL" else f"[AKSI LANGKAH #{meta.get('step_idx', '-')}]"
-                badge_col = COLOR_TEXT_SUCCESS if role == "GOAL" else COLOR_TEXT_ACCENT
-                add_block(badge, font_sm, badge_col, 4)
-                add_block(f"Deskripsi: {meta.get('description', '-')}", font_sm, COLOR_TEXT_PRIMARY, 6)
-                add_block(
-                    f"Metrik A*:  g(n) = {meta.get('g', 0):.0f} (biaya)  |  h(n) = {meta.get('h', 0)} (sisa gol)  |  f(n) = {meta.get('f', 0):.0f}",
-                    font_tiny, COLOR_TEXT_WARNING, 8,
-                )
+                tiles = [
+                    ("BIAYA g(n)", f"{meta.get('g', 0):.0f}", COLOR_TEXT_ACCENT),
+                    ("SISA h(n)", f"{meta.get('h', 0)}", COLOR_TEXT_WARNING),
+                    ("TOTAL f(n)", f"{meta.get('f', 0):.0f}", COLOR_TEXT_SUCCESS if role == "GOAL" else COLOR_TEXT_PRIMARY),
+                ]
 
-                add_block("1. PRECONDITIONS (Syarat Aksi Boleh Jalan):", font_sm, COLOR_TEXT_ACCENT, 3)
-                for p in meta.get("preconditions", []) or ["(Tidak ada)"]:
-                    add_block(f"• {p}", font_tiny, COLOR_TEXT_PRIMARY, 2)
+            def draw_metrics(surf, rc, t_list=tiles, tile_w=tw, tile_h=th, g=gap):
+                for idx_t, (lbl_t, val_t, col_t) in enumerate(t_list):
+                    tr = pygame.Rect(rc.x + idx_t * (tile_w + g), rc.y, tile_w, tile_h)
+                    draw_metric_tile(surf, tr, lbl_t, val_t, val_color=col_t, font_lbl=font_tiny, font_val=font_sm)
 
-                add_block("", font_tiny, COLOR_TEXT_PRIMARY, 4)
-                add_block("2. EFFECTS (Perubahan Dunia Setelah Aksi):", font_sm, COLOR_TEXT_PRIMARY, 3)
-                for p in meta.get("add_list", []):
-                    add_block(f"+ ADD: {p}", font_tiny, COLOR_TEXT_SUCCESS, 2)
-                for p in meta.get("del_list", []):
-                    add_block(f"- DEL: {p}", font_tiny, COLOR_TEXT_DANGER, 2)
-                if not meta.get("add_list") and not meta.get("del_list"):
-                    add_block("• (Tidak ada perubahan)", font_tiny, COLOR_TEXT_SECONDARY, 2)
+            cards.append((r_grid, draw_metrics))
+            cy += th + 10
 
-                add_block("", font_tiny, COLOR_TEXT_PRIMARY, 4)
-                add_block("3. STATE FLUENTS AKTIF SETELAH AKSI INI:", font_sm, COLOR_TEXT_HEADING, 3)
-                for p in meta.get("state_fluents", []):
-                    add_block(f"• {p}", font_tiny, COLOR_TEXT_PRIMARY, 2)
+            # 3. Grid 2-Kolom: (s0 vs Goal) untuk ROOT, atau (Preconditions vs Effects) untuk STEP
+            col_w = (w - gap) // 2
+            if role == "ROOT":
+                left_items = [(f"• {p}", COLOR_TEXT_PRIMARY) for p in (meta.get("state_fluents", []) or ["(Kosong)"])]
+                right_items = [(f"• {p}", COLOR_TEXT_SUCCESS) for p in (meta.get("goal_fluents", []) or ["(Kosong)"])]
+                lh, l_draw = self._make_list_card_drawer("INITIAL STATE (s0)", left_items, COLOR_TEXT_ACCENT, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, col_w)
+                rh, r_draw = self._make_list_card_drawer("GOAL STATE (G)", right_items, COLOR_TEXT_SUCCESS, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, col_w)
+                row_h = max(lh, rh)
+                cards.append((pygame.Rect(x0, cy, col_w, row_h), l_draw))
+                cards.append((pygame.Rect(x0 + col_w + gap, cy, col_w, row_h), r_draw))
+                cy += row_h + 10
+            else:
+                pre_items = [(f"• {p}", COLOR_TEXT_PRIMARY) for p in (meta.get("preconditions", []) or ["(Tidak ada)"])]
+                eff_items = [(f"+ {p}", COLOR_TEXT_SUCCESS) for p in meta.get("add_list", [])] + [
+                    (f"- {p}", COLOR_TEXT_DANGER) for p in meta.get("del_list", [])
+                ]
+                if not eff_items:
+                    eff_items = [("• (Tidak ada)", COLOR_TEXT_SECONDARY)]
+                lh, l_draw = self._make_list_card_drawer("PRECONDITIONS (Syarat)", pre_items, COLOR_TEXT_ACCENT, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, col_w)
+                rh, r_draw = self._make_list_card_drawer("EFFECTS (+Add / -Del)", eff_items, COLOR_TEXT_HEADING, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, col_w)
+                row_h = max(lh, rh)
+                cards.append((pygame.Rect(x0, cy, col_w, row_h), l_draw))
+                cards.append((pygame.Rect(x0 + col_w + gap, cy, col_w, row_h), r_draw))
+                cy += row_h + 10
 
+                # 4. Grid 2-Kolom Bawah: State Fluents Aktif vs Progress Goal
+                flu_items = [(f"• {p}", COLOR_TEXT_PRIMARY) for p in (meta.get("state_fluents", []) or ["(Kosong)"])]
+                sat = meta.get("goal_satisfied", [])
                 rem = meta.get("goal_remaining", [])
-                add_block("", font_tiny, COLOR_TEXT_PRIMARY, 4)
-                if rem:
-                    add_block(f"Sisa Goal Belum Terpenuhi ({len(rem)}):", font_sm, COLOR_TEXT_WARNING, 2)
-                    for p in rem:
-                        add_block(f"• {p}", font_tiny, COLOR_TEXT_SECONDARY, 2)
-                else:
-                    add_block("Seluruh Goal PDDL telah terpenuhi (Goal Reached)!", font_sm, COLOR_TEXT_SUCCESS, 4)
+                prog_items = [(f"[OK] {p}", COLOR_TEXT_SUCCESS) for p in sat] + [(f"[..] {p}", COLOR_TEXT_WARNING) for p in rem]
+                if not prog_items:
+                    prog_items = [("[OK] Seluruh Goal Tercapai!", COLOR_TEXT_SUCCESS)]
+                lh2, l_draw2 = self._make_list_card_drawer("STATE FLUENTS AKTIF", flu_items, COLOR_TEXT_HEADING, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, col_w)
+                rh2, r_draw2 = self._make_list_card_drawer("PROGRESS GOAL", prog_items, COLOR_TEXT_SUCCESS if not rem else COLOR_TEXT_WARNING, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, col_w)
+                row_h2 = max(lh2, rh2)
+                cards.append((pygame.Rect(x0, cy, col_w, row_h2), l_draw2))
+                cards.append((pygame.Rect(x0 + col_w + gap, cy, col_w, row_h2), r_draw2))
+                cy += row_h2 + 10
         else:
-            add_block(nd.label, font_bubble, COLOR_TEXT_HEADING, 4)
-            if nd.sub_label:
-                add_block(nd.sub_label, font_sm, COLOR_TEXT_ACCENT, 4)
-            if nd.score_str:
-                add_block(f"Evaluasi / Skor: {nd.score_str}", font_sm, COLOR_TEXT_SUCCESS if nd.is_best else COLOR_TEXT_PRIMARY, 6)
-            status_txt = "Cabang Dipangkas (Pruned)" if nd.is_pruned else ("Jalur Terbaik / Terpilih" if nd.is_best else f"Tipe Simpul: {nd.node_type}")
-            add_block(status_txt, font_tiny, COLOR_TEXT_SECONDARY, 6)
-            add_block(f"Jumlah Cabang Anak Langsung: {len(nd.children)}", font_tiny, COLOR_TEXT_SECONDARY, 4)
+            # Mode LOGIC / MINIMAX dalam kartu terstruktur
+            info_items = [
+                (f"Label: {nd.label}", COLOR_TEXT_PRIMARY),
+                (f"Sub-info: {nd.sub_label or '-'}", COLOR_TEXT_ACCENT),
+                (f"Evaluasi / Skor: {nd.score_str or '-'}", COLOR_TEXT_SUCCESS if nd.is_best else COLOR_TEXT_WARNING),
+                (f"Status: {'Dipangkas (Pruned)' if nd.is_pruned else ('Jalur Optimal' if nd.is_best else nd.node_type)}", COLOR_TEXT_SECONDARY),
+                (f"Cabang Anak Langsung: {len(nd.children)}", COLOR_TEXT_SECONDARY),
+            ]
+            ch, c_draw = self._make_list_card_drawer("DETAIL SIMPUL TERPILIH", info_items, COLOR_TEXT_HEADING, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, w)
+            cards.append((pygame.Rect(x0, cy, w, ch), c_draw))
 
-    def _build_theory_entries(self, add_block, font_bubble, font_sm, font_tiny) -> None:
+        return cards
+
+    def _layout_theory_cards(
+        self, x0: int, w: int,
+        font_bubble: pygame.font.Font, font_sm: pygame.font.Font, font_tiny: pygame.font.Font
+    ) -> List[Tuple[pygame.Rect, Any]]:
+        cards: List[Tuple[pygame.Rect, Any]] = []
+        cy = self.rect_sidebar.y + 48
+        gap = 8
+        col_w = (w - gap) // 2
+
         if self.mode_tag == "PLANNING":
-            add_block("APA ITU POHON PERENCANAAN PDDL?", font_bubble, COLOR_TEXT_HEADING, 6)
-            add_block(
-                "Pohon ini memvisualisasikan Classical Planning (Materi 08) berbasis STRIPS/PDDL. "
-                "Berbeda dengan Pathfinding di peta (yang mencari koordinat x,y), PDDL Planning mencari "
-                "urutan aksi logis tingkat tinggi untuk mengubah kondisi dunia awal (s0) menjadi sasaran (Goal).",
-                font_tiny, COLOR_TEXT_PRIMARY, 8,
-            )
-            add_block("1. Struktur Komponen PDDL:", font_sm, COLOR_TEXT_ACCENT, 3)
-            add_block("• Initial State (s0): Kumpulan fakta (predikat) saat peti baru dibuka atau duel krisis terjadi.", font_tiny, COLOR_TEXT_PRIMARY, 2)
-            add_block("• Actions (Aksi STRIPS): Tiap aksi memiliki Preconditions (syarat), Add-List (fakta baru), dan Del-List (fakta lama yang dihapus).", font_tiny, COLOR_TEXT_PRIMARY, 2)
-            add_block("• Goal State (G): Kondisi akhir yang harus terpenuhi (misal: Kuro mencegat di jembatan & Shiro menjaga peti sisa).", font_tiny, COLOR_TEXT_PRIMARY, 8)
+            intro = [(
+                "Pohon ini memvisualisasikan Classical Planning (Materi 08) berbasis STRIPS/PDDL: "
+                "mencari urutan aksi logis tingkat tinggi untuk mengubah kondisi dunia awal (s0) menjadi Goal.",
+                COLOR_TEXT_PRIMARY,
+            )]
+            h1, d1 = self._make_list_card_drawer("APA ITU POHON PERENCANAAN PDDL?", intro, COLOR_TEXT_HEADING, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, w)
+            cards.append((pygame.Rect(x0, cy, w, h1), d1))
+            cy += h1 + 10
 
-            add_block("2. Forward Progression (A*) vs Backward Regression:", font_sm, COLOR_TEXT_ACCENT, 3)
-            add_block("• Forward Progression (A*): Bergerak maju dari s0 ke Goal menggunakan f(n) = g(n) + h(n), di mana h(n) adalah jumlah predikat Goal yang belum terpenuhi.", font_tiny, COLOR_TEXT_PRIMARY, 2)
-            add_block("• Backward Regression (STRIPS): Bergerak mundur dari Goal ke s0 dengan memilih aksi yang relevan (Add-List menyentuh sub-goal) dan konsisten.", font_tiny, COLOR_TEXT_PRIMARY, 8)
+            # Grid 2-Kolom: Forward Progression vs Backward Regression
+            fwd_items = [
+                ("• Arah: Maju dari s0 -> Goal", COLOR_TEXT_PRIMARY),
+                ("• Skor A*: f(n) = g(n) + h(n)", COLOR_TEXT_ACCENT),
+                ("• h(n): Jumlah sub-goal belum terpenuhi", COLOR_TEXT_SECONDARY),
+            ]
+            bwd_items = [
+                ("• Arah: Mundur dari Goal -> s0", COLOR_TEXT_PRIMARY),
+                ("• Syarat: Aksi Relevant & Consistent", COLOR_TEXT_WARNING),
+                ("• Regresi: g' = (g \\ Add) U Pre", COLOR_TEXT_SECONDARY),
+            ]
+            lh, ld = self._make_list_card_drawer("FORWARD PROGRESSION (A*)", fwd_items, COLOR_TEXT_ACCENT, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, col_w)
+            rh, rd = self._make_list_card_drawer("BACKWARD REGRESSION", bwd_items, COLOR_TEXT_WARNING, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, col_w)
+            row_h = max(lh, rh)
+            cards.append((pygame.Rect(x0, cy, col_w, row_h), ld))
+            cards.append((pygame.Rect(x0 + col_w + gap, cy, col_w, row_h), rd))
+            cy += row_h + 10
 
-            add_block("3. Arti Warna Kotak Simpul:", font_sm, COLOR_TEXT_ACCENT, 3)
-            add_block("• Emas (State Awal s0): Kondisi awal sebelum aksi dijalankan.", font_tiny, COLOR_TEXT_WARNING, 2)
-            add_block("• Biru (Step Aksi): Langkah transisi antar-state beserta nilai g, h, f.", font_tiny, COLOR_TEXT_ACCENT, 2)
-            add_block("• Hijau (Goal Reached): Aksi terakhir yang membuat seluruh Goal terpenuhi.", font_tiny, COLOR_TEXT_SUCCESS, 2)
+            # Card Struktur STRIPS
+            strips_items = [
+                ("• Initial State (s0): Fakta awal saat peti dibuka atau duel krisis terjadi.", COLOR_TEXT_PRIMARY),
+                ("• Preconditions: Syarat agar aksi boleh dijalankan.", COLOR_TEXT_ACCENT),
+                ("• +Add / -Del Effects: Fakta baru yang ditambah & fakta lama yang dihapus.", COLOR_TEXT_SUCCESS),
+            ]
+            h3, d3 = self._make_list_card_drawer("KOMPONEN AKSI STRIPS", strips_items, COLOR_TEXT_HEADING, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, w)
+            cards.append((pygame.Rect(x0, cy, w, h3), d3))
+            cy += h3 + 10
+
+            # Grid 3-Kolom Legenda Warna Simpul
+            tw = (w - gap * 2) // 3
+            th = 46
+            legend_tiles = [
+                ("KOTAK EMAS", "State Awal (s0)", COLOR_TEXT_WARNING),
+                ("KOTAK BIRU", "Langkah Aksi", COLOR_TEXT_ACCENT),
+                ("KOTAK HIJAU", "Goal Tercapai", COLOR_TEXT_SUCCESS),
+            ]
+
+            def draw_legend(surf, rc, t_list=legend_tiles, tile_w=tw, tile_h=th, g=gap):
+                for idx_t, (lbl_t, val_t, col_t) in enumerate(t_list):
+                    tr = pygame.Rect(rc.x + idx_t * (tile_w + g), rc.y, tile_w, tile_h)
+                    draw_metric_tile(surf, tr, lbl_t, val_t, val_color=col_t, font_lbl=font_tiny, font_val=font_tiny)
+
+            cards.append((pygame.Rect(x0, cy, w, th), draw_legend))
         elif self.mode_tag == "LOGIC":
-            add_block("APA ITU POHON RESOLUSI REFUTASI?", font_bubble, COLOR_TEXT_HEADING, 6)
-            add_block(
-                "Pohon ini memvisualisasikan inferensi Knowledge Base Proposisional (Materi 07). "
-                "Untuk membuktikan apakah suatu kesimpulan (Query) bernilai benar, sistem menegasi Query (~Query) "
-                "lalu menggabungkan klausa CNF hingga menemukan kontradiksi kosong ([]).",
-                font_tiny, COLOR_TEXT_PRIMARY, 6,
-            )
+            items = [(
+                "Memvisualisasikan inferensi Knowledge Base Proposisional (Materi 07): "
+                "menegasi Query (~Query) lalu menggabungkan klausa CNF hingga tercapai kontradiksi kosong ([]).",
+                COLOR_TEXT_PRIMARY,
+            )]
+            h1, d1 = self._make_list_card_drawer("APA ITU POHON RESOLUSI REFUTASI?", items, COLOR_TEXT_HEADING, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, w)
+            cards.append((pygame.Rect(x0, cy, w, h1), d1))
         else:
-            add_block("APA ITU POHON MINIMAX / ALPHA-BETA?", font_bubble, COLOR_TEXT_HEADING, 6)
-            add_block(
-                "Pohon keputusan adversarial (Materi 04) yang mengevaluasi langkah terbaik NPC (MAX) "
-                "terhadap respon optimal pemain (MIN) hingga kedalaman pencarian tertentu.",
-                font_tiny, COLOR_TEXT_PRIMARY, 6,
-            )
+            items = [(
+                "Memvisualisasikan pohon keputusan Adversarial Search (Materi 04): "
+                "mengevaluasi langkah optimal NPC (MAX) terhadap respon pemain (MIN) beserta Alpha-Beta Pruning.",
+                COLOR_TEXT_PRIMARY,
+            )]
+            h1, d1 = self._make_list_card_drawer("APA ITU POHON MINIMAX / ALPHA-BETA?", items, COLOR_TEXT_HEADING, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, w)
+            cards.append((pygame.Rect(x0, cy, w, h1), d1))
+
+        return cards

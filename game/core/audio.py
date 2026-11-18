@@ -46,6 +46,8 @@ class AudioManager:
         self.stone_sounds = []
         self.win_sound = None
         self.chest_prompt_sound = None
+        self.reroll_sound = None
+        self.card_reveal_sound = None
 
         self._load_sounds()
 
@@ -99,6 +101,15 @@ class AudioManager:
         )
         if self.chest_prompt_sound:
             self.chest_prompt_sound.set_volume(0.45)
+
+        # 6. Suara acak ulang / reroll skuad (shuffle efek) & kemunculan kartu skuad
+        self.reroll_sound = self._load_sound_file("PURBLES_SHAKERBUTTON.wav", "PURBLES_SHAKEBUTTON.wav")
+        if self.reroll_sound:
+            self.reroll_sound.set_volume(0.40)
+
+        self.card_reveal_sound = self._load_sound_file("PURBLES_LEFTARROWBUTTON.wav")
+        if self.card_reveal_sound:
+            self.card_reveal_sound.set_volume(0.24)
 
     def play_bgm(self, loop=-1, volume=0.30):
         """Memutar lagu latar (BGM) Rise.mp3 / Rise.mpga."""
@@ -156,21 +167,28 @@ class AudioManager:
             else:
                 snd.play()
 
-    def play_chest_prompt(self):
-        """Memutar suara denting saat prompt [E] Buka Peti muncul."""
-        if not self.enabled or not self.chest_prompt_sound:
+    def _play_sfx(self, sound):
+        """Putar satu SFX via channel khusus agar tidak menimpa suara langkah kaki."""
+        if not self.enabled or not sound:
             return
         if self.sfx_channel:
-            self.sfx_channel.play(self.chest_prompt_sound)
+            self.sfx_channel.play(sound)
         else:
-            self.chest_prompt_sound.play()
+            sound.play()
+
+    def play_chest_prompt(self):
+        """Memutar suara denting saat prompt [E] Buka Peti muncul."""
+        self._play_sfx(self.chest_prompt_sound)
 
     def play_chest_win(self):
         """Memutar musik kemenangan/fanfare saat item didapat dari peti harta."""
-        if not self.enabled or not self.win_sound:
-            return
-        if self.sfx_channel:
-            self.sfx_channel.play(self.win_sound)
-        else:
-            self.win_sound.play()
+        self._play_sfx(self.win_sound)
+
+    def play_reroll(self):
+        """Memutar efek suara kocokan/shuffle saat mengacak ulang skuad Pre-Battle."""
+        self._play_sfx(self.reroll_sound)
+
+    def play_card_reveal(self):
+        """Memutar efek suara pop halus saat kartu anggota skuad muncul."""
+        self._play_sfx(self.card_reveal_sound)
 

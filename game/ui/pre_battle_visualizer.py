@@ -17,48 +17,54 @@ from typing import Dict, List, Tuple, Any, Optional
 
 SRCALPHA = getattr(pygame, "SRCALPHA", 0x00010000)
 
-# Palet Warna: 2 warna inti (Slate gelap + Warm Sand) + 1 aksen (Teal)
-# Mengikuti antislop-ui R-29: cap 2-3 core + 1 accent.
-COLOR_MODAL_BG = (18, 22, 32, 245)
-COLOR_MODAL_BORDER = (52, 65, 88)
-COLOR_HEADER_BG = (22, 28, 40, 255)
-COLOR_TAB_ACTIVE_BG = (38, 130, 128)
-COLOR_TAB_ACTIVE_TXT = (240, 245, 240)
-COLOR_TAB_INACTIVE_BG = (30, 36, 50)
-COLOR_TAB_INACTIVE_TXT = (145, 160, 180)
+# Palet Warna: Cozy Warm Parchment / Sprout Lands Adventurer Journal
+COLOR_MODAL_BG = (252, 248, 240, 252)
+COLOR_MODAL_BORDER = (205, 185, 155)
+COLOR_HEADER_BG = (244, 236, 222, 255)
+COLOR_HEADER_LINE = (218, 202, 178)
+COLOR_TAB_ACTIVE_BG = (195, 125, 25)
+COLOR_TAB_ACTIVE_BORDER = (165, 100, 15)
+COLOR_TAB_ACTIVE_TXT = (255, 255, 255)
+COLOR_TAB_INACTIVE_BG = (255, 252, 246)
+COLOR_TAB_INACTIVE_BORDER = (212, 196, 172)
+COLOR_TAB_INACTIVE_TXT = (95, 78, 62)
 
-# Kanvas: solid, tanpa grid dekoratif (antislop R-07)
-COLOR_CANVAS_BG = (16, 20, 30)
+# Kanvas: solid warm sand paper agar kartu node putih/pastel menonjol bersih
+COLOR_CANVAS_BG = (246, 241, 232)
 
-# Warna Node Pohon CSP (muted, kontras cukup terhadap kanvas gelap)
-COLOR_NODE_ROOT = (34, 42, 58)
-COLOR_NODE_ROOT_BORDER = (100, 125, 170)
+# Warna Node Pohon CSP (Warm Pastel Card + Border Tajam)
+COLOR_NODE_ROOT = (248, 244, 236)
+COLOR_NODE_ROOT_BORDER = (155, 138, 118)
 
-COLOR_NODE_ASSIGN = (28, 45, 65)
-COLOR_NODE_ASSIGN_BORDER = (70, 135, 195)
+COLOR_NODE_ASSIGN = (238, 246, 255)
+COLOR_NODE_ASSIGN_BORDER = (55, 125, 200)
 
-COLOR_NODE_PRUNED = (60, 32, 40)
-COLOR_NODE_PRUNED_BORDER = (190, 85, 100)
+COLOR_NODE_PRUNED = (255, 238, 238)
+COLOR_NODE_PRUNED_BORDER = (205, 70, 75)
 
-COLOR_NODE_BACKTRACK = (60, 46, 28)
-COLOR_NODE_BACKTRACK_BORDER = (195, 145, 60)
+COLOR_NODE_BACKTRACK = (255, 245, 226)
+COLOR_NODE_BACKTRACK_BORDER = (210, 135, 35)
 
-COLOR_NODE_SOLUTION = (26, 58, 42)
-COLOR_NODE_SOLUTION_BORDER = (55, 175, 110)
+COLOR_NODE_SOLUTION = (234, 250, 238)
+COLOR_NODE_SOLUTION_BORDER = (42, 145, 72)
 
 # Garis Koneksi Mulus
-COLOR_LINE_NORMAL = (65, 82, 115)
-COLOR_LINE_PRUNED = (185, 80, 95)
-COLOR_LINE_BACKTRACK = (190, 140, 60)
-COLOR_LINE_SOLUTION = (55, 180, 115)
+COLOR_LINE_NORMAL = (168, 152, 132)
+COLOR_LINE_PRUNED = (205, 80, 85)
+COLOR_LINE_BACKTRACK = (210, 140, 45)
+COLOR_LINE_SOLUTION = (42, 148, 72)
 
-# Warna Teks Umum
-COLOR_TEXT_PRIMARY = (225, 230, 240)
-COLOR_TEXT_SECONDARY = (160, 175, 195)
-COLOR_TEXT_ACCENT = (75, 195, 180)
-COLOR_TEXT_HEADING = (225, 200, 140)
-COLOR_CARD_BG = (22, 28, 40)
-COLOR_CARD_BORDER = (42, 55, 75)
+# Warna Teks Umum (Kontras Tinggi di Atas Parchment Cerah)
+COLOR_TEXT_PRIMARY = (38, 30, 24)
+COLOR_TEXT_SECONDARY = (110, 92, 76)
+COLOR_TEXT_ACCENT = (30, 105, 185)
+COLOR_TEXT_HEADING = (155, 85, 18)
+COLOR_TEXT_SUCCESS = (32, 128, 58)
+COLOR_TEXT_DANGER = (188, 46, 48)
+COLOR_TEXT_WARNING = (178, 102, 18)
+COLOR_CARD_BG = (255, 253, 248)
+COLOR_CARD_SUB_BG = (250, 245, 236)
+COLOR_CARD_BORDER = (215, 200, 178)
 
 
 def _get_bezier_points_horizontal(p0: Tuple[float, float], p3: Tuple[float, float], steps: int = 20) -> List[Tuple[int, int]]:
@@ -89,9 +95,10 @@ def _draw_smooth_curve(surface: pygame.Surface, color: Tuple[int, int, int], p0:
                 pygame.draw.lines(surface, color, False, sub_pts, width=max(1, width))
             i += 3
     elif is_solution:
-        # Garis jalur solusi tebal bercahaya zamrud
-        pygame.draw.lines(surface, (20, 120, 60), False, pts, width=width + 3)
-        pygame.draw.aalines(surface, (95, 245, 150), False, pts)
+        # Garis jalur solusi tebal bercahaya zamrud di atas kertas terang
+        pygame.draw.lines(surface, (150, 222, 172), False, pts, width=width + 4)
+        pygame.draw.lines(surface, (36, 138, 66), False, pts, width=max(2, width))
+        pygame.draw.aalines(surface, (36, 138, 66), False, pts)
     else:
         # Garis normal anti-aliased
         pygame.draw.lines(surface, color, False, pts, width=max(1, width))
@@ -161,6 +168,7 @@ class PreBattleVisualizerModal:
 
         # Cache Surface Blur Background (mencegah lag fps saat modal terbuka)
         self.cached_blurred_bg: Optional[pygame.Surface] = None
+        self._view_initialized: bool = False
 
         # Scroll state untuk kolom penjelasan sidebar
         self.sidebar_scroll_y: float = 0.0
@@ -187,6 +195,7 @@ class PreBattleVisualizerModal:
         self.selected_node_id = None
         self.sidebar_scroll_y = 0.0
         self.show_rules_popup = False
+        self._view_initialized = False
         self.reset_view()
 
     def set_ls_data(self, history: List[Dict[str, Any]], algo_name: str, target_diff: float = 0.55):
@@ -204,6 +213,7 @@ class PreBattleVisualizerModal:
         self.is_playing = True
         self.show_rules_popup = False
         self.cached_blurred_bg = None
+        self._view_initialized = False
         self.reset_view()
 
     def close(self):
@@ -518,6 +528,8 @@ class PreBattleVisualizerModal:
 
     def _update_camera_tracking(self, dt: float):
         """Kamera otomatis mengikuti kemunculan cabang atau simpul baru di pohon."""
+        if self.rect_canvas.width <= 0:
+            return
         if self.user_nav_override_timer > 0:
             self.user_nav_override_timer = max(0.0, self.user_nav_override_timer - dt)
             return
@@ -636,13 +648,13 @@ class PreBattleVisualizerModal:
         modal_surf = pygame.Surface((mw, mh), SRCALPHA)
         modal_surf.fill(COLOR_MODAL_BG)
         screen.blit(modal_surf, (mx, my))
-        pygame.draw.rect(screen, COLOR_MODAL_BORDER, self.rect_modal, 1, border_radius=10)
+        pygame.draw.rect(screen, COLOR_MODAL_BORDER, self.rect_modal, 2, border_radius=10)
 
         # 3. Header Bar Atas
         hdr_h = 58
         hdr_rect = pygame.Rect(mx, my, mw, hdr_h)
         pygame.draw.rect(screen, COLOR_HEADER_BG, hdr_rect, border_top_left_radius=10, border_top_right_radius=10)
-        pygame.draw.line(screen, (38, 50, 70), (mx, my + hdr_h), (mx + mw, my + hdr_h), 1)
+        pygame.draw.line(screen, COLOR_HEADER_LINE, (mx, my + hdr_h), (mx + mw, my + hdr_h), 1)
 
         # Judul & Subtitle (tanpa emoji, antislop R-04)
         t_surf = font_title.render("INSPEKSI AI PRE-BATTLE", True, COLOR_TEXT_HEADING)
@@ -652,7 +664,9 @@ class PreBattleVisualizerModal:
 
         # Tombol Tutup [X] di pojok kanan atas
         self.rect_btn_close = pygame.Rect(mx + mw - 46, my + 12, 34, 34)
-        pygame.draw.rect(screen, (145, 40, 40), self.rect_btn_close, border_radius=6)
+        mx_cur, my_cur = pygame.mouse.get_pos()
+        is_hover_close = self.rect_btn_close.collidepoint((mx_cur, my_cur))
+        pygame.draw.rect(screen, (212, 70, 62) if is_hover_close else (190, 56, 50), self.rect_btn_close, border_radius=6)
         x_lbl = font_title.render("X", True, (255, 255, 255))
         screen.blit(x_lbl, x_lbl.get_rect(center=self.rect_btn_close.center))
 
@@ -666,21 +680,20 @@ class PreBattleVisualizerModal:
         self.rect_btn_help_rules = pygame.Rect(self.rect_tab_csp.x - btn_rules_w - 10, tab_y, btn_rules_w, tab_h)
 
         # Draw Tombol Info Aturan C1-C8 di samping tab
-        mx_cur, my_cur = pygame.mouse.get_pos()
         rules_hover = self.rect_btn_help_rules.collidepoint((mx_cur, my_cur))
         rules_active = self.show_rules_popup
         if rules_active:
-            r_bg = (38, 95, 140)
-            r_border = (115, 215, 255)
+            r_bg = (40, 118, 198)
+            r_border = (28, 92, 162)
             r_txt = (255, 255, 255)
         elif rules_hover:
-            r_bg = (35, 55, 80)
-            r_border = (90, 185, 245)
-            r_txt = (235, 248, 255)
+            r_bg = (232, 242, 255)
+            r_border = (65, 130, 210)
+            r_txt = (25, 90, 165)
         else:
-            r_bg = (24, 34, 52)
-            r_border = (55, 95, 145)
-            r_txt = (165, 205, 245)
+            r_bg = COLOR_CARD_BG
+            r_border = COLOR_CARD_BORDER
+            r_txt = (40, 105, 175)
         pygame.draw.rect(screen, r_bg, self.rect_btn_help_rules, border_radius=6)
         pygame.draw.rect(screen, r_border, self.rect_btn_help_rules, 1, border_radius=6)
         t_rules = font_sm.render("[?] Aturan C1-C8", True, r_txt)
@@ -689,21 +702,28 @@ class PreBattleVisualizerModal:
         # Draw Tab CSP (tanpa emoji)
         csp_active = (self.active_tab == "CSP")
         c_bg = COLOR_TAB_ACTIVE_BG if csp_active else COLOR_TAB_INACTIVE_BG
+        c_bd = COLOR_TAB_ACTIVE_BORDER if csp_active else COLOR_TAB_INACTIVE_BORDER
         c_txt = COLOR_TAB_ACTIVE_TXT if csp_active else COLOR_TAB_INACTIVE_TXT
         pygame.draw.rect(screen, c_bg, self.rect_tab_csp, border_radius=6)
-        if csp_active:
-            pygame.draw.rect(screen, COLOR_TEXT_ACCENT, self.rect_tab_csp, 1, border_radius=6)
+        pygame.draw.rect(screen, c_bd, self.rect_tab_csp, 1, border_radius=6)
         t_csp = font_sm.render("1. Pohon CSP & Pruning", True, c_txt)
         screen.blit(t_csp, t_csp.get_rect(center=self.rect_tab_csp.center))
 
-        # Draw Tab Local Search (tanpa emoji)
+        # Draw Tab Local Search (tanpa pemotongan nama janggal)
         ls_active = (self.active_tab == "LOCAL_SEARCH")
         l_bg = COLOR_TAB_ACTIVE_BG if ls_active else COLOR_TAB_INACTIVE_BG
+        l_bd = COLOR_TAB_ACTIVE_BORDER if ls_active else COLOR_TAB_INACTIVE_BORDER
         l_txt = COLOR_TAB_ACTIVE_TXT if ls_active else COLOR_TAB_INACTIVE_TXT
         pygame.draw.rect(screen, l_bg, self.rect_tab_ls, border_radius=6)
-        if ls_active:
-            pygame.draw.rect(screen, COLOR_TEXT_ACCENT, self.rect_tab_ls, 1, border_radius=6)
-        t_ls = font_sm.render(f"2. Optimasi ({self.ls_algo_name[:12]})", True, l_txt)
+        pygame.draw.rect(screen, l_bd, self.rect_tab_ls, 1, border_radius=6)
+        algo_short = {
+            "HILL_CLIMBING": "Hill Climbing",
+            "SIDEWAYS": "Sideways Move",
+            "RANDOM_RESTART": "Random Restart",
+            "SIMULATED_ANNEALING": "Sim. Annealing",
+            "GENETIC_ALGORITHM": "Genetic Alg.",
+        }.get(self.ls_algo_name, self.ls_algo_name[:12])
+        t_ls = font_sm.render(f"2. Optimasi ({algo_short})", True, l_txt)
         screen.blit(t_ls, t_ls.get_rect(center=self.rect_tab_ls.center))
 
         # 4. Area Kontrol Bawah (Playback Controller & Scrubber)
@@ -723,6 +743,9 @@ class PreBattleVisualizerModal:
             sidebar_w = canvas_w - tree_w - 12
             self.rect_canvas = pygame.Rect(canvas_x, canvas_y, tree_w, canvas_h)
             rect_sidebar = pygame.Rect(canvas_x + tree_w + 12, canvas_y, sidebar_w, canvas_h)
+            if not getattr(self, "_view_initialized", False):
+                self._view_initialized = True
+                self.reset_view()
 
             # Klip rendering hanya di dalam area canvas pohon
             old_clip = screen.get_clip()
@@ -772,26 +795,26 @@ class PreBattleVisualizerModal:
         font_title: pygame.font.Font
     ):
         """Menampilkan dialog popup ringkas penjelasan seluruh aturan konsistensi C1 - C8."""
-        # 1. Dimmer latar belakang semi-transparan
+        # 1. Dimmer latar belakang semi-transparan hangat
         dimmer = pygame.Surface((sw, sh), SRCALPHA)
-        dimmer.fill((8, 12, 18, 175))
+        dimmer.fill((22, 16, 12, 125))
         screen.blit(dimmer, (0, 0))
 
-        # 2. Kotak Modal Popup
+        # 2. Kotak Modal Popup (Cozy Warm Parchment)
         pw = min(680, int(sw * 0.88))
         ph = min(480, int(sh * 0.85))
         px = (sw - pw) // 2
         py = (sh - ph) // 2
         self.rect_rules_popup = pygame.Rect(px, py, pw, ph)
 
-        pygame.draw.rect(screen, (18, 24, 36), self.rect_rules_popup, border_radius=8)
-        pygame.draw.rect(screen, (70, 115, 175), self.rect_rules_popup, 2, border_radius=8)
+        pygame.draw.rect(screen, (253, 250, 244), self.rect_rules_popup, border_radius=10)
+        pygame.draw.rect(screen, COLOR_MODAL_BORDER, self.rect_rules_popup, 2, border_radius=10)
 
         # 3. Header Bar Popup (44px)
         hdr_h = 44
         hdr_rect = pygame.Rect(px, py, pw, hdr_h)
-        pygame.draw.rect(screen, (24, 32, 48), hdr_rect, border_top_left_radius=8, border_top_right_radius=8)
-        pygame.draw.line(screen, (45, 62, 92), (px, py + hdr_h), (px + pw, py + hdr_h), 1)
+        pygame.draw.rect(screen, COLOR_HEADER_BG, hdr_rect, border_top_left_radius=10, border_top_right_radius=10)
+        pygame.draw.line(screen, COLOR_HEADER_LINE, (px, py + hdr_h), (px + pw, py + hdr_h), 1)
 
         t_title = font_bubble.render("RINGKASAN ATURAN KONSISTENSI CSP (C1 - C8)", True, COLOR_TEXT_HEADING)
         screen.blit(t_title, (px + 14, py + 12))
@@ -800,21 +823,21 @@ class PreBattleVisualizerModal:
         self.rect_btn_close_rules = pygame.Rect(px + pw - 34, py + 10, 24, 24)
         mx_cur, my_cur = pygame.mouse.get_pos()
         is_hover_x = self.rect_btn_close_rules.collidepoint((mx_cur, my_cur))
-        x_bg = (195, 55, 55) if is_hover_x else (145, 40, 40)
+        x_bg = (212, 70, 62) if is_hover_x else (190, 56, 50)
         pygame.draw.rect(screen, x_bg, self.rect_btn_close_rules, border_radius=4)
         x_lbl = font_title.render("X", True, (255, 255, 255))
         screen.blit(x_lbl, x_lbl.get_rect(center=self.rect_btn_close_rules.center))
 
         # 4. Daftar 8 Aturan C1 - C8 (Padat & Jelas)
         rules_list = [
-            ("C1", "Budget Total HP", "Total HP seluruh anggota tim <= 200 (mencegah tim musuh terlalu tebal).", (100, 205, 255)),
-            ("C2", "Budget Ramuan (Potion)", "Total inventaris ramuan tim <= 2 (menjaga batas pemulihan HP).", (100, 205, 255)),
-            ("C3", "Syarat Role Tank (HP)", "Karakter Tank wajib memiliki HP >= 90 (sesuai peran penyerap damage).", (135, 235, 175)),
-            ("C4", "Syarat Role Ranger (ATK)", "Karakter Ranger wajib Bonus ATK >= 5 (penyerang jarak jauh).", (135, 235, 175)),
-            ("C5", "Keunikan Role Skuad", "Tipe karakter harus unik di tim (tidak boleh ada role kembar jika NPC >= 2).", (255, 185, 90)),
-            ("C6", "Glass Cannon Mage", "Karakter Mage HP <= 90 & AI bertipe BALANCED atau AGGRESSIVE.", (245, 130, 140)),
-            ("C7", "Pelindung Tank (AI)", "Karakter Tank AI bertipe BALANCED atau DEFENSIVE (fokus guard).", (135, 235, 175)),
-            ("C8", "Assassin & Budget ATK", "Assassin ATK >= 10, HP <= 90, AI agresif & Total Bonus ATK tim <= 12.", (215, 150, 250)),
+            ("C1", "Budget Total HP", "Total HP seluruh anggota tim <= 200 (mencegah tim musuh terlalu tebal).", (30, 105, 185)),
+            ("C2", "Budget Ramuan (Potion)", "Total inventaris ramuan tim <= 2 (menjaga batas pemulihan HP).", (30, 105, 185)),
+            ("C3", "Syarat Role Tank (HP)", "Karakter Tank wajib memiliki HP >= 90 (sesuai peran penyerap damage).", (32, 128, 58)),
+            ("C4", "Syarat Role Ranger (ATK)", "Karakter Ranger wajib Bonus ATK >= 5 (penyerang jarak jauh).", (32, 128, 58)),
+            ("C5", "Keunikan Role Skuad", "Tipe karakter harus unik di tim (tidak boleh ada role kembar jika NPC >= 2).", (180, 95, 15)),
+            ("C6", "Glass Cannon Mage", "Karakter Mage HP <= 90 & AI bertipe BALANCED atau AGGRESSIVE.", (188, 46, 48)),
+            ("C7", "Pelindung Tank (AI)", "Karakter Tank AI bertipe BALANCED atau DEFENSIVE (fokus guard).", (32, 128, 58)),
+            ("C8", "Assassin & Budget ATK", "Assassin ATK >= 10, HP <= 90, AI agresif & Total Bonus ATK tim <= 12.", (135, 55, 175)),
         ]
 
         item_y = py + hdr_h + 8
@@ -823,13 +846,13 @@ class PreBattleVisualizerModal:
 
         for code, name, desc, badge_col in rules_list:
             card_rect = pygame.Rect(px + 12, item_y, pw - 24, item_h - 4)
-            pygame.draw.rect(screen, (24, 30, 44), card_rect, border_radius=4)
-            pygame.draw.rect(screen, (38, 48, 68), card_rect, 1, border_radius=4)
+            pygame.draw.rect(screen, COLOR_CARD_BG, card_rect, border_radius=6)
+            pygame.draw.rect(screen, COLOR_CARD_BORDER, card_rect, 1, border_radius=6)
 
             # Badge Kode [C1], [C2], dst.
             badge_rect = pygame.Rect(card_rect.x + 6, card_rect.y + 4, 36, card_rect.height - 8)
-            pygame.draw.rect(screen, (16, 22, 34), badge_rect, border_radius=3)
-            pygame.draw.rect(screen, badge_col, badge_rect, 1, border_radius=3)
+            pygame.draw.rect(screen, (250, 246, 238), badge_rect, border_radius=4)
+            pygame.draw.rect(screen, badge_col, badge_rect, 1, border_radius=4)
             s_code = font_bubble.render(code, True, badge_col)
             screen.blit(s_code, s_code.get_rect(center=badge_rect.center))
 
@@ -844,14 +867,14 @@ class PreBattleVisualizerModal:
             item_y += item_h
 
         # Footer Petunjuk Tutup
-        lbl_hint = font_tiny.render("Tips: Tekan [ESC] atau klik [X] / klik di luar kotak untuk kembali", True, (140, 155, 175))
+        lbl_hint = font_tiny.render("Tips: Tekan [ESC] atau klik [X] / klik di luar kotak untuk kembali", True, COLOR_TEXT_SECONDARY)
         screen.blit(lbl_hint, (px + 14, py + ph - 22))
 
     # ----------------------------------------------------------------------- #
     # Blur Background Helper
     # ----------------------------------------------------------------------- #
     def _draw_blurred_background(self, screen: pygame.Surface, sw: int, sh: int):
-        """Menangkap layar, menskalakan turun lalu naik untuk efek blur, lalu dimming."""
+        """Menangkap layar, menskalakan turun lalu naik untuk efek blur, lalu dimming hangat."""
         if self.cached_blurred_bg is None or self.cached_blurred_bg.get_size() != (sw, sh):
             snapshot = screen.copy()
             # Downscale faktor 10x lalu upscale kembali = blur halus elegan
@@ -860,7 +883,7 @@ class PreBattleVisualizerModal:
             small = pygame.transform.smoothscale(snapshot, (small_w, small_h))
             blurred = pygame.transform.smoothscale(small, (sw, sh))
             dimmer = pygame.Surface((sw, sh), SRCALPHA)
-            dimmer.fill((10, 14, 22, 195))
+            dimmer.fill((22, 16, 12, 115))
             blurred.blit(dimmer, (0, 0))
             self.cached_blurred_bg = blurred
 
@@ -930,48 +953,48 @@ class PreBattleVisualizerModal:
 
             reason_str = nd.get("reason") or ""
 
-            # Penentuan Warna & Label Berdasarkan Status
+            # Penentuan Warna & Label Berdasarkan Status (Warm Pastel High Contrast)
             if status == "ROOT":
                 bg_col, border_col = COLOR_NODE_ROOT, COLOR_NODE_ROOT_BORDER
                 badge_txt = "ROOT (Inisialisasi CSP)"
-                badge_col = (130, 175, 240)
+                badge_col = (98, 82, 65)
                 detail_txt = "Persiapan domain AC-3 & MRV"
-                detail_col = (175, 195, 225)
+                detail_col = (115, 98, 82)
             elif status == "SOLUTION" or nid in self.solution_path_ids:
                 bg_col, border_col = COLOR_NODE_SOLUTION, COLOR_NODE_SOLUTION_BORDER
-                badge_txt = "✓ SOLUSI LENGKAP"
-                badge_col = (85, 245, 140)
+                badge_txt = "[OK] SOLUSI LENGKAP"
+                badge_col = COLOR_TEXT_SUCCESS
                 detail_txt = "Lolos seluruh aturan C1-C8!"
-                detail_col = (160, 245, 195)
+                detail_col = (42, 112, 62)
             elif status == "PRUNED":
                 bg_col, border_col = COLOR_NODE_PRUNED, COLOR_NODE_PRUNED_BORDER
-                badge_txt = "✕ DIPANGKAS (PRUNED)"
-                badge_col = (255, 115, 125)
+                badge_txt = "[X] DIPANGKAS (PRUNED)"
+                badge_col = COLOR_TEXT_DANGER
                 detail_txt = reason_str if reason_str else "Melanggar batasan constraint"
-                detail_col = (255, 180, 185)
+                detail_col = (155, 58, 60)
             elif status == "BACKTRACK":
                 bg_col, border_col = COLOR_NODE_BACKTRACK, COLOR_NODE_BACKTRACK_BORDER
-                badge_txt = "↩ JALAN BUNTU (BACKTRACK)"
-                badge_col = (255, 185, 80)
+                badge_txt = "[<-] JALAN BUNTU (BACKTRACK)"
+                badge_col = COLOR_TEXT_WARNING
                 detail_txt = "Cabang anak gagal -> mundur"
-                detail_col = (255, 210, 150)
+                detail_col = (145, 88, 35)
             else:
                 bg_col, border_col = COLOR_NODE_ASSIGN, COLOR_NODE_ASSIGN_BORDER
-                badge_txt = "▶ DIPILIH (MRV & LCV)"
-                badge_col = (100, 200, 255)
+                badge_txt = "[>] DIPILIH (MRV & LCV)"
+                badge_col = COLOR_TEXT_ACCENT
                 detail_txt = reason_str if reason_str else "Konsisten C1-C8 (LCV 0 konflik)"
-                detail_col = (170, 215, 255)
+                detail_col = (52, 95, 145)
 
-            # Highlight Glow jika sedang aktif diproses di timeline atau dipilih
+            # Highlight Halo lembut jika sedang aktif diproses di timeline atau dipilih
             if is_selected:
                 glow_rect = node_rect.inflate(int(10 * self.zoom), int(10 * self.zoom))
-                pygame.draw.rect(screen, (80, 200, 255), glow_rect, border_radius=10)
+                pygame.draw.rect(screen, (65, 145, 225), glow_rect, border_radius=10)
             elif is_active:
                 glow_rect = node_rect.inflate(int(8 * self.zoom), int(8 * self.zoom))
-                pygame.draw.rect(screen, (255, 230, 80), glow_rect, border_radius=9)
+                pygame.draw.rect(screen, (225, 160, 35), glow_rect, border_radius=9)
             elif is_hovered:
                 glow_rect = node_rect.inflate(int(6 * self.zoom), int(6 * self.zoom))
-                pygame.draw.rect(screen, (100, 160, 230), glow_rect, border_radius=8)
+                pygame.draw.rect(screen, (150, 185, 225), glow_rect, border_radius=8)
 
             # Gambar Kotak Node
             pygame.draw.rect(screen, bg_col, node_rect, border_radius=8)
@@ -990,7 +1013,7 @@ class PreBattleVisualizerModal:
                 header_raw = f"{var_name} = {val_str}" if var_name != "ROOT" else "START CSP (ROOT)"
                 lbl_top = fit_text(font_node_title, header_raw, max_txt_w)
                 if lbl_top:
-                    s_top = font_node_title.render(lbl_top, True, (255, 255, 255))
+                    s_top = font_node_title.render(lbl_top, True, COLOR_TEXT_PRIMARY)
                     screen.blit(s_top, (node_rect.x + (node_rect.width - s_top.get_width()) // 2, node_rect.y + int(8 * self.zoom)))
 
                 # Baris 2: Badge Status & Keputusan Algoritma
@@ -1020,7 +1043,7 @@ class PreBattleVisualizerModal:
         self.rect_sidebar = rect
 
         s = pygame.Surface((rect.width, rect.height), SRCALPHA)
-        s.fill((16, 20, 30, 245))
+        s.fill((248, 244, 235, 250))
         screen.blit(s, (rect.x, rect.y))
         pygame.draw.rect(screen, COLOR_CARD_BORDER, rect, 1, border_radius=6)
 
@@ -1058,16 +1081,16 @@ class PreBattleVisualizerModal:
         half_w = (c2_rect.width - 16) // 2
         col1_x = c2_rect.x + 8
         col2_x = c2_rect.x + 8 + half_w
-        screen.blit(font_tiny.render("[ASSIGN] MRV & LCV", True, (85, 175, 235)), (col1_x, c2_rect.y + 21))
-        screen.blit(font_tiny.render("[PRUNED] Pangkas C1-C8", True, (225, 95, 110)), (col2_x, c2_rect.y + 21))
-        screen.blit(font_tiny.render("[BACKTRACK] Dead-End", True, (225, 165, 65)), (col1_x, c2_rect.y + 37))
-        screen.blit(font_tiny.render("[SOLUSI] Skuad Legal", True, (75, 215, 125)), (col2_x, c2_rect.y + 37))
+        screen.blit(font_tiny.render("[ASSIGN] MRV & LCV", True, COLOR_TEXT_ACCENT), (col1_x, c2_rect.y + 21))
+        screen.blit(font_tiny.render("[PRUNED] Pangkas C1-C8", True, COLOR_TEXT_DANGER), (col2_x, c2_rect.y + 21))
+        screen.blit(font_tiny.render("[BACKTRACK] Dead-End", True, COLOR_TEXT_WARNING), (col1_x, c2_rect.y + 37))
+        screen.blit(font_tiny.render("[SOLUSI] Skuad Legal", True, COLOR_TEXT_SUCCESS), (col2_x, c2_rect.y + 37))
 
         # Card 3: Analisis Langkah & Simpul Terpilih (Sisa Tinggi Layar)
         c3_y = c2_rect.bottom + 5
         c3_h = rect.bottom - c3_y - 6
         c3_rect = pygame.Rect(rect.x + 6, c3_y, rect.width - 12, max(180, c3_h))
-        pygame.draw.rect(screen, (14, 18, 28), c3_rect, border_radius=4)
+        pygame.draw.rect(screen, COLOR_CARD_BG, c3_rect, border_radius=4)
         pygame.draw.rect(screen, COLOR_CARD_BORDER, c3_rect, 1, border_radius=4)
 
         # Ekstraksi Data Simpul Fokus
@@ -1098,8 +1121,8 @@ class PreBattleVisualizerModal:
         # Pinned Header Card 3 (64px)
         c3_hdr_h = 64
         c3_hdr_rect = pygame.Rect(c3_rect.x, c3_rect.y, c3_rect.width, c3_hdr_h)
-        pygame.draw.rect(screen, (20, 26, 40), c3_hdr_rect, border_top_left_radius=4, border_top_right_radius=4)
-        pygame.draw.line(screen, (38, 52, 74), (c3_hdr_rect.x, c3_hdr_rect.bottom), (c3_hdr_rect.right, c3_hdr_rect.bottom), 1)
+        pygame.draw.rect(screen, COLOR_CARD_SUB_BG, c3_hdr_rect, border_top_left_radius=4, border_top_right_radius=4)
+        pygame.draw.line(screen, COLOR_CARD_BORDER, (c3_hdr_rect.x, c3_hdr_rect.bottom), (c3_hdr_rect.right, c3_hdr_rect.bottom), 1)
 
         max_hdr_w = c3_rect.width - 16
 
@@ -1114,19 +1137,19 @@ class PreBattleVisualizerModal:
         # Status Badge & Color
         if st_type in ("ASSIGN", "NODE"):
             badge_txt = "STATUS: [DIPILIH / MRV & LCV]"
-            col_type = (85, 185, 245)
+            col_type = COLOR_TEXT_ACCENT
         elif st_type in ("PRUNE", "PRUNED"):
             badge_txt = "STATUS: [DIPANGKAS / FORWARD CHECKING]"
-            col_type = (235, 95, 110)
+            col_type = COLOR_TEXT_DANGER
         elif st_type == "BACKTRACK":
             badge_txt = "STATUS: [MUNDUR / DEAD-END BACKTRACK]"
-            col_type = (235, 175, 75)
+            col_type = COLOR_TEXT_WARNING
         elif st_type == "SOLUTION":
             badge_txt = "STATUS: [SOLUSI LENGKAP KONSISTEN]"
-            col_type = (75, 230, 135)
+            col_type = COLOR_TEXT_SUCCESS
         else:
             badge_txt = "STATUS: [START / INISIALISASI ROOT]"
-            col_type = (160, 180, 210)
+            col_type = COLOR_TEXT_SECONDARY
 
         badge_fnt = font_bubble if font_sm.size(badge_txt)[0] > max_hdr_w else font_sm
         screen.blit(badge_fnt.render(badge_txt, True, col_type), (c3_rect.x + 8, c3_rect.y + 22))
@@ -1183,7 +1206,7 @@ class PreBattleVisualizerModal:
         # Konten Narasi Penjelasan Akademis Terstruktur
         if st_type in ("ASSIGN", "SOLUTION"):
             # ----------------- SECTION A: MENGAPA ANAKAN INI DIPILIH ----------------- #
-            draw_y = self._draw_multiline_text(screen, "A. MENGAPA ANAKAN INI DIPILIH:", body_rect.x, draw_y, max_txt_w, font_bubble, (100, 205, 255))
+            draw_y = self._draw_multiline_text(screen, "A. MENGAPA ANAKAN INI DIPILIH:", body_rect.x, draw_y, max_txt_w, font_bubble, COLOR_TEXT_ACCENT)
             draw_y += 2
 
             mrv_txt = (
@@ -1216,11 +1239,11 @@ class PreBattleVisualizerModal:
                 c_detail = f"Mematuhi aturan C6-C8 (Sinergi Archetype): Profil AI '{val_name}' cocok dengan peran taktis NPC di tim."
 
             c_txt = f"3. Validasi Konsistensi Batasan C1-C8:\n{c_detail}"
-            draw_y = self._draw_multiline_text(screen, c_txt, body_rect.x + 4, draw_y, max_txt_w - 4, font_tiny, (140, 235, 175))
+            draw_y = self._draw_multiline_text(screen, c_txt, body_rect.x + 4, draw_y, max_txt_w - 4, font_tiny, COLOR_TEXT_SUCCESS)
             draw_y += 6
 
             # ----------------- SECTION B: MENGAPA ANAKAN LAIN DI-PRUNE ----------------- #
-            draw_y = self._draw_multiline_text(screen, "B. MENGAPA ANAKAN LAIN DI-PRUNE:", body_rect.x, draw_y, max_txt_w, font_bubble, (255, 130, 140))
+            draw_y = self._draw_multiline_text(screen, "B. MENGAPA ANAKAN LAIN DI-PRUNE:", body_rect.x, draw_y, max_txt_w, font_bubble, COLOR_TEXT_DANGER)
             draw_y += 2
 
             if siblings_pruned:
@@ -1232,11 +1255,11 @@ class PreBattleVisualizerModal:
                 draw_y += 2
                 for p_val, p_reason in siblings_pruned:
                     p_line = f"• Nilai '{p_val}': Dipangkas karena {p_reason}"
-                    draw_y = self._draw_multiline_text(screen, p_line, body_rect.x + 8, draw_y, max_txt_w - 8, font_tiny, (255, 165, 170))
+                    draw_y = self._draw_multiline_text(screen, p_line, body_rect.x + 8, draw_y, max_txt_w - 8, font_tiny, (165, 50, 52))
                     draw_y += 1
                 draw_y += 2
                 ff_txt = "Prinsip Fail-First: Cabang-cabang di atas langsung dipangkas tanpa dieksplorasi lebih jauh, menghemat pencarian secara eksponensial."
-                draw_y = self._draw_multiline_text(screen, ff_txt, body_rect.x + 4, draw_y, max_txt_w - 4, font_tiny, (200, 215, 235))
+                draw_y = self._draw_multiline_text(screen, ff_txt, body_rect.x + 4, draw_y, max_txt_w - 4, font_tiny, COLOR_TEXT_SECONDARY)
             else:
                 no_p_txt = f"Tidak ada anakan saudara yang di-prune pada tahap ini. Nilai '{val_name}' merupakan kandidat pertama dari heuristik LCV yang langsung lolos uji konsistensi C1-C8."
                 draw_y = self._draw_multiline_text(screen, no_p_txt, body_rect.x + 4, draw_y, max_txt_w - 4, font_tiny, COLOR_TEXT_PRIMARY)
@@ -1244,10 +1267,10 @@ class PreBattleVisualizerModal:
             if children_pruned:
                 draw_y += 4
                 cp_header = f"Eksplorasi Anakan Lanjutan: Ditemukan {len(children_pruned)} anakan cabang di bawah simpul ini yang dipangkas:"
-                draw_y = self._draw_multiline_text(screen, cp_header, body_rect.x + 4, draw_y, max_txt_w - 4, font_tiny, (245, 190, 120))
+                draw_y = self._draw_multiline_text(screen, cp_header, body_rect.x + 4, draw_y, max_txt_w - 4, font_tiny, COLOR_TEXT_WARNING)
                 for cp_val, cp_reason in children_pruned[:4]:
                     cp_line = f"• Cabang '{cp_val}': {cp_reason}"
-                    draw_y = self._draw_multiline_text(screen, cp_line, body_rect.x + 8, draw_y, max_txt_w - 8, font_tiny, (255, 185, 185))
+                    draw_y = self._draw_multiline_text(screen, cp_line, body_rect.x + 8, draw_y, max_txt_w - 8, font_tiny, (165, 50, 52))
                     draw_y += 1
                 if len(children_pruned) > 4:
                     draw_y = self._draw_multiline_text(screen, f"• ... dan {len(children_pruned) - 4} nilai domain lainnya.", body_rect.x + 8, draw_y, max_txt_w - 8, font_tiny, COLOR_TEXT_SECONDARY)
@@ -1256,14 +1279,14 @@ class PreBattleVisualizerModal:
 
         elif st_type in ("PRUNE", "PRUNED"):
             # ----------------- SECTION A: MENGAPA ANAKAN INI DI-PRUNE ----------------- #
-            draw_y = self._draw_multiline_text(screen, "A. MENGAPA ANAKAN INI DI-PRUNE:", body_rect.x, draw_y, max_txt_w, font_bubble, (255, 115, 125))
+            draw_y = self._draw_multiline_text(screen, "A. MENGAPA ANAKAN INI DI-PRUNE:", body_rect.x, draw_y, max_txt_w, font_bubble, COLOR_TEXT_DANGER)
             draw_y += 2
 
             p_main_txt = (
                 f"1. Pelanggaran Batasan Spesifik:\n"
                 f"Nilai '{val_name}' untuk variabel '{var_name}' ditolak karena: {st_reason if st_reason else 'Melanggar aturan batasan CSP'}."
             )
-            draw_y = self._draw_multiline_text(screen, p_main_txt, body_rect.x + 4, draw_y, max_txt_w - 4, font_tiny, (255, 175, 180))
+            draw_y = self._draw_multiline_text(screen, p_main_txt, body_rect.x + 4, draw_y, max_txt_w - 4, font_tiny, (165, 50, 52))
             draw_y += 3
 
             p_fc_txt = (
@@ -1274,14 +1297,14 @@ class PreBattleVisualizerModal:
             draw_y += 6
 
             # ----------------- SECTION B: ALTERNATIF YANG DIPILIH ----------------- #
-            draw_y = self._draw_multiline_text(screen, "B. ANAKAN LAIN YANG DIPILIH / KONSISTEN:", body_rect.x, draw_y, max_txt_w, font_bubble, (100, 205, 255))
+            draw_y = self._draw_multiline_text(screen, "B. ANAKAN LAIN YANG DIPILIH / KONSISTEN:", body_rect.x, draw_y, max_txt_w, font_bubble, COLOR_TEXT_ACCENT)
             draw_y += 2
 
             if siblings_assigned:
                 draw_y = self._draw_multiline_text(screen, "Sebagai pengganti cabang yang gagal ini, algoritma memilih anakan berikut:", body_rect.x + 4, draw_y, max_txt_w - 4, font_tiny, COLOR_TEXT_SECONDARY)
                 for a_val, a_stat in siblings_assigned:
                     a_line = f"• Nilai '{a_val}' [DIPILIH]: Lolos konsistensi batasan C1-C8 dan meminimalkan konflik domain ke depan (LCV)."
-                    draw_y = self._draw_multiline_text(screen, a_line, body_rect.x + 8, draw_y, max_txt_w - 8, font_tiny, (130, 230, 170))
+                    draw_y = self._draw_multiline_text(screen, a_line, body_rect.x + 8, draw_y, max_txt_w - 8, font_tiny, COLOR_TEXT_SUCCESS)
                     draw_y += 1
             else:
                 draw_y = self._draw_multiline_text(screen, "Belum ada anakan saudara lain yang lolos pada langkah ini. Algoritma melanjutkan evaluasi nilai domain tersisa.", body_rect.x + 4, draw_y, max_txt_w - 4, font_tiny, COLOR_TEXT_PRIMARY)
@@ -1291,14 +1314,14 @@ class PreBattleVisualizerModal:
                 draw_y = self._draw_multiline_text(screen, "Alternatif nilai saudara lain yang juga dipangkas:", body_rect.x + 4, draw_y, max_txt_w - 4, font_tiny, COLOR_TEXT_SECONDARY)
                 for sp_val, sp_reason in siblings_pruned[:3]:
                     sp_line = f"• Nilai '{sp_val}': {sp_reason}"
-                    draw_y = self._draw_multiline_text(screen, sp_line, body_rect.x + 8, draw_y, max_txt_w - 8, font_tiny, (255, 170, 170))
+                    draw_y = self._draw_multiline_text(screen, sp_line, body_rect.x + 8, draw_y, max_txt_w - 8, font_tiny, (165, 50, 52))
                     draw_y += 1
 
             draw_y += 6
 
         elif st_type == "BACKTRACK":
             # ----------------- SECTION A: MENGAPA TERJADI BACKTRACK ----------------- #
-            draw_y = self._draw_multiline_text(screen, "A. MENGAPA TERJADI BACKTRACK (MUNDUR):", body_rect.x, draw_y, max_txt_w, font_bubble, (255, 180, 80))
+            draw_y = self._draw_multiline_text(screen, "A. MENGAPA TERJADI BACKTRACK (MUNDUR):", body_rect.x, draw_y, max_txt_w, font_bubble, COLOR_TEXT_WARNING)
             draw_y += 2
 
             bt_txt = (
@@ -1330,7 +1353,7 @@ class PreBattleVisualizerModal:
             "• Klik Simpul: Klik simpul mana saja pada kanvas pohon untuk mengunci analisis simpul tersebut.\n"
             "• Klik Kanvas Kosong: Untuk melepaskan kunci dan kembali mengikuti langkah timeline otomatis."
         )
-        draw_y = self._draw_multiline_text(screen, hint_text, body_rect.x + 4, draw_y, max_txt_w - 4, font_tiny, (160, 175, 195))
+        draw_y = self._draw_multiline_text(screen, hint_text, body_rect.x + 4, draw_y, max_txt_w - 4, font_tiny, COLOR_TEXT_SECONDARY)
         draw_y += 8
 
         # Hitung Total Tinggi Konten & Max Scroll
@@ -1343,7 +1366,7 @@ class PreBattleVisualizerModal:
         # Gambar Scrollbar Tipis di Sisi Kanan Body jika konten melebihi area
         if total_content_height > body_rect.height:
             sb_track = pygame.Rect(body_rect.right - 4, body_rect.y, 4, body_rect.height)
-            pygame.draw.rect(screen, (22, 28, 40), sb_track, border_radius=2)
+            pygame.draw.rect(screen, (238, 230, 218), sb_track, border_radius=2)
 
             thumb_ratio = max(0.12, min(1.0, body_rect.height / float(total_content_height)))
             thumb_h = max(18, int(body_rect.height * thumb_ratio))
@@ -1351,7 +1374,7 @@ class PreBattleVisualizerModal:
             scroll_pct = self.sidebar_scroll_y / max(1.0, self.max_sidebar_scroll)
             thumb_y = body_rect.y + int(scroll_pct * max_travel)
             sb_thumb = pygame.Rect(body_rect.right - 4, thumb_y, 4, thumb_h)
-            pygame.draw.rect(screen, (70, 140, 195), sb_thumb, border_radius=2)
+            pygame.draw.rect(screen, (185, 165, 140), sb_thumb, border_radius=2)
 
         screen.set_clip(old_clip_sb)
 
@@ -1382,8 +1405,8 @@ class PreBattleVisualizerModal:
 
     def _draw_convergence_graph(self, screen: pygame.Surface, rect: pygame.Rect, cur_idx: int, font_sm: pygame.font.Font, font_bubble: pygame.font.Font, font_tiny: pygame.font.Font, font_title: pygame.font.Font):
         """Menggambar grafik 2D konvergensi Fitness & Difficulty terhadap langkah iterasi."""
-        # Box background
-        pygame.draw.rect(screen, (14, 18, 28), rect, border_radius=6)
+        # Box background (Cozy Warm Parchment)
+        pygame.draw.rect(screen, COLOR_CARD_BG, rect, border_radius=6)
         pygame.draw.rect(screen, COLOR_CARD_BORDER, rect, 1, border_radius=6)
 
         # Judul & Subjudul Grafik (tanpa emoji)
@@ -1404,30 +1427,30 @@ class PreBattleVisualizerModal:
         origin_y = rect.y + margin_t + plot_h
 
         # Garis Sumbu X dan Y
-        pygame.draw.line(screen, (70, 85, 115), (origin_x, origin_y), (origin_x + plot_w, origin_y), 2)
-        pygame.draw.line(screen, (70, 85, 115), (origin_x, origin_y), (origin_x, origin_y - plot_h), 2)
+        pygame.draw.line(screen, (140, 124, 106), (origin_x, origin_y), (origin_x + plot_w, origin_y), 2)
+        pygame.draw.line(screen, (140, 124, 106), (origin_x, origin_y), (origin_x, origin_y - plot_h), 2)
 
         # Skala Angka Sumbu Y Vertikal
         ticks_y = [
             (1.00, "1.00", COLOR_TEXT_SECONDARY),
             (0.75, "0.75", COLOR_TEXT_SECONDARY),
-            (self.target_difficulty, f"{self.target_difficulty:.2f}", (210, 165, 50)),
+            (self.target_difficulty, f"{self.target_difficulty:.2f}", COLOR_TEXT_WARNING),
             (0.25, "0.25", COLOR_TEXT_SECONDARY),
             (0.00, "0.00", COLOR_TEXT_SECONDARY),
         ]
         for val, lbl_str, col_tick in ticks_y:
             ty = origin_y - int(plot_h * val)
-            # Garis grid horizontal tipis
-            pygame.draw.line(screen, (32, 42, 58), (origin_x + 1, ty), (origin_x + plot_w, ty), 1)
+            # Garis grid horizontal tipis hangat
+            pygame.draw.line(screen, (236, 228, 214), (origin_x + 1, ty), (origin_x + plot_w, ty), 1)
             # Tanda tick kecil di sumbu
             pygame.draw.line(screen, col_tick, (origin_x - 4, ty), (origin_x, ty), 2)
             s_lbl = font_tiny.render(lbl_str, True, col_tick)
             screen.blit(s_lbl, (origin_x - s_lbl.get_width() - 8, ty - s_lbl.get_height() // 2))
 
-        # Garis Target Ideal 0.55
+        # Garis Target Ideal
         target_y = origin_y - int(plot_h * self.target_difficulty)
-        pygame.draw.line(screen, (210, 165, 50), (origin_x, target_y), (origin_x + plot_w, target_y), 2)
-        lbl_target = font_tiny.render(f"Target ({self.target_difficulty:.2f})", True, (210, 165, 50))
+        pygame.draw.line(screen, (205, 135, 25), (origin_x, target_y), (origin_x + plot_w, target_y), 2)
+        lbl_target = font_tiny.render(f"Target ({self.target_difficulty:.2f})", True, COLOR_TEXT_WARNING)
         screen.blit(lbl_target, (origin_x + plot_w - lbl_target.get_width() - 6, target_y - 14))
 
         # Label Sumbu X
@@ -1447,30 +1470,30 @@ class PreBattleVisualizerModal:
 
             # Gambar kurva halus
             if len(points) >= 2:
-                pygame.draw.lines(screen, (45, 150, 245), False, points, 3)
-                pygame.draw.aalines(screen, (120, 205, 255), False, points)
+                pygame.draw.lines(screen, (40, 118, 198), False, points, 3)
+                pygame.draw.aalines(screen, (75, 155, 230), False, points)
 
             # Titik-titik event khusus
             for i, pt in enumerate(points):
                 ev = self.ls_history[i].get("event", "")
                 if ev in ("LOCAL_MAXIMUM", "PLATEAU_STOP"):
-                    pygame.draw.circle(screen, (255, 60, 70), pt, 6)
+                    pygame.draw.circle(screen, (195, 48, 48), pt, 6)
                     pygame.draw.circle(screen, (255, 255, 255), pt, 2)
                 elif ev == "SIDEWAYS":
-                    pygame.draw.rect(screen, (245, 180, 40), (pt[0] - 4, pt[1] - 4, 8, 8))
+                    pygame.draw.rect(screen, (205, 135, 25), (pt[0] - 4, pt[1] - 4, 8, 8))
                 elif ev == "SA_ACCEPT_WORSE":
-                    pygame.draw.circle(screen, (200, 90, 245), pt, 5)
+                    pygame.draw.circle(screen, (150, 65, 185), pt, 5)
                 elif i == cur_idx:
-                    pygame.draw.circle(screen, (255, 230, 80), pt, 7)
-                    pygame.draw.circle(screen, (30, 30, 30), pt, 3)
+                    pygame.draw.circle(screen, (230, 160, 35), pt, 7)
+                    pygame.draw.circle(screen, (255, 253, 248), pt, 3)
 
         # Legend Visual di Bawah Grafik (tanpa emoji, wrap jika sempit)
         leg_y = origin_y + 26
         leg_items = [
-            ((45, 150, 245), "- Trajektori"),
-            ((210, 165, 50), "- Target"),
-            ((210, 165, 40), "= Sideways"),
-            ((225, 60, 70), "o Optimum"),
+            ((40, 118, 198), "- Trajektori"),
+            (COLOR_TEXT_WARNING, "- Target"),
+            ((195, 125, 25), "= Sideways"),
+            (COLOR_TEXT_DANGER, "o Optimum"),
         ]
         lx = origin_x
         ly = leg_y
@@ -1495,7 +1518,7 @@ class PreBattleVisualizerModal:
         font_title: pygame.font.Font
     ):
         """Menampilkan kolom penjelasan teori & analisis tim di sebelah kanan grafik."""
-        pygame.draw.rect(screen, (16, 20, 30), rect, border_radius=6)
+        pygame.draw.rect(screen, COLOR_CARD_SUB_BG, rect, border_radius=6)
         pygame.draw.rect(screen, COLOR_CARD_BORDER, rect, 1, border_radius=6)
 
         old_clip_ls = screen.get_clip()
@@ -1521,7 +1544,7 @@ class PreBattleVisualizerModal:
         ev_name = cur_frame.get("event", "OPTIMIZING")
         ev_detail = cur_frame.get("detail", "")
 
-        col_ev = (210, 165, 40) if ev_name == "SIDEWAYS" else ((225, 70, 80) if ev_name in ("PLATEAU_STOP", "LOCAL_MAXIMUM") else ((80, 210, 130) if ev_name == "IMPROVE" else COLOR_TEXT_ACCENT))
+        col_ev = COLOR_TEXT_WARNING if ev_name == "SIDEWAYS" else (COLOR_TEXT_DANGER if ev_name in ("PLATEAU_STOP", "LOCAL_MAXIMUM") else (COLOR_TEXT_SUCCESS if ev_name == "IMPROVE" else COLOR_TEXT_ACCENT))
         badge_ev = font_sm.render(f"EVENT: [{ev_name}]", True, col_ev)
         screen.blit(badge_ev, (th_rect.x + 10, th_rect.y + 26))
 
@@ -1537,19 +1560,19 @@ class PreBattleVisualizerModal:
         # Penjelasan Teori Akademis Event
         if ev_name == "PLATEAU_STOP":
             teori_txt = "Plateau: Batas Sideways Move (15 langkah) tercapai. Algoritma berhenti dan menetapkan konfigurasi sebagai Optimum Lokal."
-            col_teori = (225, 140, 145)
+            col_teori = COLOR_TEXT_DANGER
         elif ev_name == "SIDEWAYS":
             teori_txt = "Sideways Move: langkah mendatar pada plateau (fitness sama). Mencegah agen berhenti terlalu dini di shoulder."
-            col_teori = (225, 195, 120)
+            col_teori = COLOR_TEXT_WARNING
         elif ev_name == "IMPROVE":
             teori_txt = "Ascent: konfigurasi tetangga menaikkan fitness. Difficulty mendekati target 0.55."
-            col_teori = (130, 220, 165)
+            col_teori = COLOR_TEXT_SUCCESS
         elif ev_name == "LOCAL_MAXIMUM":
             teori_txt = "Local Optimum: seluruh tetangga fitness lebih rendah. Hill climbing berhenti di puncak lokal."
-            col_teori = (225, 120, 130)
+            col_teori = COLOR_TEXT_DANGER
         elif ev_name == "SA_ACCEPT_WORSE":
             teori_txt = "Simulated Annealing: menerima tetangga lebih buruk berdasarkan P=exp(dE/T) untuk melompati lembah lokal."
-            col_teori = (195, 145, 230)
+            col_teori = (145, 60, 175)
         else:
             teori_txt = "Inisialisasi: state awal dari konfigurasi legal hasil CSP."
             col_teori = COLOR_TEXT_PRIMARY
@@ -1564,7 +1587,7 @@ class PreBattleVisualizerModal:
         screen.set_clip(old_clip_th)
 
         # ----------------- PANEL 2: LIVE SKUAD NPC ----------------- #
-        pygame.draw.rect(screen, (18, 22, 34), sq_rect, border_radius=4)
+        pygame.draw.rect(screen, COLOR_CARD_BG, sq_rect, border_radius=4)
         pygame.draw.rect(screen, COLOR_CARD_BORDER, sq_rect, 1, border_radius=4)
 
         old_clip_sq = screen.get_clip()
@@ -1582,7 +1605,7 @@ class PreBattleVisualizerModal:
             if m_y + card_h > sq_rect.bottom:
                 break
             m_card = pygame.Rect(sq_rect.x + 8, m_y, sq_rect.width - 16, card_h - 4)
-            pygame.draw.rect(screen, COLOR_CARD_BG, m_card, border_radius=4)
+            pygame.draw.rect(screen, COLOR_CARD_SUB_BG, m_card, border_radius=4)
             pygame.draw.rect(screen, COLOR_CARD_BORDER, m_card, 1, border_radius=4)
 
             ctype = m.get("char_type", "warrior").upper()
@@ -1612,7 +1635,7 @@ class PreBattleVisualizerModal:
         """Menggambar control bar timeline di bawah modal."""
         ctrl_rect = pygame.Rect(mx, my, mw, mh)
         pygame.draw.rect(screen, COLOR_HEADER_BG, ctrl_rect, border_bottom_left_radius=10, border_bottom_right_radius=10)
-        pygame.draw.line(screen, (38, 50, 70), (mx, my), (mx + mw, my), 1)
+        pygame.draw.line(screen, COLOR_HEADER_LINE, (mx, my), (mx + mw, my), 1)
 
         # Hitung Step Aktif & Maksimum
         if self.active_tab == "CSP":
@@ -1625,41 +1648,46 @@ class PreBattleVisualizerModal:
         btn_y = my + 14
         btn_h = 36
 
-        # 1. Tombol [⏮️ Step Back / Previous]
+        # 1. Tombol [Step Back / Previous]
         self.rect_btn_step_back = pygame.Rect(mx + 20, btn_y, 44, btn_h)
-        pygame.draw.rect(screen, (30, 40, 58), self.rect_btn_step_back, border_radius=6)
+        pygame.draw.rect(screen, COLOR_CARD_BG, self.rect_btn_step_back, border_radius=6)
+        pygame.draw.rect(screen, COLOR_CARD_BORDER, self.rect_btn_step_back, 1, border_radius=6)
         bx = self.rect_btn_step_back.centerx
         by = self.rect_btn_step_back.centery
-        # Garis vertikal kiri tebal + segitiga panah kiri (Previous)
         pygame.draw.line(screen, COLOR_TEXT_PRIMARY, (bx - 7, by - 6), (bx - 7, by + 6), 3)
         pygame.draw.polygon(screen, COLOR_TEXT_PRIMARY, [(bx + 6, by - 7), (bx + 6, by + 7), (bx - 4, by)])
 
-        # 2. Tombol [⏯️ Play / Pause]
+        # 2. Tombol [Play / Pause]
         self.rect_btn_play = pygame.Rect(mx + 72, btn_y, 74, btn_h)
-        col_play = (35, 120, 90) if self.is_playing else (38, 130, 128)
+        col_play = (42, 138, 62) if self.is_playing else COLOR_TAB_ACTIVE_BG
         pygame.draw.rect(screen, col_play, self.rect_btn_play, border_radius=6)
         t_play = "PAUSE" if self.is_playing else "PLAY"
-        screen.blit(font_bubble.render(t_play, True, (255, 255, 255)), (self.rect_btn_play.x + 14, self.rect_btn_play.y + 6))
+        s_play = font_bubble.render(t_play, True, (255, 255, 255))
+        screen.blit(s_play, s_play.get_rect(center=self.rect_btn_play.center))
 
-        # 3. Tombol [Step Forward / Next ⏭️]
+        # 3. Tombol [Step Forward / Next]
         self.rect_btn_step_fwd = pygame.Rect(mx + 154, btn_y, 44, btn_h)
-        pygame.draw.rect(screen, (30, 40, 58), self.rect_btn_step_fwd, border_radius=6)
+        pygame.draw.rect(screen, COLOR_CARD_BG, self.rect_btn_step_fwd, border_radius=6)
+        pygame.draw.rect(screen, COLOR_CARD_BORDER, self.rect_btn_step_fwd, 1, border_radius=6)
         fx = self.rect_btn_step_fwd.centerx
         fy = self.rect_btn_step_fwd.centery
-        # Segitiga panah kanan + garis vertikal kanan tebal (Next)
         pygame.draw.polygon(screen, COLOR_TEXT_PRIMARY, [(fx - 6, fy - 7), (fx - 6, fy + 7), (fx + 4, fy)])
         pygame.draw.line(screen, COLOR_TEXT_PRIMARY, (fx + 7, fy - 6), (fx + 7, fy + 6), 3)
 
-        # 4. Tombol [🔄 Ulang]
+        # 4. Tombol [RESET]
         self.rect_btn_reset = pygame.Rect(mx + 206, btn_y, 64, btn_h)
-        pygame.draw.rect(screen, (35, 45, 62), self.rect_btn_reset, border_radius=6)
-        screen.blit(font_sm.render("RESET", True, COLOR_TEXT_PRIMARY), (self.rect_btn_reset.x + 12, self.rect_btn_reset.y + 8))
+        pygame.draw.rect(screen, COLOR_CARD_BG, self.rect_btn_reset, border_radius=6)
+        pygame.draw.rect(screen, COLOR_CARD_BORDER, self.rect_btn_reset, 1, border_radius=6)
+        s_rst = font_sm.render("RESET", True, COLOR_TEXT_PRIMARY)
+        screen.blit(s_rst, s_rst.get_rect(center=self.rect_btn_reset.center))
 
         # 5. Tombol Speed
         self.rect_btn_speed = pygame.Rect(mx + 278, btn_y, 60, btn_h)
-        pygame.draw.rect(screen, (28, 38, 55), self.rect_btn_speed, border_radius=6)
+        pygame.draw.rect(screen, COLOR_CARD_BG, self.rect_btn_speed, border_radius=6)
+        pygame.draw.rect(screen, COLOR_CARD_BORDER, self.rect_btn_speed, 1, border_radius=6)
         sp_text = "MAX" if self.playback_speed > 100 else f"{self.playback_speed}x"
-        screen.blit(font_sm.render(sp_text, True, COLOR_TEXT_HEADING), (self.rect_btn_speed.x + 14, self.rect_btn_speed.y + 8))
+        s_spd = font_sm.render(sp_text, True, COLOR_TEXT_HEADING)
+        screen.blit(s_spd, s_spd.get_rect(center=self.rect_btn_speed.center))
 
         # 6. Scrubber Timeline Slider
         track_x = mx + 356
@@ -1668,15 +1696,16 @@ class PreBattleVisualizerModal:
         track_h = 12
         self.rect_scrubber_track = pygame.Rect(track_x, track_y, track_w, track_h)
 
-        pygame.draw.rect(screen, (22, 28, 42), self.rect_scrubber_track, border_radius=6)
+        pygame.draw.rect(screen, (226, 215, 198), self.rect_scrubber_track, border_radius=6)
         progress = (cur_s / float(max_s)) if max_s > 0 else 1.0
         fill_w = max(6, int(track_w * progress))
         pygame.draw.rect(screen, COLOR_TAB_ACTIVE_BG, (track_x, track_y, fill_w, track_h), border_radius=6)
 
         # Pin Handle Knop
         pin_x = track_x + fill_w
-        pygame.draw.circle(screen, (235, 240, 245), (pin_x, track_y + track_h // 2), 8)
-        pygame.draw.circle(screen, COLOR_TAB_ACTIVE_BG, (pin_x, track_y + track_h // 2), 5)
+        pygame.draw.circle(screen, COLOR_CARD_BG, (pin_x, track_y + track_h // 2), 8)
+        pygame.draw.circle(screen, COLOR_TAB_ACTIVE_BORDER, (pin_x, track_y + track_h // 2), 8, 2)
+        pygame.draw.circle(screen, COLOR_TAB_ACTIVE_BG, (pin_x, track_y + track_h // 2), 4)
 
         # Indikator Teks Langkah
         step_lbl = font_sm.render(f"Step {cur_s + 1}/{max_s + 1}", True, COLOR_TEXT_PRIMARY)
@@ -1694,13 +1723,15 @@ class PreBattleVisualizerModal:
         self.rect_btn_zoom_out = pygame.Rect(bx + 32, by, 28, 28)
         self.rect_btn_zoom_reset = pygame.Rect(bx + 64, by, 60, 28)
 
-        pygame.draw.rect(screen, (22, 30, 45), self.rect_btn_zoom_in, border_radius=4)
-        pygame.draw.rect(screen, (22, 30, 45), self.rect_btn_zoom_out, border_radius=4)
-        pygame.draw.rect(screen, (22, 30, 45), self.rect_btn_zoom_reset, border_radius=4)
-
-        screen.blit(font_sm.render("+", True, COLOR_TEXT_PRIMARY), (self.rect_btn_zoom_in.x + 9, self.rect_btn_zoom_in.y + 4))
-        screen.blit(font_sm.render("-", True, COLOR_TEXT_PRIMARY), (self.rect_btn_zoom_out.x + 11, self.rect_btn_zoom_out.y + 3))
-        screen.blit(font_sm.render("Reset", True, COLOR_TEXT_SECONDARY), (self.rect_btn_zoom_reset.x + 12, self.rect_btn_zoom_reset.y + 4))
+        for z_rect, lbl, col in [
+            (self.rect_btn_zoom_in, "+", COLOR_TEXT_PRIMARY),
+            (self.rect_btn_zoom_out, "-", COLOR_TEXT_PRIMARY),
+            (self.rect_btn_zoom_reset, "Reset", COLOR_TEXT_SECONDARY),
+        ]:
+            pygame.draw.rect(screen, COLOR_CARD_BG, z_rect, border_radius=5)
+            pygame.draw.rect(screen, COLOR_CARD_BORDER, z_rect, 1, border_radius=5)
+            s_lbl = font_sm.render(lbl, True, col)
+            screen.blit(s_lbl, s_lbl.get_rect(center=z_rect.center))
 
     # ----------------------------------------------------------------------- #
     # Utility Multi-line Text

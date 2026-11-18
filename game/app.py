@@ -248,6 +248,8 @@ class App:
         self.btn_action_potion = pygame.Rect(0, 0, 0, 0)
         self.btn_battle_exit = pygame.Rect(0, 0, 0, 0)
         self.reroll_toast_timer = 0.0
+        self.pre_battle_anim = None
+        self._pre_battle_scale_cache = {}
         self.pre_battle_visualizer = PreBattleVisualizerModal()
         self.overlay.on_open_ai_inspector = self.pre_battle_visualizer.toggle
 
@@ -956,7 +958,25 @@ class App:
                 self.player.is_hidden = False
                 self.enter_pre_battle(target_encounter_npc)
         elif self.game_mode == "PRE_BATTLE":
-            # State menunggu input player untuk mulai/re-roll
+            # Animasi searching & fade-in satu-per-satu kartu skuad Pre-Battle
+            anim = getattr(self, "pre_battle_anim", None)
+            if anim:
+                anim["timer"] += dt
+                if anim["phase"] == "SEARCHING" and anim["timer"] >= anim["search_dur"]:
+                    anim["phase"] = "REVEAL"
+                    anim["timer"] = 0.0
+                    self.reroll_toast_timer = 1.6
+                if anim["phase"] == "REVEAL":
+                    members_cnt = len(self.current_squad.members) if self.current_squad else 0
+                    popped = anim.setdefault("popped", set())
+                    for idx in range(members_cnt):
+                        if idx not in popped and anim["timer"] >= idx * anim["stagger"]:
+                            popped.add(idx)
+                            if hasattr(self, "audio") and self.audio:
+                                self.audio.play_card_reveal()
+                    total_rev = max(0, members_cnt - 1) * anim["stagger"] + anim["fade_dur"]
+                    if anim["timer"] >= total_rev:
+                        self.pre_battle_anim = None
             if self.reroll_toast_timer > 0:
                 self.reroll_toast_timer = max(0.0, self.reroll_toast_timer - dt)
             if self.pre_battle_visualizer.is_open:
@@ -1095,7 +1115,17 @@ class App:
         )
 
         if randomize:
-            self.reroll_toast_timer = 1.4
+            if hasattr(self, "audio") and self.audio:
+                self.audio.play_reroll()
+            self.reroll_toast_timer = 0.0
+            self.pre_battle_anim = {
+                "phase": "SEARCHING",
+                "timer": 0.0,
+                "search_dur": 0.42,
+                "stagger": 0.14,
+                "fade_dur": 0.28,
+                "popped": set(),
+            }
 
     def enter_pre_battle(self, leader_npc=None):
         self.current_encounter_npc = leader_npc
@@ -1112,9 +1142,18 @@ class App:
             self.player.persistent_hp = 100
             self.player.persistent_potions = max(2, self.player.persistent_potions)
         self._run_optimization()
+        self.pre_battle_anim = {
+            "phase": "REVEAL",
+            "timer": 0.0,
+            "search_dur": 0.0,
+            "stagger": 0.13,
+            "fade_dur": 0.26,
+            "popped": set(),
+        }
 
     def enter_battle(self):
         self.game_mode = "BATTLE"
+        self.pre_battle_anim = None
         self.overlay.set_mode("BATTLE")
         self.overlay.set_chasing_visualization(False)
         self.overlay.stop_path_animation()
@@ -1150,6 +1189,7 @@ class App:
         self.battle_reentry_locked = True
         self.battle_reentry_timer = 2.5
         self.is_boss_battle = False
+        self.pre_battle_anim = None
         self.card_summon_anim = None
         self.loot_toast = None
         self.loot_modal = None
@@ -2643,6 +2683,207 @@ class App:
             pygame.draw.circle(bp_surf, (*bp["color"], alpha), (rad + 2, rad + 2), rad)
             self.screen.blit(bp_surf, (int(bp["x"] - rad - 2), int(bp["y"] - rad - 2)))
 
+    def _get_scaled_ui_sprite(self, surf, max_w: int, max_h: int):
+        """Skala proporsional sprite agar muat ketat dalam kotak batas & di-cache untuk performa 60 FPS."""
+        sw = max(1, surf.get_width())
+        sh = max(1, surf.get_height())
+        scale = min(max(1, max_w) / float(sw), max(1, max_h) / float(sh))
+        tw = max(1, int(round(sw * scale)))
+        th = max(1, int(round(sh * scale)))
+
+        cache = getattr(self, "_pre_battle_scale_cache", None)
+        if cache is None:
+            cache = {}
+            self._pre_battle_scale_cache = cache
+        key = (id(surf), tw, th)
+        cached = cache.get(key)
+        if cached is not None:
+            return cached
+        if len(cache) > 64:
+            cache.clear()
+        scaled = pygame.transform.smoothscale(surf, (tw, th))
+        cache[key] = scaled
+        return scaled
+
+    def _draw_pre_battle_hero_card(self, p_card_rect, fonts):
+        """Render kartu Hero Utama (Player) dengan proporsi dinamis & gambar besar dalam batas kotak."""
+        font_title, font_bubble, font_sm, font_tiny = fonts
+        draw_card(self.screen, p_card_rect, (255, 255, 255, 245), border_color=(218, 206, 188), border_radius=10)
+
+        px, py, pw, ph = p_card_rect.x, p_card_rect.y, p_card_rect.width, p_card_rect.height
+        p_header = font_title.render("Hero Utama (Player)", True, config.COLOR_TEXT_PRIMARY)
+        self.screen.blit(p_header, (px + 14, py + 12))
+
+        p_stats = [
+            f"• Ramuan    : {self.player.persistent_potions} Botol (+25 HP)",
+            f"• Serangan  : +{self.player.atk_bonus} ATK",
+            f"• Ketahanan : +{self.player.def_bonus} DEF Flat",
+            "• Karakter  : Petualang Tangguh",
+        ]
+        f_pstat = font_sm if (pw >= 295 and font_sm.size(p_stats[0])[0] <= pw - 28) else font_tiny
+        line_step = 19 if f_pstat == font_tiny else 21
+        stats_block_h = 16 + 10 + len(p_stats) * line_step + 6 + 22 + 38
+
+        # Kotak showcase karakter mengisi sisa ruang vertikal secara dinamis
+        showcase_top = py + 40
+        showcase_h = max(110, ph - 40 - stats_block_h - 10)
+        showcase_rect = pygame.Rect(px + 14, showcase_top, pw - 28, showcase_h)
+        draw_card(self.screen, showcase_rect, (250, 246, 238), border_color=(232, 222, 206), border_radius=8)
+
+        p_img = self.battle_sprites.get("player", self.player.sprite.current_image)
+        p_big = self._get_scaled_ui_sprite(p_img, showcase_rect.width - 14, showcase_rect.height - 10)
+        self.screen.blit(p_big, p_big.get_rect(center=showcase_rect.center))
+
+        # Mini Bar HP Player
+        hp_bar_y = showcase_rect.bottom + 10
+        hp_bar_w = pw - 28
+        hp_bar_h = 16
+        pygame.draw.rect(self.screen, (235, 226, 215), (px + 14, hp_bar_y, hp_bar_w, hp_bar_h), border_radius=4)
+        hp_fill = int((self.player.persistent_hp / 100.0) * hp_bar_w)
+        if hp_fill > 0:
+            pygame.draw.rect(self.screen, (42, 138, 62), (px + 14, hp_bar_y, hp_fill, hp_bar_h), border_radius=4)
+        pygame.draw.rect(self.screen, (190, 178, 160), (px + 14, hp_bar_y, hp_bar_w, hp_bar_h), 1, border_radius=4)
+        hp_lbl = font_sm.render(f"HP: {self.player.persistent_hp} / 100", True, (255, 255, 255))
+        self.screen.blit(hp_lbl, (px + 14 + (hp_bar_w - hp_lbl.get_width()) // 2, hp_bar_y + 1))
+
+        py_stat = hp_bar_y + hp_bar_h + 10
+        for s in p_stats:
+            self.screen.blit(f_pstat.render(s, True, config.COLOR_TEXT_PRIMARY), (px + 14, py_stat))
+            py_stat += line_step
+
+        # Rincian Inventori Barang
+        py_stat += 6
+        self.screen.blit(font_bubble.render("Artefak & Perlengkapan:", True, config.COLOR_ACCENT_GOLD), (px + 14, py_stat))
+        ix, iy = px + 14, py_stat + 22
+        max_ix = p_card_rect.right - 44
+        name_to_key = {
+            "Pedang Ksatria Oyen": "item_sword",
+            "Busur Presisi Kuro": "item_bow",
+            "Belati Bayangan Kage": "item_dagger",
+            "Tongkat Sihir Shiro": "mega_potion",
+        }
+        for it in (self.player.inventory or ["item_sword"]):
+            img_key = name_to_key.get(it, it)
+            if img_key in self.item_images:
+                if ix > max_ix:
+                    ix = px + 14
+                    iy += 36
+                if iy + 32 <= p_card_rect.bottom - 6:
+                    icon = self._get_scaled_ui_sprite(self.item_images[img_key], 32, 32)
+                    self.screen.blit(icon, (ix, iy))
+                    ix += 38
+
+    def _draw_pre_battle_member_searching(self, m_rect, idx: int, anim_t: float, search_dur: float, fonts):
+        """Render placeholder kartu saat animasi pencarian / pengacakan skuad sedang berlangsung."""
+        _, font_bubble, font_sm, font_tiny = fonts
+        role_cycle = [
+            ("WARRIOR", (254, 242, 225), (225, 150, 50), (185, 100, 20)),
+            ("RANGER", (232, 248, 235), (65, 160, 85), (35, 125, 55)),
+            ("MAGE", (230, 242, 255), (75, 145, 220), (25, 100, 180)),
+            ("ASSASSIN", (250, 235, 252), (175, 85, 195), (135, 50, 155)),
+        ]
+        step_idx = (int(anim_t * 14) + idx) % len(role_cycle)
+        r_lbl, r_bg, r_bd, r_txt = role_cycle[step_idx]
+
+        draw_card(self.screen, m_rect, (255, 253, 248, 245), border_color=(215, 168, 82), border_radius=8)
+
+        # Sapuan kilau horizontal (scan shimmer) halus
+        prog = min(1.0, (anim_t + idx * 0.08) / max(0.01, search_dur))
+        scan_x = m_rect.x + int((m_rect.width - 70) * (prog % 1.0))
+        scan_surf = pygame.Surface((70, m_rect.height - 4), SRCALPHA)
+        scan_surf.fill((255, 232, 165, 55))
+        self.screen.blit(scan_surf, (scan_x, m_rect.y + 2))
+
+        portrait_w = max(76, min(m_rect.height - 14, int(m_rect.width * 0.28)))
+        p_box = pygame.Rect(m_rect.x + 8, m_rect.y + 7, portrait_w, m_rect.height - 14)
+        draw_card(self.screen, p_box, r_bg, border_color=r_bd, border_radius=7)
+        q_lbl = font_bubble.render("?", True, r_txt)
+        self.screen.blit(q_lbl, q_lbl.get_rect(center=p_box.center))
+
+        tx = p_box.right + 14
+        dots = "." * (int(anim_t * 10 + idx) % 3 + 1)
+        s1 = font_bubble.render(f"Slot {idx + 1}: Mengoptimasi Skuad{dots}", True, config.COLOR_ACCENT_GOLD)
+        s2 = font_sm.render(f"Menguji kandidat: [{r_lbl}] via CSP + Local Search", True, config.COLOR_TEXT_SECONDARY)
+        self.screen.blit(s1, (tx, m_rect.centery - 20))
+        self.screen.blit(s2, (tx, m_rect.centery + 4))
+
+    def _draw_pre_battle_member_card(self, m_rect, idx: int, m, fonts, alpha: int = 255):
+        """Render 1 kartu anggota skuad NPC lawan dengan gambar besar proporsional & dukungan fade-in."""
+        font_title, font_bubble, font_sm, font_tiny = fonts
+        role_styles = {
+            "warrior": ("WARRIOR", (254, 242, 225), (225, 150, 50), (185, 100, 20), "Ketahanan tinggi & seimbang"),
+            "ranger": ("RANGER", (232, 248, 235), (65, 160, 85), (35, 125, 55), "Pemanah lincah & akurat"),
+            "mage": ("MAGE", (230, 242, 255), (75, 145, 220), (25, 100, 180), "Spesialis sihir kehancuran"),
+            "assassin": ("ASSASSIN", (250, 235, 252), (175, 85, 195), (135, 50, 155), "Penyelinap & serangan kritis"),
+        }
+        ctype_lower = m.char_type.lower()
+        job_label, pill_bg, pill_border, pill_text_col, trait_desc = role_styles.get(
+            ctype_lower,
+            (ctype_lower.upper(), (242, 238, 230), (170, 155, 138), (115, 98, 82), "Petarung tangguh tim AI"),
+        )
+
+        # Render ke surface terpisah hanya ketika fade-in aktif (alpha < 255) agar hemat CPU
+        if alpha < 255:
+            target = pygame.Surface((m_rect.width, m_rect.height), SRCALPHA)
+            card_rect = pygame.Rect(0, 0, m_rect.width, m_rect.height)
+        else:
+            target = self.screen
+            card_rect = m_rect
+
+        draw_card(target, card_rect, (255, 255, 255, 245), border_color=(218, 206, 188), border_radius=8)
+
+        # Area portrait proporsional agar karakter tampil besar & tegas namun tetap di dalam kotak
+        portrait_w = max(84, min(card_rect.height - 14, int(card_rect.width * 0.29)))
+        portrait_box = pygame.Rect(card_rect.x + 8, card_rect.y + 7, portrait_w, card_rect.height - 14)
+        draw_card(target, portrait_box, (250, 246, 238), border_color=(232, 222, 206), border_radius=7)
+
+        npc_thumb = m.battle_sprite or m.portrait
+        if npc_thumb:
+            p_icon = self._get_scaled_ui_sprite(npc_thumb, portrait_box.width - 8, portrait_box.height - 8)
+            target.blit(p_icon, p_icon.get_rect(center=portrait_box.center))
+
+        # Kolom Teks di kanan portrait box
+        tx = portrait_box.right + 14
+        ty = card_rect.y + max(10, (card_rect.height - 84) // 2)
+        max_txt_w = card_rect.right - tx - 12
+
+        # Baris 1: Nama di kiri, Pill Badge Job di kanan
+        pill_txt = font_tiny.render(job_label, True, pill_text_col)
+        pill_w = pill_txt.get_width() + 12
+        pill_h = 19
+        pill_rect = pygame.Rect(card_rect.right - pill_w - 12, ty + 1, pill_w, pill_h)
+        draw_card(target, pill_rect, pill_bg, border_color=pill_border, border_radius=4)
+        target.blit(pill_txt, pill_txt.get_rect(center=pill_rect.center))
+
+        name_avail_w = pill_rect.left - tx - 8
+        full_name = f"{idx + 1}. {m.name}"
+        if font_title.size(full_name)[0] <= name_avail_w:
+            t_name = font_title.render(full_name, True, config.COLOR_TEXT_PRIMARY)
+        elif font_bubble.size(full_name)[0] <= name_avail_w:
+            t_name = font_bubble.render(full_name, True, config.COLOR_TEXT_PRIMARY)
+        else:
+            short_name = f"{idx + 1}. {m.name.split()[0]}"
+            t_name = font_bubble.render(short_name, True, config.COLOR_TEXT_PRIMARY)
+        target.blit(t_name, (tx, ty))
+
+        # Baris 2: Mini HP Bar (Coral) & Potions
+        txt_hp = font_tiny.render(f"{m.max_hp} HP │ {m.potions} Potion", True, config.COLOR_TEXT_PRIMARY)
+        m_hp_w = min(110, max(50, max_txt_w - txt_hp.get_width() - 12))
+        m_hp_y = ty + 25
+        pygame.draw.rect(target, (235, 226, 215), (tx, m_hp_y, m_hp_w, 12), border_radius=3)
+        m_fill = max(0, min(m_hp_w, int((m.max_hp / 120.0) * m_hp_w)))
+        pygame.draw.rect(target, (215, 65, 55), (tx, m_hp_y, m_fill, 12), border_radius=3)
+        target.blit(txt_hp, (tx + m_hp_w + 8, m_hp_y - 2))
+
+        # Baris 3 & 4: ATK, DEF, AI Profile & Deskripsi Trait
+        line3 = f"+{m.atk_bonus} ATK │ +{m.def_bonus} DEF │ {m.eval_profile}"
+        target.blit(font_sm.render(line3, True, config.COLOR_TEXT_SECONDARY), (tx, ty + 43))
+        target.blit(font_tiny.render(trait_desc, True, (135, 118, 102)), (tx, ty + 64))
+
+        if alpha < 255:
+            target.set_alpha(alpha)
+            self.screen.blit(target, m_rect.topleft)
+
     def _draw_pre_battle_arena(self):
         w, h = self.screen.get_size()
         is_dock_open = getattr(self.overlay.dock, "is_open", False) if hasattr(self, "overlay") and hasattr(self.overlay, "dock") else False
@@ -2661,206 +2902,75 @@ class App:
         font_bubble = self.fonts.get("bubble", self.fonts["sm"])
         font_sm = self.fonts["sm"]
         font_tiny = self.fonts.get("tiny", font_sm)
+        ui_fonts = (font_title, font_bubble, font_sm, font_tiny)
 
-        # Header Title
-        t_surf = font_huge.render("PERSIAPAN PERTEMPURAN (PRE-BATTLE)", True, (255, 220, 95))
-        self.screen.blit(t_surf, (area_cx - t_surf.get_width() // 2, 24))
+        # Header Title + bayangan lembut agar tajam terbaca
+        title_str = "PERSIAPAN PERTEMPURAN (PRE-BATTLE)"
+        t_shadow = font_huge.render(title_str, True, (28, 20, 14))
+        t_surf = font_huge.render(title_str, True, (255, 224, 110))
+        tx_hdr = area_cx - t_surf.get_width() // 2
+        self.screen.blit(t_shadow, (tx_hdr + 1, 24))
+        self.screen.blit(t_surf, (tx_hdr, 22))
 
         sub_txt = "Keseimbangan komposisi skuad lawan dioptimasi via CSP (MRV+LCV+AC-3) & Local Search"
         f_sub = font_sm if font_sm.size(sub_txt)[0] <= arena_w - 40 else font_tiny
         if f_sub.size(sub_txt)[0] > arena_w - 40:
             sub_txt = "Komposisi skuad lawan dioptimasi via CSP & Local Search"
             f_sub = font_tiny
-        sub_surf = f_sub.render(sub_txt, True, (245, 235, 215))
-        self.screen.blit(sub_surf, (area_cx - sub_surf.get_width() // 2, 58))
+        sub_surf = f_sub.render(sub_txt, True, (245, 236, 218))
+        self.screen.blit(sub_surf, (area_cx - sub_surf.get_width() // 2, 56))
 
-        # Sisi Kiri: Profil Player - Diperbesar mengisi space vertikal
+        # Geometri Area Kartu Kiri & Kanan
         btn_h = 44
         btn_y = h - 68
         available_h = max(380, btn_y - 20 - 92)
-
         avail_w = arena_w - 44
-        p_card_w = min(320, max(220, int(avail_w * 0.38)))
-        p_card_h = available_h
+
+        p_card_w = min(345, max(230, int(avail_w * 0.37)))
         p_card_x = panel_w + 16
         p_card_y = 90
-        p_card_rect = pygame.Rect(p_card_x, p_card_y, p_card_w, p_card_h)
+        p_card_rect = pygame.Rect(p_card_x, p_card_y, p_card_w, available_h)
+        self._draw_pre_battle_hero_card(p_card_rect, ui_fonts)
 
-        # Kartu Hero Utama Player (Putih Gading Cozy Journal)
-        draw_card(self.screen, p_card_rect, (255, 255, 255, 245), border_color=(218, 206, 188), border_radius=10)
+        # Sisi Kanan: Profil Squad NPC Lawan
+        squad_area_x = p_card_rect.right + 14
+        squad_area_w = avail_w - p_card_w - 2
 
-        p_header = font_title.render("Hero Utama (Player)", True, config.COLOR_TEXT_PRIMARY)
-        self.screen.blit(p_header, (p_card_x + 14, p_card_y + 14))
-
-        # Tampilan Sprite Bolu Besar & Heroik
-        p_img = self.battle_sprites.get("player", self.player.sprite.current_image)
-        p_aspect = p_img.get_width() / float(p_img.get_height())
-        target_bolu_h = min(130, int(available_h * 0.28))
-        target_bolu_w = min(p_card_w - 36, int(round(target_bolu_h * p_aspect)))
-        p_big = pygame.transform.smoothscale(p_img, (target_bolu_w, target_bolu_h))
-        self.screen.blit(p_big, p_big.get_rect(center=(p_card_x + p_card_w // 2, p_card_y + 36 + target_bolu_h // 2)))
-
-        # Mini Bar HP Player
-        hp_bar_y = p_card_y + 42 + target_bolu_h
-        hp_bar_w = p_card_w - 28
-        hp_bar_h = 16
-        pygame.draw.rect(self.screen, (235, 226, 215), (p_card_x + 14, hp_bar_y, hp_bar_w, hp_bar_h), border_radius=4)
-        hp_fill = int((self.player.persistent_hp / 100.0) * hp_bar_w)
-        if hp_fill > 0:
-            pygame.draw.rect(self.screen, (42, 138, 62), (p_card_x + 14, hp_bar_y, hp_fill, hp_bar_h), border_radius=4)
-        pygame.draw.rect(self.screen, (190, 178, 160), (p_card_x + 14, hp_bar_y, hp_bar_w, hp_bar_h), 1, border_radius=4)
-        hp_lbl = font_sm.render(f"HP: {self.player.persistent_hp} / 100", True, (255, 255, 255))
-        self.screen.blit(hp_lbl, (p_card_x + 14 + (hp_bar_w - hp_lbl.get_width()) // 2, hp_bar_y + 1))
-
-        py_stat = hp_bar_y + 24
-        p_stats = [
-            f"• Ramuan    : {self.player.persistent_potions} Botol (+25 HP)",
-            f"• Serangan  : +{self.player.atk_bonus} ATK",
-            f"• Ketahanan : +{self.player.def_bonus} DEF Flat",
-            "• Karakter  : Petualang Tangguh",
-        ]
-        f_pstat = font_sm if (p_card_w >= 300 and font_sm.size(p_stats[0])[0] <= p_card_w - 30) else font_tiny
-        for s in p_stats:
-            self.screen.blit(f_pstat.render(s, True, config.COLOR_TEXT_PRIMARY), (p_card_x + 14, py_stat))
-            py_stat += 20 if f_pstat == font_tiny else 22
-
-        # Rincian Inventori Barang
-        py_stat += 6
-        self.screen.blit(font_bubble.render("Artefak & Perlengkapan:", True, config.COLOR_ACCENT_GOLD), (p_card_x + 14, py_stat))
-        ix = p_card_x + 14
-        iy = py_stat + 24
-        max_ix = p_card_rect.right - 44
-        name_to_key = {
-            "Pedang Ksatria Oyen": "item_sword",
-            "Busur Presisi Kuro": "item_bow",
-            "Belati Bayangan Kage": "item_dagger",
-            "Tongkat Sihir Shiro": "mega_potion",
-            "health_potion": "health_potion",
-            "mega_potion": "mega_potion",
-            "item_sword": "item_sword",
-            "item_shield": "item_shield",
-            "item_boots": "item_boots",
-            "item_bow": "item_bow",
-            "item_dagger": "item_dagger",
-        }
-        for it in (self.player.inventory or ["item_sword"]):
-            img_key = name_to_key.get(it, it)
-            if img_key in self.item_images:
-                if ix > max_ix:
-                    ix = p_card_x + 14
-                    iy += 38
-                icon = pygame.transform.smoothscale(self.item_images[img_key], (32, 32))
-                self.screen.blit(icon, (ix, iy))
-                ix += 38
-
-        # Sisi Kanan: Profil Squad NPC Lawan (Putih Gading Cozy Journal)
-        squad_area_x = p_card_rect.right + 12
-        squad_area_w = avail_w - p_card_w
-
-        sq_header = font_title.render("Skuad Lawan (CSP & Local Search)", True, (255, 220, 95))
-        self.screen.blit(sq_header, (squad_area_x, p_card_y - 2))
+        sq_hdr_txt = "Skuad Lawan (CSP & Local Search)"
+        self.screen.blit(font_title.render(sq_hdr_txt, True, (28, 20, 14)), (squad_area_x + 1, p_card_y))
+        self.screen.blit(font_title.render(sq_hdr_txt, True, (255, 224, 110)), (squad_area_x, p_card_y - 2))
 
         members = self.current_squad.members if self.current_squad else []
         num_m = max(1, len(members))
         gap = 10
-        member_card_h = max(100, (available_h - 26 - (num_m - 1) * gap) // num_m)
-        m_y = p_card_y + 26
+        list_top = p_card_y + 28
+        list_h = p_card_rect.bottom - list_top
+        member_card_h = max(92, (list_h - (num_m - 1) * gap) // num_m)
+        m_y = list_top
 
+        anim = getattr(self, "pre_battle_anim", None)
         for idx, m in enumerate(members):
-            m_rect = pygame.Rect(squad_area_x, m_y, squad_area_w, member_card_h)
-            ctype_lower = m.char_type.lower()
-            if ctype_lower == "warrior":
-                job_label = "WARRIOR"
-                pill_bg = (254, 242, 225)
-                pill_border = (225, 150, 50)
-                pill_text_col = (185, 100, 20)
-                trait_desc = "Ketahanan tinggi & seimbang"
-            elif ctype_lower == "ranger":
-                job_label = "RANGER"
-                pill_bg = (232, 248, 235)
-                pill_border = (65, 160, 85)
-                pill_text_col = (35, 125, 55)
-                trait_desc = "Pemanah lincah & akurat"
-            elif ctype_lower == "mage":
-                job_label = "MAGE"
-                pill_bg = (230, 242, 255)
-                pill_border = (75, 145, 220)
-                pill_text_col = (25, 100, 180)
-                trait_desc = "Spesialis sihir kehancuran"
-            elif ctype_lower == "assassin":
-                job_label = "ASSASSIN"
-                pill_bg = (250, 235, 252)
-                pill_border = (175, 85, 195)
-                pill_text_col = (135, 50, 155)
-                trait_desc = "Penyelinap & serangan kritis"
+            # Pastikan kartu terakhir rata bawah tepat sejajar kartu Hero Utama
+            cur_h = (p_card_rect.bottom - m_y) if (idx == num_m - 1 and (p_card_rect.bottom - m_y) >= 92) else member_card_h
+            m_rect = pygame.Rect(squad_area_x, m_y, squad_area_w, cur_h)
+
+            if anim and anim.get("phase") == "SEARCHING":
+                self._draw_pre_battle_member_searching(m_rect, idx, anim["timer"], anim["search_dur"], ui_fonts)
+            elif anim and anim.get("phase") == "REVEAL":
+                raw_p = (anim["timer"] - idx * anim["stagger"]) / max(0.01, anim["fade_dur"])
+                if raw_p <= 0.0:
+                    # Slot menanti giliran fade-in
+                    draw_card(self.screen, m_rect, (255, 253, 248, 80), border_color=(218, 206, 188), border_radius=8)
+                else:
+                    prog = min(1.0, raw_p)
+                    ease = 1.0 - (1.0 - prog) ** 3
+                    card_alpha = max(1, min(255, int(round(255 * ease))))
+                    y_off = int(round((1.0 - ease) * 12))
+                    self._draw_pre_battle_member_card(m_rect.move(0, y_off), idx, m, ui_fonts, alpha=card_alpha)
             else:
-                job_label = ctype_lower.upper()
-                pill_bg = (242, 238, 230)
-                pill_border = (170, 155, 138)
-                pill_text_col = (115, 98, 82)
-                trait_desc = "Petarung tangguh tim AI"
+                self._draw_pre_battle_member_card(m_rect, idx, m, ui_fonts, alpha=255)
 
-            # Background Kartu Skuad
-            draw_card(self.screen, m_rect, (255, 255, 255, 245), border_color=(218, 206, 188), border_radius=8)
-
-            # Portrait Area Terdedikasi di Kiri Kartu (Mencegah Sprite Menabrak Teks)
-            portrait_box = pygame.Rect(m_rect.x + 8, m_rect.y + 6, 62, member_card_h - 12)
-            npc_thumb = m.battle_sprite or m.portrait
-            if npc_thumb:
-                asp = npc_thumb.get_width() / float(npc_thumb.get_height())
-                max_sw = 58
-                max_sh = member_card_h - 14
-                thumb_h = min(max_sh, int(max_sw / asp)) if asp > 0 else max_sh
-                thumb_w = int(round(thumb_h * asp))
-                if thumb_w > max_sw:
-                    thumb_w = max_sw
-                    thumb_h = int(round(thumb_w / asp))
-                p_icon = pygame.transform.smoothscale(npc_thumb, (thumb_w, thumb_h))
-                self.screen.blit(p_icon, p_icon.get_rect(center=portrait_box.center))
-            else:
-                pygame.draw.rect(self.screen, (240, 234, 224), (m_rect.x + 8, m_rect.y + 8, 56, 56), border_radius=6)
-
-            # Titik Awal Teks (tx dijamin bebas tabrakan dari sprite)
-            tx = m_rect.x + 76
-            ty = m_rect.y + max(6, (member_card_h - 84) // 2)
-            max_txt_w = m_rect.right - tx - 10
-
-            # Baris 1: Nama di kiri, Pill Badge Job di kanan
-            pill_txt = font_tiny.render(job_label, True, pill_text_col)
-            pill_w = pill_txt.get_width() + 10
-            pill_h = 18
-            pill_rect = pygame.Rect(m_rect.right - pill_w - 10, ty + 1, pill_w, pill_h)
-            draw_card(self.screen, pill_rect, pill_bg, border_color=pill_border, border_radius=4)
-            self.screen.blit(pill_txt, (pill_rect.x + 5, pill_rect.y + 1))
-
-            name_avail_w = pill_rect.left - tx - 6
-            full_name = f"{idx+1}. {m.name}"
-            if font_title.size(full_name)[0] <= name_avail_w:
-                t_name = font_title.render(full_name, True, config.COLOR_TEXT_PRIMARY)
-            elif font_bubble.size(full_name)[0] <= name_avail_w:
-                t_name = font_bubble.render(full_name, True, config.COLOR_TEXT_PRIMARY)
-            else:
-                short_name = f"{idx+1}. {m.name.split()[0]}"
-                t_name = font_title.render(short_name, True, config.COLOR_TEXT_PRIMARY)
-            self.screen.blit(t_name, (tx, ty))
-
-            # Baris 2: Mini HP Bar (Warna Coral Konsisten) & Potions
-            txt_hp = font_tiny.render(f"{m.max_hp} HP │ {m.potions} Potion", True, config.COLOR_TEXT_PRIMARY)
-            m_hp_w = min(90, max(45, max_txt_w - txt_hp.get_width() - 10))
-            m_hp_y = ty + 24
-            pygame.draw.rect(self.screen, (235, 226, 215), (tx, m_hp_y, m_hp_w, 12), border_radius=3)
-            m_fill = max(0, min(m_hp_w, int((m.max_hp / 120.0) * m_hp_w)))
-            pygame.draw.rect(self.screen, (215, 65, 55), (tx, m_hp_y, m_fill, 12), border_radius=3)
-            self.screen.blit(txt_hp, (tx + m_hp_w + 8, m_hp_y - 2))
-
-            # Baris 3: ATK, DEF, dan Profil AI (Rapi & Kompak)
-            line3 = f"+{m.atk_bonus} ATK │ +{m.def_bonus} DEF │ {m.eval_profile}"
-            self.screen.blit(font_tiny.render(line3, True, config.COLOR_TEXT_SECONDARY), (tx, ty + 42))
-
-            # Baris 4: Deskripsi Karakteristik (Tidak Melebihi Batas Kartu)
-            self.screen.blit(font_tiny.render(trait_desc, True, (135, 118, 102)), (tx, ty + 60))
-
-            m_y += member_card_h + gap
+            m_y += cur_h + gap
 
         # Bagian Bawah: 4 Tombol CTA Interaktif di Dasar Layar
         avail_btn_w = arena_w - 40
@@ -2874,35 +2984,30 @@ class App:
         self.btn_pre_battle_reroll = pygame.Rect(start_x + 2 * (btn_w + btn_gap), btn_y, btn_w, btn_h)
         self.btn_pre_battle_cancel = pygame.Rect(start_x + 3 * (btn_w + btn_gap), btn_y, btn_w, btn_h)
 
-        # 1. Tombol Buka Pohon CSP & Optimasi [T]
-        draw_card(self.screen, self.btn_pre_battle_inspect, (244, 248, 255), border_color=(70, 130, 210), border_radius=6)
-        # 2. Tombol Mulai Duel [SPASI]
-        draw_card(self.screen, self.btn_pre_battle_start, (42, 138, 62), border_color=(30, 110, 48), border_radius=6)
-        # 3. Tombol Acak Ulang [R]
-        draw_card(self.screen, self.btn_pre_battle_reroll, (205, 135, 25), border_color=(175, 110, 15), border_radius=6)
-        # 4. Tombol Batal [ESC]
-        draw_card(self.screen, self.btn_pre_battle_cancel, (115, 98, 82), border_color=(88, 72, 60), border_radius=6)
-
         t_inspect_txt = "[T] Pohon CSP & LS" if btn_w >= 145 else "[T] Pohon CSP"
-        t_inspect = font_bubble.render(t_inspect_txt, True, (25, 85, 160))
-        t_start = font_bubble.render("[SPASI] Mulai Duel", True, (255, 255, 255))
-        t_reroll = font_bubble.render("[R] Acak Ulang", True, (255, 255, 255))
-        t_cancel = font_bubble.render("[ESC] Kembali", True, (255, 255, 255))
+        cta_specs = [
+            (self.btn_pre_battle_inspect, (244, 248, 255), (70, 130, 210), t_inspect_txt, (25, 85, 160)),
+            (self.btn_pre_battle_start, (42, 138, 62), (30, 110, 48), "[SPASI] Mulai Duel", (255, 255, 255)),
+            (self.btn_pre_battle_reroll, (205, 135, 25), (175, 110, 15), "[R] Acak Ulang", (255, 255, 255)),
+            (self.btn_pre_battle_cancel, (115, 98, 82), (88, 72, 60), "[ESC] Kembali", (255, 255, 255)),
+        ]
+        m_pos = pygame.mouse.get_pos()
+        for b_rect, b_bg, b_bd, b_label, b_txt_col in cta_specs:
+            hovered = b_rect.collidepoint(m_pos)
+            draw_r = b_rect.move(0, -2) if hovered else b_rect
+            draw_card(self.screen, draw_r, b_bg, border_color=b_bd, border_radius=7)
+            lbl_s = font_bubble.render(b_label, True, b_txt_col)
+            self.screen.blit(lbl_s, lbl_s.get_rect(center=draw_r.center))
 
-        self.screen.blit(t_inspect, (self.btn_pre_battle_inspect.centerx - t_inspect.get_width() // 2, self.btn_pre_battle_inspect.centery - t_inspect.get_height() // 2))
-        self.screen.blit(t_start, (self.btn_pre_battle_start.centerx - t_start.get_width() // 2, self.btn_pre_battle_start.centery - t_start.get_height() // 2))
-        self.screen.blit(t_reroll, (self.btn_pre_battle_reroll.centerx - t_reroll.get_width() // 2, self.btn_pre_battle_reroll.centery - t_reroll.get_height() // 2))
-        self.screen.blit(t_cancel, (self.btn_pre_battle_cancel.centerx - t_cancel.get_width() // 2, self.btn_pre_battle_cancel.centery - t_cancel.get_height() // 2))
-
-        # Notifikasi visual saat Re-Roll berhasil dijalankan
+        # Notifikasi visual saat Re-Roll selesai dijalankan
         if self.reroll_toast_timer > 0:
-            toast_text = "Skuad NPC berhasil diperbarui & dioptimasi."
+            toast_text = "Skuad NPC berhasil diacak & dioptimasi!"
             toast_surf = font_bubble.render(toast_text, True, (255, 255, 255))
             tw = toast_surf.get_width() + 28
             th = 28
-            toast_rect = pygame.Rect(area_cx - tw // 2, btn_y - 34, tw, th)
+            toast_rect = pygame.Rect(area_cx - tw // 2, btn_y - 36, tw, th)
             draw_card(self.screen, toast_rect, (42, 138, 62), border_color=(30, 110, 48), border_radius=6)
-            self.screen.blit(toast_surf, (toast_rect.centerx - toast_surf.get_width() // 2, toast_rect.centery - toast_surf.get_height() // 2))
+            self.screen.blit(toast_surf, toast_surf.get_rect(center=toast_rect.center))
 
     def _draw_chests(self):
         sf = getattr(self, "_scaled_foliage", {})

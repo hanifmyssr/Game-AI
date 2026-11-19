@@ -145,6 +145,7 @@ class ResolutionRefutationEngine:
 
         # Root node: Pembuktian Resolusi Refutasi
         status_label = "TERBUKTI ENTAILED (TRUE)" if proved else "TIDAK TERBUKTI"
+        neg_lit = summary.get("negated_query", f"~{query}")
         root = GraphNode(
             node_id="root_proof",
             label=f"Query: {query}",
@@ -153,9 +154,26 @@ class ResolutionRefutationEngine:
             node_type="MAX" if proved else "DEFAULT",
             is_best=proved
         )
+        root.meta = {
+            "role": "ROOT",
+            "title": f"Query: {query}",
+            "description": (
+                f"Knowledge Base menguji apakah pernyataan '{query}' bernilai TRUE "
+                f"dari fakta sensorik dan aturan CNF yang aktif."
+            ),
+            "query": query,
+            "negated_query": neg_lit,
+            "proved": proved,
+            "total_steps": len(proof_trace),
+            "decision_meaning": (
+                f"Karena negasi ({neg_lit}) memicu kontradiksi [], maka {query} "
+                f"TERBUKTI benar secara deduktif dan langsung dieksekusi di game."
+                if proved
+                else f"Tidak ditemukan kontradiksi [], sehingga {query} belum dapat dibuktikan."
+            ),
+        }
 
         # Child: Negasi Query
-        neg_lit = summary.get("negated_query", f"~{query}")
         neg_node = root.add_child(GraphNode(
             node_id="neg_query",
             label=f"1. Asumsi Negasi: {neg_lit}",
@@ -164,20 +182,54 @@ class ResolutionRefutationEngine:
             node_type="MIN",
             is_best=False
         ))
+        neg_node.meta = {
+            "role": "NEGATION",
+            "title": f"Asumsi Negasi: {neg_lit}",
+            "description": (
+                f"Langkah awal Proof by Contradiction: kita memasukkan kebalikan dari query "
+                f"({neg_lit}) ke dalam Knowledge Base untuk diuji konsistensinya."
+            ),
+            "query": query,
+            "negated_query": neg_lit,
+            "goal_note": "Gabungkan klausa ini dengan fakta/aturan KB hingga muncul klausa kosong [].",
+        }
 
         # Anak-anak rantai langkah resolusi
         curr_parent = neg_node
-        for idx, st in enumerate(proof_trace[-4:], start=2):
+        trace_slice = proof_trace[-4:]
+        for idx, st in enumerate(trace_slice, start=2):
+            c1_str = clause_to_str(st.c1)
+            c2_str = clause_to_str(st.c2)
             res_str = "[] (KLAUSA KOSONG)" if not st.resolvent else clause_to_str(st.resolvent)
             is_contra = (len(st.resolvent) == 0)
             step_node = curr_parent.add_child(GraphNode(
                 node_id=f"step_{idx}",
                 label=f"{idx}. Resolusi ({st.resolved_literal})",
-                sub_label=f"{clause_to_str(st.c2)} => {res_str}",
+                sub_label=f"{c2_str} => {res_str}",
                 score_str="KONTRADIKSI []" if is_contra else "Resolvent",
                 node_type="TERMINAL" if is_contra else "DEFAULT",
                 is_best=is_contra
             ))
+            step_node.meta = {
+                "role": "CONTRA" if is_contra else "STEP",
+                "step_idx": idx,
+                "title": f"Resolusi Literal: {st.resolved_literal}",
+                "description": (
+                    f"Literal komplementer '{st.resolved_literal}' dan '~{st.resolved_literal}' "
+                    f"saling meniadakan saat dua klausa digabungkan."
+                ),
+                "resolved_literal": st.resolved_literal,
+                "c1_str": c1_str,
+                "c2_str": c2_str,
+                "resolvent_str": res_str,
+                "is_contradiction": is_contra,
+                "conclusion": (
+                    f"Klausa kosong [] tercapai! Asumsi negasi ({neg_lit}) terbukti salah, "
+                    f"sehingga Query '{query}' SAH (TRUE)."
+                    if is_contra
+                    else f"Menghasilkan klausa baru ({res_str}) yang dipakai pada langkah resolusi berikutnya."
+                ),
+            }
             curr_parent = step_node
 
         return root

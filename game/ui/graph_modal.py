@@ -867,6 +867,110 @@ class UnifiedGraphModal:
                 cards.append((pygame.Rect(x0, cy, col_w, row_h2), l_draw2))
                 cards.append((pygame.Rect(x0 + col_w + gap, cy, col_w, row_h2), r_draw2))
                 cy += row_h2 + 10
+        elif self.mode_tag == "LOGIC" and meta:
+            role = meta.get("role", "STEP")
+            badge_map = {
+                "ROOT": ("QUERY UTAMA", (232, 248, 236) if meta.get("proved") else (252, 243, 218), COLOR_TEXT_SUCCESS if meta.get("proved") else COLOR_TEXT_WARNING),
+                "NEGATION": ("ASUMSI NEGASI", (252, 243, 218), COLOR_TEXT_WARNING),
+                "CONTRA": ("KONTRADIKSI []", (232, 248, 236), COLOR_TEXT_SUCCESS),
+                "STEP": (f"LANGKAH #{meta.get('step_idx', '-')}", (235, 245, 255), COLOR_TEXT_ACCENT),
+            }
+            badge_txt, badge_bg, badge_fg = badge_map.get(role, ("SIMPUL LOGIKA", (235, 245, 255), COLOR_TEXT_ACCENT))
+
+            # 1. Kartu Header Simpul & Peran
+            desc_lines = _wrap_lines(font_tiny, meta.get("description", "-"), w - 24)
+            title_lines = _wrap_lines(font_sm, meta.get("title", nd.label), w - 128)
+            c1_h = 18 + max(1, len(title_lines)) * (font_sm.get_height() + 2) + len(desc_lines) * (font_tiny.get_height() + 2) + 14
+
+            def draw_logic_c1(surf, rc, tl=title_lines, dl=desc_lines, bt=badge_txt, bbg=badge_bg, bfg=badge_fg):
+                draw_card(surf, rc, COLOR_CARD_BG, border_color=COLOR_CARD_BORDER, border_radius=8)
+                pill_r = pygame.Rect(rc.right - 118, rc.y + 8, 106, 22)
+                draw_badge_pill(surf, pill_r, bt, bbg, bfg, font_tiny, border_color=bfg)
+                ty = rc.y + 10
+                for ln in tl:
+                    surf.blit(font_sm.render(ln, True, COLOR_TEXT_HEADING), (rc.x + 12, ty))
+                    ty += font_sm.get_height() + 2
+                ty += 4
+                for ln in dl:
+                    surf.blit(font_tiny.render(ln, True, COLOR_TEXT_SECONDARY), (rc.x + 12, ty))
+                    ty += font_tiny.get_height() + 2
+
+            cards.append((pygame.Rect(x0, cy, w, c1_h), draw_logic_c1))
+            cy += c1_h + 10
+
+            # 2. Grid 3-Kolom Metrik Ringkas
+            gap = 8
+            tw = (w - gap * 2) // 3
+            th = 46
+            if role == "ROOT":
+                tiles = [
+                    ("HASIL KB", "TERBUKTI" if meta.get("proved") else "GAGAL", COLOR_TEXT_SUCCESS if meta.get("proved") else COLOR_TEXT_DANGER),
+                    ("TOTAL LANGKAH", f"{meta.get('total_steps', 0)} step", COLOR_TEXT_ACCENT),
+                    ("TARGET AKHIR", "Klausa []", COLOR_TEXT_WARNING),
+                ]
+            elif role == "NEGATION":
+                tiles = [
+                    ("METODE", "Refutasi", COLOR_TEXT_ACCENT),
+                    ("ASUMSI", _fit_text(font_tiny, meta.get("negated_query", "-"), tw - 12), COLOR_TEXT_WARNING),
+                    ("TARGET", "Kontradiksi []", COLOR_TEXT_SUCCESS),
+                ]
+            else:
+                tiles = [
+                    ("LITERAL HAPUS", _fit_text(font_tiny, meta.get("resolved_literal", "-"), tw - 12), COLOR_TEXT_ACCENT),
+                    ("STATUS", "[] Tercapai" if role == "CONTRA" else "Lanjut", COLOR_TEXT_SUCCESS if role == "CONTRA" else COLOR_TEXT_WARNING),
+                    ("CABANG ANAK", f"{len(nd.children)} node", COLOR_TEXT_PRIMARY),
+                ]
+
+            def draw_logic_metrics(surf, rc, t_list=tiles, tile_w=tw, tile_h=th, g=gap):
+                for idx_t, (lbl_t, val_t, col_t) in enumerate(t_list):
+                    tr = pygame.Rect(rc.x + idx_t * (tile_w + g), rc.y, tile_w, tile_h)
+                    draw_metric_tile(surf, tr, lbl_t, val_t, val_color=col_t, font_lbl=font_tiny, font_val=font_tiny)
+
+            cards.append((pygame.Rect(x0, cy, w, th), draw_logic_metrics))
+            cy += th + 10
+
+            # 3. Kartu Penjelasan Terpisah sesuai Peran Simpul
+            col_w = (w - gap) // 2
+            if role == "ROOT":
+                q_items = [
+                    (f"• Query: {meta.get('query', '-')}", COLOR_TEXT_ACCENT),
+                    (f"• Negasi: {meta.get('negated_query', '-')}", COLOR_TEXT_WARNING),
+                ]
+                qh, qd = self._make_list_card_drawer("Pernyataan & Negasi", q_items, COLOR_TEXT_HEADING, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, w)
+                cards.append((pygame.Rect(x0, cy, w, qh), qd))
+                cy += qh + 10
+
+                d_items = [(meta.get("decision_meaning", "-"), COLOR_TEXT_SUCCESS if meta.get("proved") else COLOR_TEXT_PRIMARY)]
+                dh, dd = self._make_list_card_drawer("Dampak Keputusan di Game", d_items, COLOR_TEXT_SUCCESS if meta.get("proved") else COLOR_TEXT_HEADING, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, w)
+                cards.append((pygame.Rect(x0, cy, w, dh), dd))
+                cy += dh + 10
+            elif role == "NEGATION":
+                why_items = [(f"• Query '{meta.get('query', '-')}' dibalik menjadi '{meta.get('negated_query', '-')}' untuk menguji apakah muncul kontradiksi.", COLOR_TEXT_PRIMARY)]
+                wh, wd = self._make_list_card_drawer("Mengapa Dinegasikan (~Query)?", why_items, COLOR_TEXT_WARNING, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, w)
+                cards.append((pygame.Rect(x0, cy, w, wh), wd))
+                cy += wh + 10
+
+                g_items = [(f"• {meta.get('goal_note', '-')}", COLOR_TEXT_ACCENT)]
+                gh, gd = self._make_list_card_drawer("Tujuan Langkah Berikutnya", g_items, COLOR_TEXT_HEADING, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, w)
+                cards.append((pygame.Rect(x0, cy, w, gh), gd))
+                cy += gh + 10
+            else:
+                c1_items = [(f"• {meta.get('c1_str', '-')}", COLOR_TEXT_PRIMARY)]
+                c2_items = [(f"• {meta.get('c2_str', '-')}", COLOR_TEXT_ACCENT)]
+                lh, ld = self._make_list_card_drawer("Klausa Induk 1 (C1)", c1_items, COLOR_TEXT_HEADING, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, col_w)
+                rh, rd = self._make_list_card_drawer("Klausa Induk 2 (C2)", c2_items, COLOR_TEXT_ACCENT, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, col_w)
+                row_h = max(lh, rh)
+                cards.append((pygame.Rect(x0, cy, col_w, row_h), ld))
+                cards.append((pygame.Rect(x0 + col_w + gap, cy, col_w, row_h), rd))
+                cy += row_h + 10
+
+                res_items = [
+                    (f"Resolvent: {meta.get('resolvent_str', '-')}", COLOR_TEXT_SUCCESS if role == "CONTRA" else COLOR_TEXT_HEADING),
+                    (f"Kesimpulan: {meta.get('conclusion', '-')}", COLOR_TEXT_PRIMARY),
+                ]
+                resh, resd = self._make_list_card_drawer("Hasil Resolvent & Kesimpulan", res_items, COLOR_TEXT_SUCCESS if role == "CONTRA" else COLOR_TEXT_HEADING, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, w)
+                cards.append((pygame.Rect(x0, cy, w, resh), resd))
+                cy += resh + 10
         else:
             # Mode LOGIC / MINIMAX dalam kartu terstruktur
             info_items = [
@@ -945,12 +1049,51 @@ class UnifiedGraphModal:
             cards.append((pygame.Rect(x0, cy, w, th), draw_legend))
         elif self.mode_tag == "LOGIC":
             items = [(
-                "Memvisualisasikan inferensi Knowledge Base Proposisional (Materi 07): "
-                "menegasi Query (~Query) lalu menggabungkan klausa CNF hingga tercapai kontradiksi kosong ([]).",
+                "Memvisualisasikan inferensi Knowledge Base Proposisional (Materi 07) dengan metode "
+                "Proof by Contradiction: menegasi Query (~Query) lalu menggabungkan klausa CNF hingga tercapai klausa kosong ([]).",
                 COLOR_TEXT_PRIMARY,
             )]
             h1, d1 = self._make_list_card_drawer("APA ITU POHON RESOLUSI REFUTASI?", items, COLOR_TEXT_HEADING, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, w)
             cards.append((pygame.Rect(x0, cy, w, h1), d1))
+            cy += h1 + 10
+
+            tell_items = [
+                ("• Fakta sensorik (buka peti / kunci) & aturan NPC diubah menjadi klausa CNF.", COLOR_TEXT_PRIMARY),
+                ("• Contoh: ~Open(A) v Alarm(K)", COLOR_TEXT_ACCENT),
+            ]
+            ask_items = [
+                ("• Query target dinegasikan (~Query) lalu ditambahkan sementara ke KB.", COLOR_TEXT_PRIMARY),
+                ("• Jika muncul [], maka Query terbukti TRUE!", COLOR_TEXT_SUCCESS),
+            ]
+            lh, ld = self._make_list_card_drawer("TELL (Fakta & Aturan)", tell_items, COLOR_TEXT_ACCENT, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, col_w)
+            rh, rd = self._make_list_card_drawer("ASK (Query & Negasi)", ask_items, COLOR_TEXT_WARNING, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, col_w)
+            row_h = max(lh, rh)
+            cards.append((pygame.Rect(x0, cy, col_w, row_h), ld))
+            cards.append((pygame.Rect(x0 + col_w + gap, cy, col_w, row_h), rd))
+            cy += row_h + 10
+
+            rule_items = [
+                ("• Jika C1 = (A v P) dan C2 = (~P v B), literal P dan ~P saling meniadakan -> Resolvent (A v B).", COLOR_TEXT_PRIMARY),
+                ("• Klik tiap kotak simpul di pohon sebelah kiri untuk membaca detail C1, C2, dan kesimpulannya.", COLOR_TEXT_SECONDARY),
+            ]
+            h3, d3 = self._make_list_card_drawer("CARA MEMBACA LANGKAH RESOLUSI", rule_items, COLOR_TEXT_HEADING, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, w)
+            cards.append((pygame.Rect(x0, cy, w, h3), d3))
+            cy += h3 + 10
+
+            tw = (w - gap * 2) // 3
+            th = 46
+            legend_tiles = [
+                ("AKAR", "Query Target", COLOR_TEXT_ACCENT),
+                ("NEGASI", "Asumsi ~Query", COLOR_TEXT_WARNING),
+                ("HIJAU []", "Kontradiksi Sah", COLOR_TEXT_SUCCESS),
+            ]
+
+            def draw_logic_legend(surf, rc, t_list=legend_tiles, tile_w=tw, tile_h=th, g=gap):
+                for idx_t, (lbl_t, val_t, col_t) in enumerate(t_list):
+                    tr = pygame.Rect(rc.x + idx_t * (tile_w + g), rc.y, tile_w, tile_h)
+                    draw_metric_tile(surf, tr, lbl_t, val_t, val_color=col_t, font_lbl=font_tiny, font_val=font_tiny)
+
+            cards.append((pygame.Rect(x0, cy, w, th), draw_logic_legend))
         else:
             items = [(
                 "Memvisualisasikan pohon keputusan Adversarial Search (Materi 04): "

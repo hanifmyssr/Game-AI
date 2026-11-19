@@ -13,7 +13,7 @@ from ...ai.battle_ai import (
     MOVE_ORDERING_HEURISTIC,
     MOVE_ORDERING_REVERSED,
 )
-from ..components import draw_card, draw_badge_pill, draw_metric_tile, UIDropdown, UIButton
+from ..components import draw_card, draw_badge_pill, draw_metric_tile, draw_mode_context_banner, UIDropdown, UIButton
 
 MOUSEBUTTONDOWN = getattr(pygame, "MOUSEBUTTONDOWN", 1025)
 
@@ -137,6 +137,12 @@ class TabMinimax:
         cy = self.rect.y + 12
         card_w = self.rect.width - 24
         bs = self.battle_system
+
+        cur_mode = getattr(self.app, "game_mode", "EXPLORATION")
+        cy += draw_mode_context_banner(
+            surface, cx, cy, card_w, cur_mode, "BATTLE",
+            "Parameter berlaku saat duel turn-based berlangsung.", font_tiny,
+        )
 
         # 1. KARTU KONFIGURASI ALGORITMA MINIMAX
         card_cfg_h = 205

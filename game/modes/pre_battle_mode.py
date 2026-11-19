@@ -31,14 +31,30 @@ class PreBattleModeMixin:
             "player_atk_bonus": self.player.atk_bonus,
             "player_def_bonus": self.player.def_bonus,
         }
+        manual_diff = getattr(self, "manual_target_difficulty", None)
+        if manual_diff is not None:
+            self.optimizer.target_difficulty = manual_diff
+            ctx_for_opt = None
+        else:
+            ctx_for_opt = player_ctx
+
         init_state = None if randomize else getattr(self.optimizer, "last_csp_initial_state", None)
         cfg, stats = self.optimizer.optimize(
-            self.selected_ls_algo, initial_state=init_state, player_context=player_ctx, randomize_start=randomize
+            self.selected_ls_algo, initial_state=init_state, player_context=ctx_for_opt, randomize_start=randomize
         )
         self.current_squad_config = cfg
         self.current_optimizer_stats = stats
         self.current_squad = NPCSquad.from_config(cfg)
         self.overlay.set_pre_battle_data(cfg, stats, self.selected_ls_algo)
+
+        # Sinkronkan nilai slider CSP agar mencerminkan target_difficulty aktif (adaptif/manual)
+        dock = getattr(self.overlay, "dock", None)
+        tab_csp = dock.tabs.get(3) if dock and hasattr(dock, "tabs") else None
+        if tab_csp and hasattr(tab_csp, "slider_diff") and not tab_csp.slider_diff.is_dragging:
+            tab_csp.slider_diff.value = max(
+                tab_csp.slider_diff.min_val,
+                min(tab_csp.slider_diff.max_val, self.optimizer.target_difficulty),
+            )
 
         # Sinkronisasi data ke modal visualizer AI
         csp_solver = self.optimizer.csp

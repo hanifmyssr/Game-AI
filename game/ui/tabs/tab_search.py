@@ -7,7 +7,7 @@ visualisasi node diekspansi, dan bobot medan dengan tipografi jelas.
 from typing import Dict, Any, Optional
 import pygame
 from ...core import config
-from ..components import draw_card, draw_badge_pill, draw_metric_tile, UIDropdown, UIButton
+from ..components import draw_card, draw_badge_pill, draw_metric_tile, draw_mode_context_banner, UIDropdown, UIButton
 
 MOUSEBUTTONDOWN = getattr(pygame, "MOUSEBUTTONDOWN", 1025)
 
@@ -109,6 +109,14 @@ class TabSearch:
         cy = self.rect.y + 12
         card_w = self.rect.width - 24
 
+        cur_mode = getattr(self.app, "game_mode", "EXPLORATION")
+        banner_h = draw_mode_context_banner(
+            surface, cx, cy, card_w, cur_mode, "EXPLORATION",
+            "Pathfinding peta aktif saat fase eksplorasi.", font_tiny,
+        )
+        cy += banner_h
+        gap = 8 if banner_h > 0 else 12
+
         # 1. KARTU PILIH ALGORITMA & TARGET NPC FOKUS
         card_algo_h = 144
         draw_card(surface, pygame.Rect(cx, cy, card_w, card_algo_h), config.COLOR_CARD_BG,
@@ -126,7 +134,7 @@ class TabSearch:
         self.dropdown_focus.draw(surface)
 
         # 2. KARTU METRIK JALUR (GRID 2x2)
-        cy += card_algo_h + 12
+        cy += card_algo_h + gap
         card_m_h = 132
         draw_card(surface, pygame.Rect(cx, cy, card_w, card_m_h), config.COLOR_CARD_BG,
                   border_color=config.COLOR_CARD_BORDER, border_radius=8)
@@ -171,7 +179,7 @@ class TabSearch:
                          font_lbl=font_tiny, font_val=font_sm)
 
         # 3. KARTU BOBOT MEDAN (TERRAIN COST)
-        cy += card_m_h + 12
+        cy += card_m_h + gap
         card_cost_h = 84
         draw_card(surface, pygame.Rect(cx, cy, card_w, card_cost_h), config.COLOR_CARD_BG,
                   border_color=config.COLOR_CARD_BORDER, border_radius=8)
@@ -190,8 +198,8 @@ class TabSearch:
                          font_lbl=font_tiny, font_val=font_tiny)
 
         # 4. KARTU PERBANDINGAN KOMPUTASI (UCS vs A*)
-        cy += card_cost_h + 12
-        card_comp_h = 145
+        cy += card_cost_h + gap
+        card_comp_h = 128 if banner_h > 0 else 145
         draw_card(surface, pygame.Rect(cx, cy, card_w, card_comp_h), config.COLOR_CARD_BG,
                   border_color=config.COLOR_CARD_BORDER, border_radius=8)
 
@@ -226,9 +234,10 @@ class TabSearch:
             eff_color = config.COLOR_TEXT_MUTED
 
         eff_surf = font_tiny.render(eff_str, True, eff_color)
-        surface.blit(eff_surf, (cx + (card_w - eff_surf.get_width()) // 2, cy + 106))
+        eff_y = cy + (98 if banner_h > 0 else 106)
+        surface.blit(eff_surf, (cx + (card_w - eff_surf.get_width()) // 2, eff_y))
 
-        cy += card_comp_h + 12
+        cy += card_comp_h + gap
         self.btn_toggle_path.rect = pygame.Rect(cx, cy, card_w, 38)
         self.btn_toggle_path.draw(surface)
 

@@ -425,3 +425,26 @@ class UIScrollArea:
         thumb = self.scrollbar_thumb_rect()
         if thumb:
             pygame.draw.rect(surface, (190, 178, 162), thumb, border_radius=2)
+
+
+def draw_mode_context_banner(
+    surface: pygame.Surface,
+    x: int,
+    y: int,
+    width: int,
+    current_mode: str,
+    required_mode: str,
+    note: str,
+    font_tiny: pygame.font.Font,
+) -> int:
+    """Menggambar banner konteks jika tab dibuka di luar fase utamanya; mengembalikan tinggi offset."""
+    if not current_mode or current_mode == required_mode:
+        return 0
+    banner_h = 38
+    rect = pygame.Rect(x, y, width, banner_h)
+    draw_card(surface, rect, (254, 245, 224), border_color=(212, 160, 48), border_radius=6)
+    title = font_tiny.render(f"Mode: {current_mode} | Aktif penuh di {required_mode}", True, (150, 92, 14))
+    sub = font_tiny.render(note, True, config.COLOR_TEXT_SECONDARY)
+    surface.blit(title, (x + 10, y + 5))
+    surface.blit(sub, (x + 10, y + 20))
+    return banner_h + 8

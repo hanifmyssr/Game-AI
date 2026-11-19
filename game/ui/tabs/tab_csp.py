@@ -7,7 +7,7 @@ MRV, LCV, AC-3, serta pembanding algoritma Local Search (HC, SA, GA).
 from typing import Dict, Any, Optional
 import pygame
 from ...core import config
-from ..components import draw_card, draw_badge_pill, draw_metric_tile, UIDropdown, UIButton, UISlider
+from ..components import draw_card, draw_badge_pill, draw_metric_tile, draw_mode_context_banner, UIDropdown, UIButton, UISlider
 
 MOUSEBUTTONDOWN = getattr(pygame, "MOUSEBUTTONDOWN", 1025)
 
@@ -76,6 +76,8 @@ class TabCSP:
             self.app._run_optimization()
 
     def _on_diff_slider_changed(self, val: float) -> None:
+        if self.app is not None:
+            self.app.manual_target_difficulty = val
         if hasattr(self.app, "optimizer") and self.app.optimizer:
             self.app.optimizer.target_difficulty = val
         if hasattr(self.app, "_run_optimization"):
@@ -115,6 +117,12 @@ class TabCSP:
         cx = self.rect.x + 12
         cy = self.rect.y + 12
         card_w = self.rect.width - 24
+
+        cur_mode = getattr(self.app, "game_mode", "EXPLORATION")
+        cy += draw_mode_context_banner(
+            surface, cx, cy, card_w, cur_mode, "PRE_BATTLE",
+            "Skuad diterapkan saat bertemu musuh (Pre-Battle).", font_tiny,
+        )
 
         # 1. KARTU PENGATURAN ALGORITMA LOCAL SEARCH
         card_algo_h = 78

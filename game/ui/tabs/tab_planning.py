@@ -61,6 +61,8 @@ class TabPlanning:
         self.rect = pygame.Rect(rect)
 
     def _on_engine_selected(self, index: int, key: str) -> None:
+        if self.app is not None:
+            self.app.selected_planning_engine = key
         if self.app and hasattr(self.app, "forward_planner") and hasattr(self.app, "backward_planner"):
             mode = getattr(self.app, "game_mode", "EXPLORATION")
             if mode == "BATTLE":
@@ -81,10 +83,13 @@ class TabPlanning:
                         chest_tag = tag
                 s0, goal, actions = create_world_patrol_problem(chest_tag)
 
-            if index == 0:
-                self.app.latest_plan_result = self.app.forward_planner.plan(s0, goal, actions)
-            else:
+            if key == "BACKWARD_REGRESSION" or index == 1:
                 self.app.latest_plan_result = self.app.backward_planner.plan(s0, goal, actions)
+            else:
+                self.app.latest_plan_result = self.app.forward_planner.plan(s0, goal, actions)
+
+            if mode != "BATTLE" and hasattr(self.app, "task_executor") and self.app.task_executor:
+                self.app.task_executor.set_plan(self.app.latest_plan_result)
 
     def _on_open_plan_tree(self) -> None:
         if hasattr(self.app, "open_graph_modal"):

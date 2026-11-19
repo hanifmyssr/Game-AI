@@ -544,7 +544,9 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
                         s0, goal, actions = create_battle_tactics_problem(warrior, tank, healer)
                     else:
                         s0, goal, actions = create_world_patrol_problem("A")
-                    self.latest_plan_result = self.forward_planner.plan(s0, goal, actions)
+                    use_backward = getattr(self, "selected_planning_engine", "FORWARD_A_STAR") == "BACKWARD_REGRESSION"
+                    planner = self.backward_planner if (use_backward and getattr(self, "backward_planner", None)) else self.forward_planner
+                    self.latest_plan_result = planner.plan(s0, goal, actions)
                 plan_tree = build_planning_graph_nodes(self.latest_plan_result)
                 self.overlay.graph_modal.set_tree_from_generic(
                     plan_tree,

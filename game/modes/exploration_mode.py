@@ -998,7 +998,9 @@ class ExplorationModeMixin:
         # 2. Trigger Automated Planning (Materi 08: Classical Planning STRIPS)
         if hasattr(self, "forward_planner") and self.forward_planner:
             s0_p, goal_p, actions_p = create_world_patrol_problem(chest_tag)
-            self.latest_plan_result = self.forward_planner.plan(s0_p, goal_p, actions_p)
+            use_backward = getattr(self, "selected_planning_engine", "FORWARD_A_STAR") == "BACKWARD_REGRESSION"
+            planner = self.backward_planner if (use_backward and getattr(self, "backward_planner", None)) else self.forward_planner
+            self.latest_plan_result = planner.plan(s0_p, goal_p, actions_p)
             if hasattr(self, "task_executor") and self.task_executor:
                 self.task_executor.set_plan(self.latest_plan_result)
 

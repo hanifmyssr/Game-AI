@@ -1754,13 +1754,19 @@ class ExplorationModeMixin:
         }
 
     def _draw_relic_heatmap(self):
-        """Merender heatmap probabilitas Bayesian Belief di atas peta eksplorasi."""
+        """Merender heatmap probabilitas Bayesian Belief secara halus di atas peta eksplorasi."""
         sonar = getattr(self, "relic_sonar", None)
         if not sonar or sonar.found or not sonar.heatmap_visible or sonar.scan_count <= 0:
             return
-        _, max_p = sonar.get_map_estimate()
-        if max_p <= 0.0:
+        map_pos, max_p = sonar.get_map_estimate()
+        if max_p <= 0.0 or not sonar.belief:
             return
+
+        n_cells = max(1, len(sonar.belief))
+        uniform_p = 1.0 / float(n_cells)
+        concentration = max_p / uniform_p
+        high_count = sum(1 for p in sonar.belief.values() if p >= 0.70 * max_p)
+        is_focused = (high_count <= 60 and concentration >= 3.0)
 
         zoom = self.camera.zoom
         sz = max(4, int(round(self.map.cell_size * zoom)))
@@ -1769,7 +1775,7 @@ class ExplorationModeMixin:
 
         for cell, prob in sonar.belief.items():
             ratio = prob / max_p
-            if ratio < 0.15:
+            if ratio < (0.35 if is_focused else 0.50):
                 continue
             wx, wy = self.map.world_to_px(cell)
             sx, sy = self.camera.world_to_screen(wx, wy)
@@ -1777,15 +1783,29 @@ class ExplorationModeMixin:
             ry = int(sy - sz // 2)
             if rx + sz < left_w or rx > sw or ry + sz < 0 or ry > sh:
                 continue
-            if ratio >= 0.72:
-                col = (255, 175, 35, int(65 + 95 * ratio))
-            elif ratio >= 0.40:
-                col = (80, 210, 215, int(45 + 65 * ratio))
+
+            if not is_focused:
+                # Zona kandidat masih luas -> tint cyan sangat tipis agar map tetap jernih
+                col = (45, 195, 225, 36)
+            elif ratio >= 0.85:
+                col = (255, 185, 45, 105)
+            elif ratio >= 0.55:
+                col = (110, 210, 200, 62)
             else:
-                col = (60, 150, 220, int(25 + 45 * ratio))
+                col = (55, 180, 225, 34)
+
             tile_s = pygame.Surface((sz, sz), SRCALPHA)
             tile_s.fill(col)
             self.screen.blit(tile_s, (rx, ry))
+            if is_focused and ratio >= 0.85:
+                pygame.draw.rect(self.screen, (235, 155, 25), (rx, ry, sz, sz), 1)
+
+        # Penanda target halus pada koordinat MAP terbaik saat zona sudah cukup mengerucut
+        if map_pos and sonar.scan_count >= 2 and high_count <= 35:
+            wx, wy = self.map.world_to_px(map_pos)
+            sx, sy = self.camera.world_to_screen(wx, wy)
+            pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() * 0.008)
+            pygame.draw.circle(self.screen, (255, 210, 60), (int(sx), int(sy)), int(sz * 0.42 + pulse * 3), 2)
 
         # Kilau halus pada titik Relik hanya jika Bolu sangat dekat (<= 2 ubin)
         if sonar.relic_pos:

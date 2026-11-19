@@ -72,6 +72,8 @@ class TabSettings:
             audio.sfx_volume = val
 
     def _on_reset_clicked(self) -> None:
+        if self.app is not None:
+            self.app.manual_target_difficulty = None
         if self.app and hasattr(self.app, "reset_game_state"):
             self.app.reset_game_state()
         else:
@@ -95,10 +97,6 @@ class TabSettings:
             return True
         if self.btn_reset.handle_event(event):
             return True
-        if event.type == MOUSEBUTTONDOWN and event.button == 1:
-            if hasattr(event, "pos") and self.btn_reset.rect.collidepoint(event.pos):
-                self._on_reset_clicked()
-                return True
         return False
 
     def update(self, dt: float) -> None:
@@ -123,6 +121,13 @@ class TabSettings:
 
         lbl_aud = font_sm.render("Pengaturan Suara & Musik:", True, config.COLOR_TEXT_PRIMARY)
         surface.blit(lbl_aud, (cx + 12, cy + 8))
+
+        audio = getattr(self.app, "audio", None)
+        if audio:
+            if not self.slider_bgm.is_dragging and hasattr(audio, "bgm_volume"):
+                self.slider_bgm.value = max(0.0, min(1.0, float(audio.bgm_volume)))
+            if not self.slider_sfx.is_dragging and hasattr(audio, "sfx_volume"):
+                self.slider_sfx.value = max(0.0, min(1.0, float(audio.sfx_volume)))
 
         self.slider_bgm.rect = pygame.Rect(cx + 12, cy + 36, card_w - 24, 38)
         self.slider_bgm.draw(surface)

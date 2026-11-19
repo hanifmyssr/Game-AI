@@ -51,7 +51,7 @@ class TabLogic:
         btn_w = self.rect.width - 24
         self.btn_proof_modal = UIButton(
             pygame.Rect(self.rect.x + 12, self.rect.y + 540, btn_w, 38),
-            "Buka Pembuktian Resolusi [T]",
+            "Buka Pembuktian Resolusi [K]",
             fonts.get("sm", pygame.font.Font(None, 16)),
             on_click=self._on_open_proof,
             bg_color=(242, 235, 222),

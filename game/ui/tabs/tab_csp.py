@@ -31,14 +31,25 @@ class TabCSP:
         )
 
         self.slider_diff = UISlider(
-            pygame.Rect(self.rect.x + 12, self.rect.y + 115, self.rect.width - 24, 34),
+            pygame.Rect(self.rect.x + 12, self.rect.y + 115, self.rect.width - 96, 34),
             min_val=0.20,
             max_val=0.90,
             initial_val=config.TARGET_DIFFICULTY_DEFAULT,
-            label="Target Kesulitan Skuad",
+            label="Target Kesulitan (Adaptif)",
             format_str="{:.2f}",
             on_change=self._on_diff_slider_changed,
             font=fonts.get("sm", pygame.font.Font(None, 16)),
+        )
+
+        self.btn_auto_diff = UIButton(
+            pygame.Rect(self.rect.right - 72, self.rect.y + 122, 54, 24),
+            "Auto",
+            fonts.get("tiny", pygame.font.Font(None, 13)),
+            on_click=self._on_auto_diff_clicked,
+            bg_color=(235, 248, 238),
+            hover_color=(245, 255, 248),
+            active_color=(220, 238, 224),
+            border_color=config.COLOR_STATUS_SUCCESS,
         )
 
         btn_w = (self.rect.width - 32) // 2
@@ -83,6 +94,12 @@ class TabCSP:
         if hasattr(self.app, "_run_optimization"):
             self.app._run_optimization()
 
+    def _on_auto_diff_clicked(self) -> None:
+        if self.app is not None:
+            self.app.manual_target_difficulty = None
+        if hasattr(self.app, "_run_optimization"):
+            self.app._run_optimization()
+
     def _on_reroll_clicked(self) -> None:
         if hasattr(self.app, "_reroll_pre_battle"):
             self.app._reroll_pre_battle()
@@ -97,6 +114,8 @@ class TabCSP:
 
     def handle_event(self, event: pygame.event.Event) -> bool:
         if self.dropdown_ls.handle_event(event):
+            return True
+        if self.btn_auto_diff.handle_event(event):
             return True
         if self.slider_diff.handle_event(event):
             return True
@@ -140,8 +159,19 @@ class TabCSP:
         draw_card(surface, pygame.Rect(cx, cy, card_w, card_diff_h), config.COLOR_CARD_BG,
                   border_color=config.COLOR_CARD_BORDER, border_radius=8)
 
-        self.slider_diff.rect = pygame.Rect(cx + 12, cy + 14, card_w - 24, 40)
+        is_manual = getattr(self.app, "manual_target_difficulty", None) is not None
+        self.slider_diff.label = "Target Kesulitan (Manual)" if is_manual else "Target Kesulitan (Adaptif)"
+        self.slider_diff.rect = pygame.Rect(cx + 12, cy + 14, card_w - 86, 40)
         self.slider_diff.draw(surface)
+
+        self.btn_auto_diff.rect = pygame.Rect(cx + card_w - 66, cy + 24, 54, 24)
+        if is_manual:
+            self.btn_auto_diff.bg_color = (242, 235, 222)
+            self.btn_auto_diff.border_color = config.COLOR_ACCENT_GOLD
+        else:
+            self.btn_auto_diff.bg_color = (232, 246, 235)
+            self.btn_auto_diff.border_color = config.COLOR_STATUS_SUCCESS
+        self.btn_auto_diff.draw(surface)
 
         # 3. KARTU METRIK EVALUASI SKUAD
         cy += card_diff_h + 12

@@ -47,7 +47,7 @@ class TabPlanning:
         btn_w = self.rect.width - 24
         self.btn_plan_tree = UIButton(
             pygame.Rect(self.rect.x + 12, self.rect.y + 480, btn_w, 38),
-            "Buka Pohon Rencana PDDL [T]",
+            "Buka Pohon Rencana PDDL [P]",
             fonts.get("sm", pygame.font.Font(None, 16)),
             on_click=self._on_open_plan_tree,
             bg_color=(242, 235, 222),
@@ -75,8 +75,10 @@ class TabPlanning:
                 s0, goal, actions = create_battle_tactics_problem(warrior, tank, healer)
             else:
                 chest_tag = "A"
-                if hasattr(self.app, "chests") and self.app.chests and self.app.chests[0].get("opened", False):
-                    chest_tag = "A"
+                chests = getattr(self.app, "chests", [])
+                for idx, tag in enumerate(("A", "B", "C")):
+                    if idx < len(chests) and chests[idx].get("opened", False):
+                        chest_tag = tag
                 s0, goal, actions = create_world_patrol_problem(chest_tag)
 
             if index == 0:

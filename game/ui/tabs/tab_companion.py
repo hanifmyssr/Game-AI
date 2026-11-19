@@ -10,20 +10,6 @@ from ..components import draw_card, draw_badge_pill, draw_metric_tile, UIButton
 
 MOUSEMOTION = getattr(pygame, "MOUSEMOTION", 1024)
 MOUSEBUTTONDOWN = getattr(pygame, "MOUSEBUTTONDOWN", 1025)
-
-
-"""Tab 0: Hero Companion & Inventory (Cozy Adventurer Journal Theme).
-
-Menampilkan status Bolu, inventaris peti harta dengan sprite pixel art, dan kontrol game.
-"""
-
-from typing import Dict, Any, Optional
-import pygame
-from ...core import config
-from ..components import draw_card, draw_badge_pill, draw_metric_tile, UIButton
-
-MOUSEMOTION = getattr(pygame, "MOUSEMOTION", 1024)
-MOUSEBUTTONDOWN = getattr(pygame, "MOUSEBUTTONDOWN", 1025)
 MOUSEWHEEL = getattr(pygame, "MOUSEWHEEL", 1027)
 
 

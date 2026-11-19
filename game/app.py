@@ -432,6 +432,7 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
         self.gacha_active = False
         self.gacha_showcase = None
         self.gacha_message_timer = 0.0
+        self.manual_target_difficulty = None
 
         # 2. Reset Player (Bolu)
         if hasattr(self, "player") and self.player:

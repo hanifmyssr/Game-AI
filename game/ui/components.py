@@ -443,7 +443,7 @@ def draw_mode_context_banner(
     banner_h = 38
     rect = pygame.Rect(x, y, width, banner_h)
     draw_card(surface, rect, (254, 245, 224), border_color=(212, 160, 48), border_radius=6)
-    title = font_tiny.render(f"Mode: {current_mode} | Aktif penuh di {required_mode}", True, (150, 92, 14))
+    title = font_tiny.render(f"Aktif di fase {required_mode} (Saat ini: {current_mode})", True, (150, 92, 14))
     sub = font_tiny.render(note, True, config.COLOR_TEXT_SECONDARY)
     surface.blit(title, (x + 10, y + 5))
     surface.blit(sub, (x + 10, y + 20))

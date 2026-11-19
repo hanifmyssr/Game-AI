@@ -15,6 +15,7 @@ from .tabs import (
     TabCSP,
     TabLogic,
     TabPlanning,
+    TabUncertainty,
     TabSettings,
 )
 
@@ -30,6 +31,7 @@ TAB_HEADERS = [
     ("05-06: CSP & LOCAL SEARCH", "Optimasi Skuad Lawan"),
     ("07: LOGIC & REASONING", "Knowledge Base & Resolusi"),
     ("08: AUTOMATED PLANNING", "Perencana Tugas PDDL"),
+    ("09: UNCERTAINTY", "Bayesian Belief Sonar"),
     ("PENGATURAN & AUDIO", "Volume & Sesi Permainan"),
 ]
 
@@ -47,7 +49,7 @@ class InspectorDock:
 
         content_rect = pygame.Rect(self.rect.x, self.rect.y + self.header_h, self.rect.width, self.rect.height - self.header_h)
 
-        # Inisialisasi 7 Tab
+        # Inisialisasi 8 Tab
         self.tabs = {
             0: TabCompanion(content_rect, fonts, app_ref),
             1: TabSearch(content_rect, fonts, app_ref),
@@ -55,7 +57,8 @@ class InspectorDock:
             3: TabCSP(content_rect, fonts, app_ref),
             4: TabLogic(content_rect, fonts, app_ref),
             5: TabPlanning(content_rect, fonts, app_ref),
-            6: TabSettings(content_rect, fonts, app_ref),
+            6: TabUncertainty(content_rect, fonts, app_ref),
+            7: TabSettings(content_rect, fonts, app_ref),
         }
 
         # State drag-resize di tepi kanan dock

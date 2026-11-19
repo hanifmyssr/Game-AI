@@ -113,6 +113,23 @@ TAB_GLOSSARY_DATA: Dict[int, Dict[str, object]] = {
         ],
     },
     6: {
+        "title": "PANDUAN: 09 UNCERTAINTY",
+        "phase": "AKTIF DI EXPLORATION",
+        "purpose": "Melacak lokasi Relik Tersembunyi di pulau memakai Bayesian Belief Filtering meski sinyal sonar mengandung noise.",
+        "cards": [
+            ("INFORMASI DI TAB INI", config.COLOR_ACCENT_BLUE, [
+                ("Akurasi Sensor", "Mengatur tingkat akurasi sonar (60%-95%); sisanya adalah peluang noise/salah baca."),
+                ("Metrik Bayesian Belief", "Scan ke-N, Sinyal terakhir, Puncak Peluang (MAP), dan Entropi (bit)."),
+                ("Tebakan Lokasi", "3 koordinat grid dengan probabilitas posterior tertinggi saat ini."),
+            ]),
+            ("PENGERTIAN ISTILAH", config.COLOR_ACCENT_GOLD, [
+                ("Prior & Posterior", "Prior adalah peluang awal seragam; Posterior adalah peluang terbaru setelah menerima sinyal."),
+                ("Bayes' Rule", "P(X|e) = alpha * P(e|X) * P(X): memperbarui peluang tiap sel lalu menormalkannya."),
+                ("MAP & Entropi", "MAP = sel berpeluang tertinggi; Entropi = ukuran ketidakpastian (makin kecil makin yakin)."),
+            ]),
+        ],
+    },
+    7: {
         "title": "PANDUAN: PENGATURAN & AUDIO",
         "phase": "SEMUA FASE",
         "purpose": "Mengontrol audio permainan, mereset sesi petualangan, dan melihat informasi proyek.",

@@ -47,7 +47,8 @@ class NavRail:
             NavTabItem(3, "CSP-LS", "⚖", "CP", "Materi 05-06: CSP & Local Search Skuad"),
             NavTabItem(4, "Logic", "🧠", "KB", "Materi 07: Logic & Knowledge Base (TELL->ASK)"),
             NavTabItem(5, "Planning", "📋", "PL", "Materi 08: Automated Planning (PDDL)"),
-            NavTabItem(6, "Settings", "⚙", "CF", "Pengaturan Game & Audio"),
+            NavTabItem(6, "Uncert", "🎲", "M9", "Materi 09: Decision Under Uncertainty (Bayes Sonar)"),
+            NavTabItem(7, "Settings", "⚙", "CF", "Pengaturan Game & Audio"),
         ]
 
         try:
@@ -90,13 +91,13 @@ class NavRail:
         spacing = int(round(54 * scale))
 
         for item in self.tabs:
-            if item.tab_id == 6:
+            if item.tab_id == 7:
                 y = self.rect.bottom - btn_size - int(round(16 * scale))
             else:
                 y = start_y + item.tab_id * spacing
             self.item_rects[item.tab_id] = pygame.Rect(self.rect.x + pad_x, y, btn_size, btn_size)
 
-        settings_r = self.item_rects.get(6)
+        settings_r = self.item_rects.get(7)
         if settings_r:
             gy = settings_r.y - btn_size - int(round(10 * scale))
             self.guide_rect = pygame.Rect(self.rect.x + pad_x, gy, btn_size, btn_size)

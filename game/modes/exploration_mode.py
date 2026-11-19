@@ -2,6 +2,7 @@
 
 import math
 import os
+import random
 from typing import Optional, Dict, Any, List, Tuple
 import pygame
 
@@ -9,6 +10,7 @@ from ..core import config
 from ..ui.components import draw_card
 from ..battle.npc_squad import NPCSquad
 from ..ai.battle_ai import ACTION_ATTACK, ACTION_HEAVY, ACTION_DEFEND, ACTION_POTION
+from ..ai.uncertainty import BayesianRelicSonar
 from ..planning.domain_world_patrol import create_world_patrol_problem
 from ..planning.domain_battle_tactics import create_battle_tactics_problem
 
@@ -493,6 +495,14 @@ class ExplorationModeMixin:
                 "badge_mini": "MEGA",
                 "desc": "Rampasan perang dari Shiro sang Mage.",
                 "color": (80, 225, 230),
+            },
+            "Relik Ikan Emas": {
+                "key": "mega_potion",
+                "name": "Relik Ikan Emas",
+                "badge": "+10 ATK & +6 DEF",
+                "badge_mini": "RELIK",
+                "desc": "Artefak tersembunyi (Materi 09) penguat duel Boss Kage.",
+                "color": (255, 200, 60),
             },
         }
 
@@ -1664,3 +1674,140 @@ class ExplorationModeMixin:
         }
         # Langsung masuk mode battle melawan Boss Kage the Shadow Lord
         self.enter_boss_battle()
+
+    # =========================================================================
+    # MATERI 09: DECISION UNDER UNCERTAINTY (BAYESIAN BELIEF SONAR & RELIK)
+    # =========================================================================
+
+    def _init_relic_sonar(self):
+        """Menempatkan Relik Tersembunyi secara acak di daratan walkable & menginisialisasi Prior seragam."""
+        blocked = {tuple(c["pos"]) for c in getattr(self, "chests", [])}
+        portal = getattr(self.map, "boss_portal", {"x": 38, "y": 5})
+        blocked.add((portal.get("x", 38), portal.get("y", 5)))
+        player_g = getattr(self.player, "grid", (0, 0)) if getattr(self, "player", None) else (0, 0)
+
+        walkable = []
+        for gx in range(self.map.width):
+            for gy in range(self.map.height):
+                pos = (gx, gy)
+                if pos in blocked:
+                    continue
+                if self.map.is_walkable(pos):
+                    walkable.append(pos)
+
+        far_candidates = [p for p in walkable if abs(p[0] - player_g[0]) + abs(p[1] - player_g[1]) >= 10]
+        pool = far_candidates or [p for p in walkable if p != player_g] or walkable
+        relic_pos = random.choice(pool) if pool else None
+
+        if getattr(self, "relic_sonar", None) is None:
+            self.relic_sonar = BayesianRelicSonar(walkable, sensor_accuracy=0.82)
+            self.relic_sonar.reset(walkable_cells=walkable, relic_pos=relic_pos)
+        else:
+            self.relic_sonar.reset(walkable_cells=walkable, relic_pos=relic_pos)
+
+    def _trigger_sonar_scan(self):
+        """Memancarkan gelombang sonar Cyan [F] tanpa memancing NPC & memperbarui Belief via Bayes' Rule."""
+        sonar = getattr(self, "relic_sonar", None)
+        if not sonar:
+            return
+        if sonar.found:
+            self.ai_ticker_info = {
+                "title": "[BAYES SONAR] Relik Ikan Emas Kuno sudah ditemukan!",
+                "detail": "Buff Relik sudah aktif di inventaris Bolu untuk melawan Boss Kage.",
+                "timer": 3.5,
+            }
+            return
+
+        self.sonar_waves.append({
+            "pos": (self.player.px, self.player.py),
+            "radius": 10.0,
+            "alpha": 225.0,
+        })
+        res = sonar.scan(self.player.grid)
+        mp = res["map_pos"]
+        mp_txt = f"({mp[0]}, {mp[1]})" if mp else "-"
+        noise_tag = " [Sinyal Ber-noise]" if res["is_noisy"] else ""
+        self.ai_ticker_info = {
+            "title": f"[BAYES SONAR #{res['scan_num']}] Sinyal: {res['signal']}{noise_tag}",
+            "detail": f"Puncak Peluang: {res['map_prob'] * 100:.2f}% di {mp_txt} | Entropi: {res['entropy']:.2f} bit",
+            "timer": 4.5,
+        }
+
+    def _collect_hidden_relic(self):
+        """Mengambil Relik Tersembunyi saat Bolu menginjak lokasinya."""
+        sonar = getattr(self, "relic_sonar", None)
+        if not sonar or sonar.found:
+            return
+        sonar.found = True
+        self.player.atk_bonus += 10
+        self.player.def_bonus += 6
+        self.player.persistent_hp = config.MAX_HP
+        self.player.persistent_potions += 1
+        if hasattr(self.player, "inventory") and "Relik Ikan Emas" not in self.player.inventory:
+            self.player.inventory.append("Relik Ikan Emas")
+        if hasattr(self, "overlay") and hasattr(self.overlay, "nav_rail"):
+            self.overlay.nav_rail.set_badge(6, active=True, color=config.COLOR_STATUS_SUCCESS)
+        self.ai_ticker_info = {
+            "title": "[RELIK DITEMUKAN!] Relik Ikan Emas Kuno diperoleh!",
+            "detail": "HP Pulih Penuh, +10 ATK, +6 DEF, & +1 Ramuan untuk persiapan Boss Kage!",
+            "timer": 5.5,
+        }
+
+    def _draw_relic_heatmap(self):
+        """Merender heatmap probabilitas Bayesian Belief di atas peta eksplorasi."""
+        sonar = getattr(self, "relic_sonar", None)
+        if not sonar or sonar.found or not sonar.heatmap_visible or sonar.scan_count <= 0:
+            return
+        _, max_p = sonar.get_map_estimate()
+        if max_p <= 0.0:
+            return
+
+        zoom = self.camera.zoom
+        sz = max(4, int(round(self.map.cell_size * zoom)))
+        sw, sh = self.screen.get_size()
+        left_w = self.camera.left_panel_w
+
+        for cell, prob in sonar.belief.items():
+            ratio = prob / max_p
+            if ratio < 0.15:
+                continue
+            wx, wy = self.map.world_to_px(cell)
+            sx, sy = self.camera.world_to_screen(wx, wy)
+            rx = int(sx - sz // 2)
+            ry = int(sy - sz // 2)
+            if rx + sz < left_w or rx > sw or ry + sz < 0 or ry > sh:
+                continue
+            if ratio >= 0.72:
+                col = (255, 175, 35, int(65 + 95 * ratio))
+            elif ratio >= 0.40:
+                col = (80, 210, 215, int(45 + 65 * ratio))
+            else:
+                col = (60, 150, 220, int(25 + 45 * ratio))
+            tile_s = pygame.Surface((sz, sz), SRCALPHA)
+            tile_s.fill(col)
+            self.screen.blit(tile_s, (rx, ry))
+
+        # Kilau halus pada titik Relik hanya jika Bolu sangat dekat (<= 2 ubin)
+        if sonar.relic_pos:
+            d = abs(self.player.grid[0] - sonar.relic_pos[0]) + abs(self.player.grid[1] - sonar.relic_pos[1])
+            if d <= 2:
+                wx, wy = self.map.world_to_px(sonar.relic_pos)
+                sx, sy = self.camera.world_to_screen(wx, wy)
+                pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() * 0.01)
+                pygame.draw.circle(self.screen, (255, 225, 80), (int(sx), int(sy)), int(5 + pulse * 3), 2)
+
+    def _draw_sonar_waves(self):
+        """Menggambar cincin gelombang sonar warna Cyan saat [F] ditekan."""
+        for wave in getattr(self, "sonar_waves", []):
+            wx, wy = wave["pos"]
+            sx, sy = self.camera.world_to_screen(wx, wy)
+            r = int(round(wave["radius"] * self.camera.zoom))
+            if r <= 2:
+                continue
+            surf = pygame.Surface((r * 2 + 4, r * 2 + 4), SRCALPHA)
+            alpha = max(0, min(255, int(wave.get("alpha", 200))))
+            pygame.draw.circle(surf, (45, 205, 230, alpha), (r + 2, r + 2), r, width=2)
+            if r > 14:
+                inner_r = max(2, r - int(10 * self.camera.zoom))
+                pygame.draw.circle(surf, (150, 240, 255, int(alpha * 0.55)), (r + 2, r + 2), inner_r, width=1)
+            self.screen.blit(surf, (int(sx - r - 2), int(sy - r - 2)))

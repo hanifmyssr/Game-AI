@@ -238,16 +238,16 @@ class ExplorationModeMixin:
 
     def _process_continuous_player_movement(self):
         keys = pygame.key.get_pressed()
-        if keys[K_UP] or keys[K_w]:
+        if keys[pygame.K_UP] or keys[pygame.K_w]:
             if self.player.try_move((0, -1)):
                 return
-        if keys[K_DOWN] or keys[K_s]:
+        if keys[pygame.K_DOWN] or keys[pygame.K_s]:
             if self.player.try_move((0, 1)):
                 return
-        if keys[K_LEFT] or keys[K_a]:
+        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
             if self.player.try_move((-1, 0)):
                 return
-        if keys[K_RIGHT] or keys[K_d]:
+        if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
             if self.player.try_move((1, 0)):
                 return
 

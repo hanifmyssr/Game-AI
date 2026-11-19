@@ -872,7 +872,7 @@ class UnifiedGraphModal:
             badge_map = {
                 "ROOT": ("QUERY UTAMA", (232, 248, 236) if meta.get("proved") else (252, 243, 218), COLOR_TEXT_SUCCESS if meta.get("proved") else COLOR_TEXT_WARNING),
                 "NEGATION": ("ASUMSI NEGASI", (252, 243, 218), COLOR_TEXT_WARNING),
-                "CONTRA": ("KONTRADIKSI []", (232, 248, 236), COLOR_TEXT_SUCCESS),
+                "CONTRA": ("KONTRADIKSI", (232, 248, 236), COLOR_TEXT_SUCCESS),
                 "STEP": (f"LANGKAH #{meta.get('step_idx', '-')}", (235, 245, 255), COLOR_TEXT_ACCENT),
             }
             badge_txt, badge_bg, badge_fg = badge_map.get(role, ("SIMPUL LOGIKA", (235, 245, 255), COLOR_TEXT_ACCENT))
@@ -906,18 +906,18 @@ class UnifiedGraphModal:
                 tiles = [
                     ("HASIL KB", "TERBUKTI" if meta.get("proved") else "GAGAL", COLOR_TEXT_SUCCESS if meta.get("proved") else COLOR_TEXT_DANGER),
                     ("TOTAL LANGKAH", f"{meta.get('total_steps', 0)} step", COLOR_TEXT_ACCENT),
-                    ("TARGET AKHIR", "Klausa []", COLOR_TEXT_WARNING),
+                    ("TARGET AKHIR", "Klausa Kosong", COLOR_TEXT_WARNING),
                 ]
             elif role == "NEGATION":
                 tiles = [
                     ("METODE", "Refutasi", COLOR_TEXT_ACCENT),
                     ("ASUMSI", _fit_text(font_tiny, meta.get("negated_query", "-"), tw - 12), COLOR_TEXT_WARNING),
-                    ("TARGET", "Kontradiksi []", COLOR_TEXT_SUCCESS),
+                    ("TARGET", "Kontradiksi", COLOR_TEXT_SUCCESS),
                 ]
             else:
                 tiles = [
                     ("LITERAL HAPUS", _fit_text(font_tiny, meta.get("resolved_literal", "-"), tw - 12), COLOR_TEXT_ACCENT),
-                    ("STATUS", "[] Tercapai" if role == "CONTRA" else "Lanjut", COLOR_TEXT_SUCCESS if role == "CONTRA" else COLOR_TEXT_WARNING),
+                    ("STATUS", "Terbukti Sah" if role == "CONTRA" else "Lanjut", COLOR_TEXT_SUCCESS if role == "CONTRA" else COLOR_TEXT_WARNING),
                     ("CABANG ANAK", f"{len(nd.children)} node", COLOR_TEXT_PRIMARY),
                 ]
 
@@ -1050,7 +1050,7 @@ class UnifiedGraphModal:
         elif self.mode_tag == "LOGIC":
             items = [(
                 "Memvisualisasikan inferensi Knowledge Base Proposisional (Materi 07) dengan metode "
-                "Proof by Contradiction: menegasi Query (~Query) lalu menggabungkan klausa CNF hingga tercapai klausa kosong ([]).",
+                "Proof by Contradiction: menegasi Query (~Query) lalu menggabungkan klausa CNF hingga tercapai klausa kosong (Empty Clause).",
                 COLOR_TEXT_PRIMARY,
             )]
             h1, d1 = self._make_list_card_drawer("APA ITU POHON RESOLUSI REFUTASI?", items, COLOR_TEXT_HEADING, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, w)
@@ -1063,7 +1063,7 @@ class UnifiedGraphModal:
             ]
             ask_items = [
                 ("• Query target dinegasikan (~Query) lalu ditambahkan sementara ke KB.", COLOR_TEXT_PRIMARY),
-                ("• Jika muncul [], maka Query terbukti TRUE!", COLOR_TEXT_SUCCESS),
+                ("• Jika muncul Klausa Kosong (Kontradiksi), maka Query terbukti TRUE!", COLOR_TEXT_SUCCESS),
             ]
             lh, ld = self._make_list_card_drawer("TELL (Fakta & Aturan)", tell_items, COLOR_TEXT_ACCENT, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, col_w)
             rh, rd = self._make_list_card_drawer("ASK (Query & Negasi)", ask_items, COLOR_TEXT_WARNING, COLOR_CARD_BG, COLOR_CARD_BORDER, font_sm, font_tiny, col_w)
@@ -1085,7 +1085,7 @@ class UnifiedGraphModal:
             legend_tiles = [
                 ("AKAR", "Query Target", COLOR_TEXT_ACCENT),
                 ("NEGASI", "Asumsi ~Query", COLOR_TEXT_WARNING),
-                ("HIJAU []", "Kontradiksi Sah", COLOR_TEXT_SUCCESS),
+                ("HIJAU", "Kontradiksi Sah", COLOR_TEXT_SUCCESS),
             ]
 
             def draw_logic_legend(surf, rc, t_list=legend_tiles, tile_w=tw, tile_h=th, g=gap):

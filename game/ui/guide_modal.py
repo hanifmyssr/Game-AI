@@ -409,7 +409,7 @@ class GuideModal:
                 ]),
                 ("Tab 5: Logic KB (TELL -> ASK)", "MATERI 07", COLOR_GOLD, (252, 243, 218), [
                     ("• Menampilkan kejadian sensorik (Percept) saat peti dibuka, fakta FOL/CNF aktif, & pembagian tugas Chaser/Guardian.", COLOR_TEXT),
-                    ("• Klik tombol / tekan [K] untuk melihat Pohon Resolusi Refutasi [].", COLOR_TEXT_SUB),
+                    ("• Klik tombol / tekan [K] untuk melihat Pohon Resolusi Refutasi (Klausa Kosong).", COLOR_TEXT_SUB),
                 ]),
                 ("Tab 6: Planning (PDDL)", "MATERI 08", COLOR_BLUE, (235, 245, 255), [
                     ("• Memilih mesin perencana (Forward Progression A* vs Backward Regression STRIPS) untuk taktik pulau & rotasi duel.", COLOR_TEXT),
@@ -446,7 +446,7 @@ class GuideModal:
                     ("• Implementasi: Menjamin komposisi kelas, HP, ATK, DEF, & Potion skuad legal sesuai 8 batasan keras C1-C8.", COLOR_TEXT_SUB),
                 ]),
                 ("Materi 07: Logical Agents & KB", "KOORDINASI & SEGEL", COLOR_GOLD, (252, 243, 218), [
-                    ("• Metode: Propositional CNF & Resolution Refutation (TELL -> ASK -> bukti kontradiksi []).", COLOR_TEXT),
+                    ("• Metode: Propositional CNF & Resolution Refutation (TELL -> ASK -> bukti kontradiksi Klausa Kosong).", COLOR_TEXT),
                     ("• Implementasi: Menentukan penjaga pengejar saat peti dibuka & memverifikasi syarat 3 Kunci Rune Portal Menara Kuno.", COLOR_TEXT_SUB),
                 ]),
                 ("Materi 08: Classical Planning (PDDL)", "TAKTIK STRIPS", COLOR_BLUE, (235, 245, 255), [

@@ -158,14 +158,15 @@ class TabLogic:
             steps = []
             for idx, st in enumerate(mgr.latest_steps[-4:], start=1):
                 lit = _clean_cnf_str(st.resolved_literal)
-                res = "[] (KONTRADIKSI)" if len(st.resolvent) == 0 else _clean_cnf_str(clause_to_str(st.resolvent))
-                steps.append((f"{idx}. {lit} -> {res}", "[]" in res))
+                is_empty = (len(st.resolvent) == 0)
+                res = "KLAUSA KOSONG (KONTRADIKSI)" if is_empty else _clean_cnf_str(clause_to_str(st.resolvent))
+                steps.append((f"{idx}. {lit} -> {res}", is_empty))
         else:
             steps = [
                 ("1. Query: ~Chaser(K) (Asumsi)", False),
                 ("2. Resolusi R2: ~Alert(K)", False),
                 ("3. Resolusi R1: ~Open(Peti_A)", False),
-                ("4. Fakta TELL: [] (KONTRADIKSI)", True),
+                ("4. Fakta TELL: KLAUSA KOSONG (KONTRADIKSI)", True),
             ]
 
         sy = cy + 26

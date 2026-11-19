@@ -166,10 +166,10 @@ class ResolutionRefutationEngine:
             "proved": proved,
             "total_steps": len(proof_trace),
             "decision_meaning": (
-                f"Karena negasi ({neg_lit}) memicu kontradiksi [], maka {query} "
+                f"Karena negasi ({neg_lit}) memicu kontradiksi (Klausa Kosong), maka {query} "
                 f"TERBUKTI benar secara deduktif dan langsung dieksekusi di game."
                 if proved
-                else f"Tidak ditemukan kontradiksi [], sehingga {query} belum dapat dibuktikan."
+                else f"Tidak ditemukan kontradiksi (Klausa Kosong), sehingga {query} belum dapat dibuktikan."
             ),
         }
 
@@ -191,7 +191,7 @@ class ResolutionRefutationEngine:
             ),
             "query": query,
             "negated_query": neg_lit,
-            "goal_note": "Gabungkan klausa ini dengan fakta/aturan KB hingga muncul klausa kosong [].",
+            "goal_note": "Gabungkan klausa ini dengan fakta/aturan KB hingga muncul Klausa Kosong (kontradiksi).",
         }
 
         # Anak-anak rantai langkah resolusi
@@ -200,13 +200,13 @@ class ResolutionRefutationEngine:
         for idx, st in enumerate(trace_slice, start=2):
             c1_str = clause_to_str(st.c1)
             c2_str = clause_to_str(st.c2)
-            res_str = "[] (KLAUSA KOSONG)" if not st.resolvent else clause_to_str(st.resolvent)
+            res_str = "KLAUSA KOSONG (KONTRADIKSI)" if not st.resolvent else clause_to_str(st.resolvent)
             is_contra = (len(st.resolvent) == 0)
             step_node = curr_parent.add_child(GraphNode(
                 node_id=f"step_{idx}",
                 label=f"{idx}. Resolusi ({st.resolved_literal})",
                 sub_label=f"{c2_str} => {res_str}",
-                score_str="KONTRADIKSI []" if is_contra else "Resolvent",
+                score_str="KONTRADIKSI (SAH)" if is_contra else "Resolvent",
                 node_type="TERMINAL" if is_contra else "DEFAULT",
                 is_best=is_contra
             ))
@@ -224,7 +224,7 @@ class ResolutionRefutationEngine:
                 "resolvent_str": res_str,
                 "is_contradiction": is_contra,
                 "conclusion": (
-                    f"Klausa kosong [] tercapai! Asumsi negasi ({neg_lit}) terbukti salah, "
+                    f"Klausa Kosong tercapai! Asumsi negasi ({neg_lit}) terbukti salah, "
                     f"sehingga Query '{query}' SAH (TRUE)."
                     if is_contra
                     else f"Menghasilkan klausa baru ({res_str}) yang dipakai pada langkah resolusi berikutnya."

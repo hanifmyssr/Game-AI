@@ -386,7 +386,7 @@ class ExplorationModeMixin:
                     prompt = self.fonts.get("bubble", self.fonts["sm"]).render("[E] Buka Peti", True, (150, 75, 15))
                     p_box = prompt.get_rect(center=(rect.centerx, rect.top - 16))
                     card = pygame.Surface((p_box.width + 12, p_box.height + 6), SRCALPHA)
-                    card.fill((255, 253, 248, 245))
+                    pygame.draw.rect(card, (255, 253, 248, 245), card.get_rect(), border_radius=4)
                     pygame.draw.rect(card, (212, 186, 150), card.get_rect(), 1, border_radius=4)
                     self.screen.blit(card, card.get_rect(center=p_box.center))
                     self.screen.blit(prompt, p_box)
@@ -1423,7 +1423,7 @@ class ExplorationModeMixin:
         """Gambar lencana mengambang di atas kepala pemain saat bersembunyi di semak."""
         sx, sy = self.camera.world_to_screen(self.player.px, self.player.py)
         font = self.fonts.get("tiny", pygame.font.Font(None, 13))
-        text = "🌿 Sembunyi"
+        text = "Sembunyi"
         surf = font.render(text, True, (245, 255, 240))
         pad_x, pad_y = 6, 2
         w = surf.get_width() + pad_x * 2
@@ -1432,7 +1432,7 @@ class ExplorationModeMixin:
         top_head_sy = sy + (self.map.cell_size * self.camera.zoom) / 2.0 - (32 * self.camera.zoom)
         badge_rect.midbottom = (int(sx), int(top_head_sy - 4))
         bg_surf = pygame.Surface((w, h), SRCALPHA)
-        bg_surf.fill((30, 90, 45, 215))
+        pygame.draw.rect(bg_surf, (30, 90, 45, 215), bg_surf.get_rect(), border_radius=4)
         pygame.draw.rect(bg_surf, (110, 220, 140), bg_surf.get_rect(), 1, border_radius=4)
         self.screen.blit(bg_surf, badge_rect)
         self.screen.blit(surf, (badge_rect.x + pad_x, badge_rect.y + pad_y))
@@ -1491,7 +1491,7 @@ class ExplorationModeMixin:
             by = int(sy - radius - bh - 8)
 
             box_surf = pygame.Surface((bw, bh), SRCALPHA)
-            box_surf.fill(bg_col)
+            pygame.draw.rect(box_surf, bg_col, box_surf.get_rect(), border_radius=6)
             pygame.draw.rect(box_surf, border_col, box_surf.get_rect(), 1, border_radius=6)
             self.screen.blit(box_surf, (bx, by))
             self.screen.blit(t_surf, (bx + (bw - t_surf.get_width()) // 2, by + pad_y))
@@ -1529,7 +1529,7 @@ class ExplorationModeMixin:
                 top_head_sy = sy + (self.map.cell_size * self.camera.zoom) / 2.0 - (32 * self.camera.zoom)
                 by = int(top_head_sy - 6 - bh)
                 b_surf = pygame.Surface((bw, bh), SRCALPHA)
-                b_surf.fill((255, 253, 246, 235))
+                pygame.draw.rect(b_surf, (255, 253, 246, 235), b_surf.get_rect(), border_radius=5)
                 pygame.draw.rect(b_surf, (200, 160, 110), b_surf.get_rect(), 1, border_radius=5)
                 self.screen.blit(b_surf, (bx, by))
                 self.screen.blit(surf, (bx + pad_x, by + pad_y))

@@ -625,7 +625,7 @@ class BattleModeMixin:
             empty_rect = pygame.Rect(bench_x, curr_y, bench_w, 46)
             pygame.draw.rect(self.screen, (20, 24, 34, 220), empty_rect, border_radius=8)
             pygame.draw.rect(self.screen, (65, 78, 105), empty_rect, 1, border_radius=8)
-            t_last = self.fonts["sm"].render("⚔️ Duel Terakhir!", True, (255, 215, 80))
+            t_last = self.fonts["sm"].render("Duel Terakhir!", True, (255, 215, 80))
             self.screen.blit(t_last, t_last.get_rect(center=empty_rect.center))
             curr_y += 54
 
@@ -637,7 +637,7 @@ class BattleModeMixin:
                 pygame.draw.rect(self.screen, (26, 16, 18, 220), d_rect, border_radius=5)
                 pygame.draw.rect(self.screen, (100, 40, 45), d_rect, 1, border_radius=5)
                 d_name = mem.name.split()[0]
-                d_txt = self.fonts.get("tiny", pygame.font.Font(None, 13)).render(f"💀 {d_name} (KO)", True, (225, 110, 110))
+                d_txt = self.fonts.get("tiny", pygame.font.Font(None, 13)).render(f"[KO] {d_name}", True, (225, 110, 110))
                 self.screen.blit(d_txt, (bench_x + 8, curr_y + 5))
                 curr_y += 28
 
@@ -703,7 +703,7 @@ class BattleModeMixin:
             else:
                 card_surf.blit(p_img, (p_x + 2, p_y + 2))
         else:
-            ph = self.fonts.get("bubble", self.fonts["sm"]).render("🐱", True, (255, 255, 255))
+            ph = self.fonts.get("bubble", self.fonts["sm"]).render("NPC", True, (255, 255, 255))
             card_surf.blit(ph, ph.get_rect(center=p_rect.center))
 
         p_bdr_col = theme_border if is_front else tuple(max(30, int(c * 0.55)) for c in theme_border)
@@ -1243,7 +1243,7 @@ class BattleModeMixin:
         font_bubble = self.fonts.get("bubble", self.fonts["sm"])
         font_sm = self.fonts["sm"]
 
-        title_str = "⚔️ RAMPASAN PERANG DIPEROLEH!"
+        title_str = "RAMPASAN PERANG DIPEROLEH!"
         title_txt = font_bubble.render(title_str, True, (165, 80, 15))
         if alpha < 255:
             title_txt.set_alpha(alpha)

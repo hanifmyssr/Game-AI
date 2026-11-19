@@ -533,9 +533,9 @@ class BattleSystem:
                         if loot.get("image_key") and loot["image_key"] not in self.player.inventory:
                             self.player.inventory.append(loot["image_key"])
 
-                self.log(f"💥 {active.name if active else 'NPC'} Tumbang! {next_npc.name} masuk ke arena duel!")
-                self.log(f"✨ SECOND WIND! Player pulih +{heal_amount} HP, +1 Potion, Cooldown Heavy Attack siap!")
-                self.log(f"🎁 RAMPASAN PERANG: Merebut {loot['name']}! ({loot['desc']})")
+                self.log(f"[KO] {active.name if active else 'NPC'} Tumbang! {next_npc.name} masuk ke arena duel!")
+                self.log(f"[+] SECOND WIND! Player pulih +{heal_amount} HP, +1 Potion, Cooldown Heavy Attack siap!")
+                self.log(f"[LOOT] RAMPASAN PERANG: Merebut {loot['name']}! ({loot['desc']})")
                 self._set_action_text("PLAYER", "SECOND WIND!", f"(+{heal_amount} HP, +1 Pot)")
                 self._set_action_text("NPC", "TAG-IN!", next_npc.name)
 
@@ -570,7 +570,7 @@ class BattleSystem:
                 self.log("Player Tumbang! Tim NPC (AI) Memenangkan Duel!")
             else:
                 self.winner = "PLAYER"
-                self.log("🏆 Selamat! Seluruh tim NPC berhasil dikalahkan!")
+                self.log("[WIN] Selamat! Seluruh tim NPC berhasil dikalahkan!")
                 final_active = self.squad.get_active_member() if self.squad else None
                 if final_active:
                     final_loot = self._get_spoils_of_war(final_active)
@@ -584,5 +584,5 @@ class BattleSystem:
                                 self.player.inventory.append(final_loot["name"])
                             if final_loot.get("image_key") and final_loot["image_key"] not in self.player.inventory:
                                 self.player.inventory.append(final_loot["image_key"])
-                    self.log(f"🏆 RAMPASAN FINAL: Merebut {final_loot['name']}! ({final_loot['desc']})")
+                    self.log(f"[LOOT] RAMPASAN FINAL: Merebut {final_loot['name']}! ({final_loot['desc']})")
                     self.last_loot = final_loot

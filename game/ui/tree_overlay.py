@@ -309,7 +309,7 @@ class TreeOverlay:
         pygame.draw.rect(screen, (100, 195, 130, 200), header_rect, 1, border_radius=6)
 
         # 1. Judul
-        title = font_title.render("🌲 DECISION TREE", True, (20, 120, 50))
+        title = font_title.render("DECISION TREE", True, (20, 120, 50))
         screen.blit(title, (header_rect.x + 8, header_rect.centery - title.get_height() // 2))
 
         # 2. Depth Control [-] [Depth: X] [+]
@@ -333,7 +333,7 @@ class TreeOverlay:
         focus_w = 64
         self.btn_focus_root = pygame.Rect(focus_x, header_rect.y + 4, focus_w, 22)
         pygame.draw.rect(screen, (70, 130, 200), self.btn_focus_root, border_radius=4)
-        focus_ts = font_sm.render("🎯 Fokus", True, (255, 255, 255))
+        focus_ts = font_sm.render("Fokus", True, (255, 255, 255))
         screen.blit(
             focus_ts,
             (
@@ -356,7 +356,7 @@ class TreeOverlay:
         _draw_dashed_line(
             screen, COLOR_LINE_PRUNED, (leg_x, leg_y), (leg_x + 14, leg_y), dash_len=4, gap_len=3, width=2
         )
-        pr_txt = font_sm.render("Pruned ✂", True, config.DEBUG_TEXT_PRIMARY)
+        pr_txt = font_sm.render("Pruned (X)", True, config.DEBUG_TEXT_PRIMARY)
         screen.blit(pr_txt, (leg_x + 18, leg_y - pr_txt.get_height() // 2))
         leg_x += pr_txt.get_width() + 18
 

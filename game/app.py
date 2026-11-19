@@ -94,7 +94,7 @@ class Camera:
     def left_panel_w(self):
         if self._app_ref and hasattr(self._app_ref, "overlay") and self._app_ref.overlay:
             if hasattr(self._app_ref.overlay, "dock") and self._app_ref.overlay.dock.is_open:
-                return config.TOTAL_DOCK_WIDTH
+                return self._app_ref.overlay.dock.rect.right
             return config.NAV_RAIL_WIDTH
         return self._left_panel_w or config.TOTAL_DOCK_WIDTH
 

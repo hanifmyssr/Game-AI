@@ -151,7 +151,7 @@ class BattleModeMixin:
         """Menghitung koordinat posisi pusat Player dan NPC tepat di tengah arena battle."""
         w, h = self.screen.get_size()
         is_dock_open = getattr(self.overlay.dock, "is_open", False) if hasattr(self, "overlay") and hasattr(self.overlay, "dock") else False
-        panel_w = config.TOTAL_DOCK_WIDTH if is_dock_open else config.NAV_RAIL_WIDTH
+        panel_w = self.overlay.dock.rect.right if is_dock_open else config.NAV_RAIL_WIDTH
         has_bench = bool(self.current_squad and len(self.current_squad.members) > 1)
         bench_w = 154 if has_bench else 16
         combat_w = w - panel_w - bench_w
@@ -193,7 +193,7 @@ class BattleModeMixin:
         # Tampilkan arena pertempuran di area kerja kanan
         w, h = self.screen.get_size()
         is_dock_open = getattr(self.overlay.dock, "is_open", False) if hasattr(self, "overlay") and hasattr(self.overlay, "dock") else False
-        panel_w = config.TOTAL_DOCK_WIDTH if is_dock_open else config.TOTAL_COLLAPSED_WIDTH
+        panel_w = self.overlay.dock.rect.right if is_dock_open else config.TOTAL_COLLAPSED_WIDTH
         arena_w = w - panel_w
         area_x = panel_w + arena_w // 2
 
@@ -751,7 +751,7 @@ class BattleModeMixin:
         alpha = min(255, int(255 * (timer / 0.5))) if timer < 0.5 else 255
 
         is_dock_open = getattr(self.overlay.dock, "is_open", False) if hasattr(self, "overlay") and hasattr(self.overlay, "dock") else False
-        panel_w = config.TOTAL_DOCK_WIDTH if is_dock_open else config.TOTAL_COLLAPSED_WIDTH
+        panel_w = self.overlay.dock.rect.right if is_dock_open else config.TOTAL_COLLAPSED_WIDTH
         usable_w = w - panel_w
         banner_w = min(560, usable_w - 40)
         banner_h = 86
@@ -1294,7 +1294,7 @@ class BattleModeMixin:
 
         w, h = self.screen.get_size()
         is_dock_open = getattr(self.overlay.dock, "is_open", False) if hasattr(self, "overlay") and hasattr(self.overlay, "dock") else False
-        panel_w = config.TOTAL_DOCK_WIDTH if is_dock_open else config.NAV_RAIL_WIDTH
+        panel_w = self.overlay.dock.rect.right if is_dock_open else config.NAV_RAIL_WIDTH
         has_bench = bool(self.current_squad and len(self.current_squad.members) > 1)
         bench_w = 154 if has_bench else 16
         combat_w = w - panel_w - bench_w

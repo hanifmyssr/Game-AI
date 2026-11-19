@@ -129,7 +129,11 @@ class DebugOverlay:
     def on_resize(self, w: int, h: int) -> None:
         """Menyesuaikan ukuran elemen Nav Rail & Inspector Dock saat resolusi layar berubah."""
         self.nav_rail.resize(h, width=config.NAV_RAIL_WIDTH)
-        self.dock.resize(h, width=config.INSPECTOR_WIDTH, x=config.NAV_RAIL_WIDTH)
+        min_w = config.INSPECTOR_WIDTH
+        max_w = max(min_w, min(580, int(w * 0.48) - config.NAV_RAIL_WIDTH))
+        cur_w = max(min_w, min(max_w, self.dock.rect.width))
+        self.dock.min_width = min_w
+        self.dock.resize(h, width=cur_w, x=config.NAV_RAIL_WIDTH)
 
     def set_pre_battle_data(self, config_dict: Any, stats: Any, algo_name: str = "HILL_CLIMBING") -> None:
         self.pre_battle_config = config_dict
@@ -325,7 +329,7 @@ class DebugOverlay:
 
         # Blokir klik mouse di area yang sedang tertutup panel UI
         if hasattr(event, "pos"):
-            active_w = config.TOTAL_DOCK_WIDTH if self.dock.is_open else config.NAV_RAIL_WIDTH
+            active_w = self.dock.rect.right if self.dock.is_open else config.NAV_RAIL_WIDTH
             if event.pos[0] < active_w:
                 return True
 

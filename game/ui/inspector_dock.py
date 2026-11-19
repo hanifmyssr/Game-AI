@@ -3,7 +3,7 @@
 Wadah inspektur selebar 356px (x: 64..420) yang mendukung mode Buka/Tutup (Collapsible Drawer).
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 import pygame
 from ..core import config
 from .components import draw_card, UIButton, render_fitted_text
@@ -57,6 +57,12 @@ class InspectorDock:
             5: TabPlanning(content_rect, fonts, app_ref),
             6: TabSettings(content_rect, fonts, app_ref),
         }
+
+        # State drag-resize di tepi kanan dock
+        self.min_width: int = max(int(getattr(config, "INSPECTOR_WIDTH", 356)), self.rect.width)
+        self.is_resizing: bool = False
+        self.is_hover_resize: bool = False
+        self.last_edge_click_ms: int = 0
 
         # Tombol Tutup Panel & Tombol Bantuan (?) di Header (Pojok Kanan Atas)
         btn_collapse_w = 84
@@ -135,9 +141,67 @@ class InspectorDock:
             if hasattr(tab, "resize"):
                 tab.resize(content_rect)
 
+    def _get_max_width(self) -> int:
+        win_w = config.WINDOW_WIDTH
+        if self.app and hasattr(self.app, "screen") and self.app.screen:
+            win_w = self.app.screen.get_width()
+        return max(self.min_width, min(580, int(win_w * 0.48) - self.rect.x))
+
+    def _is_on_resize_edge(self, pos: Tuple[int, int]) -> bool:
+        return abs(pos[0] - self.rect.right) <= 6 and self.rect.top <= pos[1] <= self.rect.bottom
+
+    def _sync_camera_after_resize(self) -> None:
+        if self.app and hasattr(self.app, "camera") and self.app.camera:
+            if hasattr(self.app, "player") and self.app.player:
+                self.app.camera.follow((self.app.player.px, self.app.player.py), smooth=False)
+            self.app.camera._clamp_offset()
+
+    def _set_cursor_resize(self, active: bool) -> None:
+        try:
+            cur = pygame.SYSTEM_CURSOR_SIZEWE if active else pygame.SYSTEM_CURSOR_ARROW
+            pygame.mouse.set_cursor(cur)
+        except Exception:
+            pass
+
     def handle_event(self, event: pygame.event.Event) -> bool:
         if not self.is_open:
             return False
+
+        # 0. Drag-resize tepi kanan panel
+        if event.type == MOUSEMOTION and hasattr(event, "pos"):
+            if self.is_resizing:
+                new_w = max(self.min_width, min(self._get_max_width(), event.pos[0] - self.rect.x))
+                if new_w != self.rect.width:
+                    self.resize(self.rect.height, width=new_w, x=self.rect.x)
+                    self._sync_camera_after_resize()
+                self._set_cursor_resize(True)
+                return True
+            on_edge = self._is_on_resize_edge(event.pos)
+            if on_edge != self.is_hover_resize:
+                self.is_hover_resize = on_edge
+                self._set_cursor_resize(on_edge)
+
+        elif event.type == MOUSEBUTTONDOWN and event.button == 1 and hasattr(event, "pos"):
+            if self._is_on_resize_edge(event.pos):
+                now = pygame.time.get_ticks()
+                if now - self.last_edge_click_ms < 350:
+                    self.resize(self.rect.height, width=self.min_width, x=self.rect.x)
+                    self._sync_camera_after_resize()
+                    self.is_resizing = False
+                    self.last_edge_click_ms = 0
+                else:
+                    self.is_resizing = True
+                    self.last_edge_click_ms = now
+                self._set_cursor_resize(True)
+                return True
+
+        elif event.type == MOUSEBUTTONUP and event.button == 1:
+            if self.is_resizing:
+                self.is_resizing = False
+                on_edge = hasattr(event, "pos") and self._is_on_resize_edge(event.pos)
+                self.is_hover_resize = on_edge
+                self._set_cursor_resize(on_edge)
+                return True
 
         # Klik tombol Bantuan (?) & Tutup Panel
         if self.btn_help.handle_event(event):
@@ -185,9 +249,10 @@ class InspectorDock:
 
         # 1. Latar Belakang Perkamen Hangat
         draw_card(surface, self.rect, config.COLOR_INSPECTOR_BG, border_color=None, border_radius=0)
-        # Garis pembatas buku kulit di sisi kanan (x = 420)
-        pygame.draw.line(surface, config.COLOR_INSPECTOR_BORDER,
-                         (self.rect.right - 1, self.rect.y), (self.rect.right - 1, self.rect.bottom), 2)
+        # Garis pembatas buku kulit & handle resize di sisi kanan
+        edge_col = config.COLOR_ACCENT_GOLD if (self.is_hover_resize or self.is_resizing) else config.COLOR_INSPECTOR_BORDER
+        edge_w = 3 if (self.is_hover_resize or self.is_resizing) else 2
+        pygame.draw.line(surface, edge_col, (self.rect.right - 1, self.rect.y), (self.rect.right - 1, self.rect.bottom), edge_w)
 
         # 2. Header Pita Perkamen
         header_rect = pygame.Rect(self.rect.x, self.rect.y, self.rect.width, self.header_h)
@@ -234,3 +299,10 @@ class InspectorDock:
         surface.set_clip(orig_clip)
         if not self.show_glossary and active_tab:
             active_tab.draw_popups(surface)
+
+        # Grip kecil di tengah tepi kanan sebagai penanda dapat digeser
+        grip_cy = self.rect.centery
+        grip_x = self.rect.right - 3
+        grip_col = config.COLOR_ACCENT_GOLD if (self.is_hover_resize or self.is_resizing) else (196, 180, 158)
+        for dy in (-10, 0, 10):
+            pygame.draw.circle(surface, grip_col, (grip_x, grip_cy + dy), 2)

@@ -289,7 +289,7 @@ class PreBattleModeMixin:
     def _draw_pre_battle_arena(self):
         w, h = self.screen.get_size()
         is_dock_open = getattr(self.overlay.dock, "is_open", False) if hasattr(self, "overlay") and hasattr(self.overlay, "dock") else False
-        panel_w = config.TOTAL_DOCK_WIDTH if is_dock_open else config.TOTAL_COLLAPSED_WIDTH
+        panel_w = self.overlay.dock.rect.right if is_dock_open else config.TOTAL_COLLAPSED_WIDTH
         arena_w = w - panel_w
         area_cx = panel_w + arena_w // 2
 

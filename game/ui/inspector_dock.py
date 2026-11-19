@@ -200,11 +200,13 @@ class InspectorDock:
         font_tiny = self.fonts.get("tiny", pygame.font.Font(None, 13))
 
         max_title_w = max(80, self.btn_help.rect.x - (self.rect.x + 14) - 8)
-        t_surf = font_title.render(title, True, config.COLOR_ACCENT_GOLD)
+        font_bubble = self.fonts.get("bubble", font_title)
+        hdr_font = font_title if font_title.size(title)[0] <= max_title_w else font_bubble
+        t_surf = hdr_font.render(title, True, config.COLOR_ACCENT_GOLD)
         st_surf = font_tiny.render(subtitle, True, config.COLOR_TEXT_SECONDARY)
         tot_text_h = t_surf.get_height() + st_surf.get_height() + 2
         t_y = self.rect.y + max(4, (self.header_h - tot_text_h) // 2)
-        render_fitted_text(surface, font_title, title, config.COLOR_ACCENT_GOLD, (self.rect.x + 14, t_y), max_title_w)
+        render_fitted_text(surface, hdr_font, title, config.COLOR_ACCENT_GOLD, (self.rect.x + 14, t_y), max_title_w)
         render_fitted_text(surface, font_tiny, subtitle, config.COLOR_TEXT_SECONDARY, (self.rect.x + 14, t_y + t_surf.get_height() + 2), max_title_w)
 
         # Tombol Bantuan (?) & Lipat

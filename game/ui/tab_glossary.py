@@ -169,19 +169,23 @@ def draw_tab_glossary(
     cy = content_rect.y + 12
 
     # 1. Kartu Kegunaan Tab
+    title_lines = _wrap_text_lines(font_sm, str(data["title"]), card_w - pad * 2)
     purpose_lines = _wrap_text_lines(font_tiny, str(data["purpose"]), card_w - pad * 2)
-    h1 = 36 + len(purpose_lines) * line_h_tiny + 10
+    h1 = 10 + len(title_lines) * line_h_sm + 24 + len(purpose_lines) * line_h_tiny + 10
     r1 = pygame.Rect(cx, cy, card_w, h1)
 
-    def _draw_purpose(surf: pygame.Surface, rc: pygame.Rect, pl=purpose_lines, d=data):
+    def _draw_purpose(surf: pygame.Surface, rc: pygame.Rect, tl=title_lines, pl=purpose_lines, d=data):
         draw_card(surf, rc, (254, 248, 236), border_color=config.COLOR_ACCENT_GOLD, border_radius=8)
-        t_lbl = font_sm.render(str(d["title"]), True, config.COLOR_ACCENT_GOLD)
-        surf.blit(t_lbl, (rc.x + pad, rc.y + 8))
+        ty = rc.y + 8
+        for ln in tl:
+            surf.blit(font_sm.render(ln, True, config.COLOR_ACCENT_GOLD), (rc.x + pad, ty))
+            ty += line_h_sm
+        ty += 2
         badge_txt = str(d["phase"])
-        bw = font_tiny.size(badge_txt)[0] + 14
-        pill_r = pygame.Rect(rc.right - bw - 8, rc.y + 7, bw, 18)
+        bw = font_tiny.size(badge_txt)[0] + 16
+        pill_r = pygame.Rect(rc.x + pad, ty, bw, 18)
         draw_badge_pill(surf, pill_r, badge_txt, (252, 240, 212), (145, 86, 14), font_tiny, border_color=(212, 160, 48))
-        ty = rc.y + 32
+        ty += 24
         for ln in pl:
             surf.blit(font_tiny.render(ln, True, config.COLOR_TEXT_PRIMARY), (rc.x + pad, ty))
             ty += line_h_tiny

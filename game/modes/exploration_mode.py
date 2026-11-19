@@ -268,7 +268,7 @@ class ExplorationModeMixin:
         bd_col = (205, 135, 25) if hov else (196, 174, 144)
 
         pill = pygame.Surface((bw, bh), SRCALPHA)
-        pill.fill(bg_col)
+        pygame.draw.rect(pill, bg_col, pill.get_rect(), border_radius=8)
         pygame.draw.rect(pill, bd_col, pill.get_rect(), 1, border_radius=8)
         self.screen.blit(pill, self.btn_guide_pill.topleft)
         self.screen.blit(t_surf, t_surf.get_rect(center=self.btn_guide_pill.center))
@@ -334,8 +334,8 @@ class ExplorationModeMixin:
             pygame.draw.polygon(self.screen, (255, 225, 50), [p1, p2, p3])
             pygame.draw.polygon(self.screen, (210, 80, 0), [p1, p2, p3], 1)
 
-            # Label Teks Badge "🐱 Nama (X meter)"
-            txt_surf = font.render(f"🐱 {npc.name} ({dist_grid} meter)", True, (150, 75, 15))
+            # Label Teks Badge "Nama (X meter)"
+            txt_surf = font.render(f"{npc.name} ({dist_grid} meter)", True, (150, 75, 15))
             txt_x = int(edge_x)
             txt_y = int(edge_y + radius + 16)
             if txt_y > max_y - 10:
@@ -351,7 +351,7 @@ class ExplorationModeMixin:
             placed_badges.append(bg_rect)
 
             card_bg = pygame.Surface((bg_rect.width + 12, bg_rect.height + 6), SRCALPHA)
-            card_bg.fill((255, 253, 248, 245))
+            pygame.draw.rect(card_bg, (255, 253, 248, 245), card_bg.get_rect(), border_radius=5)
             pygame.draw.rect(card_bg, (215, 140, 30), card_bg.get_rect(), 1, border_radius=5)
             self.screen.blit(card_bg, card_bg.get_rect(center=bg_rect.center))
             self.screen.blit(txt_surf, bg_rect)
@@ -540,7 +540,7 @@ class ExplorationModeMixin:
         self.screen.blit(shadow_surf, (hud_x + 2, hud_y + 2))
 
         card_surf = pygame.Surface((hud_w, hud_h), SRCALPHA)
-        card_surf.fill((255, 253, 248, 242))
+        pygame.draw.rect(card_surf, (255, 253, 248, 242), card_surf.get_rect(), border_radius=10)
         pygame.draw.rect(card_surf, (215, 202, 184), card_surf.get_rect(), 1, border_radius=10)
         pygame.draw.line(card_surf, (255, 255, 255, 220), (8, 1), (hud_w - 8, 1), 1)
         self.screen.blit(card_surf, (hud_x, hud_y))
@@ -575,7 +575,7 @@ class ExplorationModeMixin:
 
                 # Background slot terisi (Krem Hangat)
                 s_bg = pygame.Surface((slot_w, slot_h), SRCALPHA)
-                s_bg.fill((248, 243, 233, 230))
+                pygame.draw.rect(s_bg, (248, 243, 233, 230), s_bg.get_rect(), border_radius=6)
                 self.screen.blit(s_bg, (sx, sy))
 
                 # Border slot
@@ -613,7 +613,7 @@ class ExplorationModeMixin:
             else:
                 # Slot Kosong (Linen Kertas Perkamen)
                 s_bg = pygame.Surface((slot_w, slot_h), SRCALPHA)
-                s_bg.fill((242, 236, 225, 180))
+                pygame.draw.rect(s_bg, (242, 236, 225, 180), s_bg.get_rect(), border_radius=6)
                 self.screen.blit(s_bg, (sx, sy))
                 pygame.draw.rect(self.screen, (218, 205, 188), slot_rect, 1, border_radius=6)
                 q_surf = font_sm.render("?", True, (175, 160, 140))
@@ -1582,7 +1582,7 @@ class ExplorationModeMixin:
 
         # Kartu utama tema Cozy Warm Parchment
         bg_surf = pygame.Surface((bw, bh), SRCALPHA)
-        bg_surf.fill((255, 253, 248, min(246, alpha)))
+        pygame.draw.rect(bg_surf, (255, 253, 248, min(246, alpha)), bg_surf.get_rect(), border_radius=10)
         # Garis aksen vertikal di tepi kiri banner
         pygame.draw.rect(bg_surf, (*accent_col[:3], alpha), pygame.Rect(5, 6, 4, bh - 12), border_radius=2)
         # Border ganda elegan

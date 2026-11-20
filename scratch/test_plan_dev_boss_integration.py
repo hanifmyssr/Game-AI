@@ -94,11 +94,11 @@ def run_tests():
     app._draw()
     app.enter_boss_battle()
     assert app.game_mode == "BATTLE", "Game harus bertransisi ke mode BATTLE saat duel dimulai!"
-    active_boss = app.current_squad.get_active_member()
-    assert active_boss.name == "Kage the Shadow Lord", f"Boss aktif harus Kage! Real: {active_boss.name}"
-    assert active_boss.max_hp >= 160, f"HP Boss Kage harus >= 160, real: {active_boss.max_hp}"
-    assert active_boss.battle_sprite is not None, "Sprite battle Kage harus berhasil dimuat!"
-    print(f"   [PASS] Berhasil masuk Boss Pre-Battle lalu Battle melawan {active_boss.name} (HP: {active_boss.max_hp})!")
+    boss_member = app.current_squad.members[-1]
+    assert boss_member.name == "Kage the Shadow Lord", f"Final Boss harus Kage! Real: {boss_member.name}"
+    assert boss_member.max_hp >= 160, f"HP Boss Kage harus >= 160, real: {boss_member.max_hp}"
+    assert boss_member.battle_sprite is not None, "Sprite battle Kage harus berhasil dimuat!"
+    print(f"   [PASS] Berhasil masuk Boss Pre-Battle lalu Battle (Vanguard dulu -> Final Boss {boss_member.name} HP: {boss_member.max_hp})!")
 
     # Uji render satu frame battle untuk memastikan grafis tanpa crash
     app._draw()

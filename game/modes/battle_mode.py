@@ -108,7 +108,7 @@ class BattleModeMixin:
         has_boss = bool(
             self.current_squad
             and self.current_squad.members
-            and "Kage" in self.current_squad.members[0].name
+            and any("Kage" in m.name for m in self.current_squad.members)
         )
         if not has_boss:
             self.current_squad = NPCSquad.create_boss_squad()

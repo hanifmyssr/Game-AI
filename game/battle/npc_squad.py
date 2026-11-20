@@ -183,9 +183,10 @@ class NPCSquad:
             pctx = player_context or {}
             patk = pctx.get("player_atk_bonus", 0)
             pdef = pctx.get("player_def_bonus", 0)
-            # Skala kesulitan: 0.20 -> ~0.65x, 0.55 -> ~1.0x, 0.90 -> ~1.45x + penyesuaian item player
-            item_boost = min(0.50, patk * 0.015 + pdef * 0.012) if td >= 0.45 else 0.0
-            scale = max(0.65, min(1.85, 0.95 + (td - 0.55) * 1.25 + item_boost))
+            ppot = pctx.get("player_potions", 2)
+            # Skala kesulitan: mempertimbangkan bonus ATK/DEF & cadangan Potion Bolu
+            item_boost = min(0.85, patk * 0.020 + pdef * 0.016 + max(0, ppot - 2) * 0.05) if td >= 0.45 else 0.0
+            scale = max(0.65, min(2.25, 0.95 + (td - 0.55) * 1.25 + item_boost))
             boss_potions = 2 if td < 0.40 else (3 if td < 0.72 else 4)
             m1_pot = 1 if td < 0.70 else 2
             m2_pot = 1 if td < 0.45 else (2 if td < 0.75 else 3)
@@ -221,7 +222,8 @@ class NPCSquad:
             def_bonus=int(round(1 * scale)),
             eval_profile=m2_prof,
         )
-        return cls([boss, minion_1, minion_2])
+        # Pengawal maju lebih dulu (Vanguard) untuk menguras HP/item player, Kage turun terakhir sebagai Final Boss
+        return cls([minion_1, minion_2, boss])
 
     def reset(self):
         """Memulihkan seluruh anggota squad ke kondisi awal (HP maksimal & frontline awal)."""

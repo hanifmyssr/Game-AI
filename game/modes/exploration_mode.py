@@ -1765,74 +1765,75 @@ class ExplorationModeMixin:
     def _draw_relic_heatmap(self):
         """Merender heatmap probabilitas Bayesian Belief secara halus di atas peta eksplorasi."""
         sonar = getattr(self, "relic_sonar", None)
-        if not sonar or sonar.found or not sonar.heatmap_visible or sonar.scan_count <= 0:
+        if not sonar or not sonar.heatmap_visible:
+            return
+        if sonar.scan_count <= 0 and not sonar.found:
             return
         map_pos, max_p = sonar.get_map_estimate()
-        if max_p <= 0.0 or not sonar.belief:
-            return
-
-        n_cells = max(1, len(sonar.belief))
-        uniform_p = 1.0 / float(n_cells)
-        concentration = max_p / uniform_p
-        high_count = sum(1 for p in sonar.belief.values() if p >= 0.70 * max_p)
-        focus_t = min(1.0, max(0.0, (concentration - 1.2) / 4.0))
-
         zoom = self.camera.zoom
         sz = max(4, int(round(self.map.cell_size * zoom)))
         sw, sh = self.screen.get_size()
         left_w = self.camera.left_panel_w
 
-        for cell, prob in sonar.belief.items():
-            ratio = prob / max_p
-            if ratio < 0.45:
-                continue
-            wx, wy = self.map.world_to_px(cell)
-            sx, sy = self.camera.world_to_screen(wx, wy)
-            rx = int(sx - sz // 2)
-            ry = int(sy - sz // 2)
-            if rx + sz < left_w or rx > sw or ry + sz < 0 or ry > sh:
-                continue
+        if sonar.scan_count > 0 and max_p > 0.0 and sonar.belief:
+            n_cells = max(1, len(sonar.belief))
+            uniform_p = 1.0 / float(n_cells)
+            concentration = max_p / uniform_p
+            high_count = sum(1 for p in sonar.belief.values() if p >= 0.70 * max_p)
+            focus_t = min(1.0, max(0.0, (concentration - 1.2) / 4.0))
 
-            if ratio >= 0.85:
-                alpha_tile = int(50 + 60 * focus_t)
-                col = (255, 175, 40, alpha_tile)
-            elif ratio >= 0.60:
-                col = (120, 210, 195, int(34 + 30 * focus_t))
-            else:
-                col = (55, 185, 225, 28)
+            for cell, prob in sonar.belief.items():
+                ratio = prob / max_p
+                if ratio < 0.45:
+                    continue
+                wx, wy = self.map.world_to_px(cell)
+                sx, sy = self.camera.world_to_screen(wx, wy)
+                rx = int(sx - sz // 2)
+                ry = int(sy - sz // 2)
+                if rx + sz < left_w or rx > sw or ry + sz < 0 or ry > sh:
+                    continue
 
-            tile_s = pygame.Surface((sz, sz), SRCALPHA)
-            tile_s.fill(col)
-            self.screen.blit(tile_s, (rx, ry))
-            if ratio >= 0.85 and focus_t >= 0.35:
-                pygame.draw.rect(self.screen, (235, 155, 25), (rx, ry, sz, sz), 1)
+                if ratio >= 0.85:
+                    alpha_tile = int(50 + 60 * focus_t)
+                    col = (255, 175, 40, alpha_tile)
+                elif ratio >= 0.60:
+                    col = (120, 210, 195, int(34 + 30 * focus_t))
+                else:
+                    col = (55, 185, 225, 28)
 
-        # 1. Penanda Tebakan AI Terbaik (MAP) -> Siku bidik Cyan (berbeda dari Relik asli)
-        if map_pos and sonar.scan_count >= 2 and high_count <= 150:
-            wx, wy = self.map.world_to_px(map_pos)
-            sx, sy = self.camera.world_to_screen(wx, wy)
-            half = max(6, sz // 2 - 2)
-            arm = max(4, half // 2)
-            cx_m, cy_m = int(sx), int(sy)
-            cyan_col = (25, 175, 225)
-            for dx_s, dy_s in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
-                px_c = cx_m + dx_s * half
-                py_c = cy_m + dy_s * half
-                pygame.draw.line(self.screen, cyan_col, (px_c, py_c), (px_c - dx_s * arm, py_c), 2)
-                pygame.draw.line(self.screen, cyan_col, (px_c, py_c), (px_c, py_c - dy_s * arm), 2)
+                tile_s = pygame.Surface((sz, sz), SRCALPHA)
+                tile_s.fill(col)
+                self.screen.blit(tile_s, (rx, ry))
+                if ratio >= 0.85 and focus_t >= 0.35:
+                    pygame.draw.rect(self.screen, (235, 155, 25), (rx, ry, sz, sz), 1)
 
-        # 2. Penanda Relik Asli (saat Bolu <= 2 ubin) -> Permata/Relik Emas mengambang
+            # 1. Penanda Tebakan AI Terbaik (MAP) -> Siku bidik Cyan (berbeda dari Relik asli)
+            if map_pos and sonar.scan_count >= 2 and high_count <= 150:
+                wx, wy = self.map.world_to_px(map_pos)
+                sx, sy = self.camera.world_to_screen(wx, wy)
+                half = max(6, sz // 2 - 2)
+                arm = max(4, half // 2)
+                cx_m, cy_m = int(sx), int(sy)
+                cyan_col = (25, 175, 225)
+                for dx_s, dy_s in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+                    px_c = cx_m + dx_s * half
+                    py_c = cy_m + dy_s * half
+                    pygame.draw.line(self.screen, cyan_col, (px_c, py_c), (px_c - dx_s * arm, py_c), 2)
+                    pygame.draw.line(self.screen, cyan_col, (px_c, py_c), (px_c, py_c - dy_s * arm), 2)
+
+        # 2. Penanda Relik Asli (muncul saat <= 2 ubin, atau selalu tampil untuk demo setelah ditemukan jika Heatmap ON)
         if sonar.relic_pos:
             d = abs(self.player.grid[0] - sonar.relic_pos[0]) + abs(self.player.grid[1] - sonar.relic_pos[1])
-            if d <= 2:
+            if sonar.found or d <= 2:
                 wx, wy = self.map.world_to_px(sonar.relic_pos)
                 sx, sy = self.camera.world_to_screen(wx, wy)
-                bob = math.sin(pygame.time.get_ticks() * 0.007) * 2.5
+                bob = 0.0 if sonar.found else math.sin(pygame.time.get_ticks() * 0.007) * 2.5
                 rx_c, ry_c = int(sx), int(sy + bob)
                 r_gem = max(6, int(sz * 0.28))
                 pts = [(rx_c, ry_c - r_gem), (rx_c + r_gem, ry_c), (rx_c, ry_c + r_gem), (rx_c - r_gem, ry_c)]
                 pygame.draw.polygon(self.screen, (255, 215, 55), pts)
-                pygame.draw.polygon(self.screen, (170, 95, 15), pts, 2)
+                border_c = (45, 165, 75) if sonar.found else (170, 95, 15)
+                pygame.draw.polygon(self.screen, border_c, pts, 2)
                 pygame.draw.circle(self.screen, (255, 250, 220), (rx_c - r_gem // 4, ry_c - r_gem // 4), max(2, r_gem // 4))
 
     def _draw_sonar_waves(self):

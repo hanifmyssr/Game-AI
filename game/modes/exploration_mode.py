@@ -1863,8 +1863,73 @@ class ExplorationModeMixin:
     # KLIK-UNTUK-INSPEKSI ELEMEN MAP (O(1) SAAT KLIK, NOL BEBAN IDLE)
     # =========================================================================
 
+    def _get_layer3_lookup(self) -> Dict[Tuple[int, int], Tuple[str, int, int]]:
+        """Cache peta (gx, gy) -> (src, atlas_x, atlas_y) untuk objek/bangunan di layer atas."""
+        cache = getattr(self, "_layer3_lookup_cache", None)
+        if cache is not None:
+            return cache
+        lookup: Dict[Tuple[int, int], Tuple[str, int, int]] = {}
+        # decorations + obstacles menyimpan seluruh objek bangunan, pagar, tebing, dll.
+        for src_dict in (getattr(self.map, "decorations", {}), getattr(self.map, "obstacles", {})):
+            for pos, val in src_dict.items():
+                if isinstance(val, tuple) and len(val) >= 3 and val[0]:
+                    lookup[pos] = (val[0], int(val[1]), int(val[2]))
+        self._layer3_lookup_cache = lookup
+        return lookup
+
+    def _collect_connected_same_src(
+        self, start: Tuple[int, int], target_src: str, lookup: Dict[Tuple[int, int], Tuple[str, int, int]], max_tiles: int = 80
+    ) -> List[Tuple[int, int]]:
+        """Mengumpulkan seluruh ubin terhubung milik satu objek yang sama (BFS cepat saat klik)."""
+        from collections import deque
+
+        visited = {start}
+        q = deque([start])
+        while q and len(visited) < max_tiles:
+            cx, cy = q.popleft()
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nb = (cx + dx, cy + dy)
+                if nb in visited:
+                    continue
+                meta = lookup.get(nb)
+                if meta and meta[0] == target_src:
+                    visited.add(nb)
+                    q.append(nb)
+        return list(visited)
+
+    def _classify_layer3_object(self, src: str, ax: int, ay: int) -> Tuple[str, str, str, Tuple[int, int, int]]:
+        """Mengembalikan (badge, title, detail, color) yang spesifik sesuai aset objek."""
+        s = src.lower()
+        if "abandoned tower" in s:
+            return ("BANGUNAN", "Menara Kuno (Sarang Boss)", "Markas Boss Kage (Obstacle): masuk lewat portal depan dengan 3 Kunci Rune.", (135, 70, 195))
+        if "clock tower" in s:
+            return ("BANGUNAN", "Menara Jam", "Bangunan menara (Obstacle): memblokir rute Pathfinding A* & UCS.", (175, 80, 60))
+        if "mansion" in s:
+            return ("BANGUNAN", "Mansion", "Bangunan besar (Obstacle): tidak dapat dilewati Player maupun NPC.", (175, 80, 60))
+        if "merchant house" in s:
+            return ("BANGUNAN", "Rumah Pedagang", "Bangunan desa (Obstacle): tidak dapat dilewati Player maupun NPC.", (175, 80, 60))
+        if "painters house" in s:
+            return ("BANGUNAN", "Rumah Pelukis", "Bangunan desa (Obstacle): tidak dapat dilewati Player maupun NPC.", (175, 80, 60))
+        if "workshop house" in s:
+            return ("BANGUNAN", "Bengkel / Workshop", "Bangunan desa (Obstacle): tidak dapat dilewati Player maupun NPC.", (175, 80, 60))
+        if "chicken_house" in s:
+            return ("BANGUNAN", "Kandang Ayam", "Kandang desa (Obstacle): memblokir rute Pathfinding.", (175, 80, 60))
+        if "ext_10a" in s:
+            return ("BANGUNAN", "Bangunan / Struktur Desa", "Struktur bangunan (Obstacle): diblokir di grid Pathfinding.", (175, 80, 60))
+        if "fences" in s:
+            return ("PAGAR", "Pagar Kayu", "Pembatas jalan (Obstacle): menghalangi jalur Player & NPC.", (165, 105, 45))
+        if "hills" in s:
+            return ("TEBING", "Tebing / Bukit", "Kontur tinggi (Obstacle): membatasi area dataran.", (155, 100, 55))
+        if "basic_grass_biom_things" in s:
+            if ay <= 1 and ax <= 4:
+                return ("POHON", "Pohon", "Obstacle alami: diblokir di grid Pathfinding A* & UCS.", (45, 145, 75))
+            return ("OBJEK", "Batu / Tunggul / Dekorasi", "Objek alam di peta (Obstacle bila tidak bisa dilewati).", (140, 110, 80))
+        if "objects.png" in s:
+            return ("DEKORASI", "Lampu / Properti Desa", "Objek properti desa di sekitar jalan.", (145, 115, 65))
+        return ("OBJEK", "Objek Peta", "Elemen lingkungan pada peta.", (145, 115, 65))
+
     def _handle_map_inspect_click(self, pos: Tuple[int, int]):
-        """Mengidentifikasi objek/terrain pada ubin peta yang diklik kiri."""
+        """Mengidentifikasi objek utuh (multi-ubin) atau terrain pada peta yang diklik kiri."""
         if getattr(self, "gacha_active", False) or getattr(self, "gacha_showcase", None):
             return
         wx = (pos[0] - self.camera.offset_x) / max(0.01, self.camera.zoom)
@@ -1876,11 +1941,11 @@ class ExplorationModeMixin:
             return
         grid_pos = (gx, gy)
         cur = getattr(self, "inspected_tile", None)
-        if cur and cur.get("pos") == grid_pos:
+        if cur and grid_pos in cur.get("tiles", [cur.get("pos")]):
             self.inspected_tile = None
             return
 
-        # Identifikasi konten ubin secara O(1)
+        tiles = [grid_pos]
         if grid_pos == self.player.grid:
             hidden_note = " (Tersembunyi di semak)" if getattr(self.player, "is_hidden", False) else ""
             info = ("PLAYER", f"Bolu (Hero){hidden_note}", "Karakter utama: gerakkan dengan WASD/Panah.", (55, 145, 90))
@@ -1917,19 +1982,46 @@ class ExplorationModeMixin:
                     info = ("RELIK M9", "Relik Ikan Emas Kuno", "Artefak Materi 09: +10 ATK, +6 DEF, HP Penuh & +1 Potion.", (210, 145, 25))
                 elif self.map.is_bush(grid_pos):
                     info = ("STEALTH", "Semak Persembunyian", "Bolu tak terlihat NPC dari jarak > 1 ubin saat di sini.", (45, 145, 75))
-                elif grid_pos in self.map.water and grid_pos not in getattr(self.map, "bridge_set", set()):
-                    info = ("OBSTACLE", "Sungai / Perairan", "Rintangan alami: tidak dapat dilewati Player & NPC.", (45, 130, 195))
-                elif grid_pos in self.map.obstacle_set or not self.map.is_walkable(grid_pos):
-                    info = ("OBSTACLE", "Pohon / Bangunan / Batu", "Rintangan keras: diblokir di grid Pathfinding A* & UCS.", (185, 65, 65))
-                elif grid_pos in getattr(self.map, "bridge_set", set()):
-                    info = ("BRIDGE", "Jembatan Kayu", "Jalur penyeberangan sungai (Walkable, Cost: 2.0).", (155, 105, 55))
-                elif self.map.is_dirt_road(grid_pos):
-                    info = ("COST 1.0", "Jalan Tanah", "Terrain Cost: 1.0 (Jalur prioritas tercepat bagi A*).", (165, 115, 45))
                 else:
-                    info = ("COST 2.0", "Padang Rumput", "Terrain Cost: 2.0 (2x lebih berat dari jalan tanah di A*).", (75, 145, 75))
+                    # Cek Pohon 2x2 (trees / trees_pink) dan Pohon 1x2 (trees_small)
+                    fol = getattr(self.map, "foliage", {}) or {}
+                    tree_tiles = None
+                    for tx, ty in fol.get("trees", []) + fol.get("trees_pink", []):
+                        box = [(tx, ty), (tx + 1, ty), (tx, ty + 1), (tx + 1, ty + 1)]
+                        if grid_pos in box:
+                            tree_tiles = box
+                            break
+                    if not tree_tiles:
+                        for tx, ty in fol.get("trees_small", []):
+                            box = [(tx, ty), (tx, ty + 1)]
+                            if grid_pos in box:
+                                tree_tiles = box
+                                break
+
+                    if tree_tiles:
+                        tiles = tree_tiles
+                        sz_lbl = "2x2" if len(tree_tiles) == 4 else "1x2"
+                        info = ("POHON", f"Pohon ({sz_lbl})", f"Obstacle alami ({len(tree_tiles)} ubin): diblokir di grid Pathfinding A* & UCS.", (45, 145, 75))
+                    else:
+                        l3 = self._get_layer3_lookup()
+                        if grid_pos in l3:
+                            src, ax, ay = l3[grid_pos]
+                            info = self._classify_layer3_object(src, ax, ay)
+                            tiles = self._collect_connected_same_src(grid_pos, src, l3)
+                        elif grid_pos in self.map.water and grid_pos not in getattr(self.map, "bridge_set", set()):
+                            info = ("AIR", "Sungai / Perairan", "Rintangan alami: tidak dapat dilewati Player & NPC.", (45, 130, 195))
+                        elif grid_pos in self.map.obstacle_set or not self.map.is_walkable(grid_pos):
+                            info = ("OBSTACLE", "Rintangan Peta", "Ubin diblokir pada grid Pathfinding A* & UCS.", (185, 65, 65))
+                        elif grid_pos in getattr(self.map, "bridge_set", set()):
+                            info = ("JEMBATAN", "Jembatan Kayu", "Jalur penyeberangan sungai (Walkable, Cost: 2.0).", (155, 105, 55))
+                        elif self.map.is_dirt_road(grid_pos):
+                            info = ("COST 1.0", "Jalan Tanah", "Terrain Cost: 1.0 (Jalur prioritas tercepat bagi A*).", (165, 115, 45))
+                        else:
+                            info = ("COST 2.0", "Padang Rumput", "Terrain Cost: 2.0 (2x lebih berat dari jalan tanah di A*).", (75, 145, 75))
 
         self.inspected_tile = {
             "pos": grid_pos,
+            "tiles": tiles,
             "badge": info[0],
             "title": info[1],
             "detail": info[2],
@@ -1937,23 +2029,39 @@ class ExplorationModeMixin:
         }
 
     def _draw_inspected_tile_popup(self):
-        """Merender highlight ubin terpilih & kartu info ringkas di atasnya."""
+        """Merender highlight objek utuh (seluruh ubin terhubung) & kartu info di atasnya."""
         info = getattr(self, "inspected_tile", None)
         if not info:
             return
-        gx, gy = info["pos"]
+        tiles = info.get("tiles") or [info["pos"]]
+        tiles_set = set(tiles)
         zoom = self.camera.zoom
         sz = max(8, int(round(self.map.cell_size * zoom)))
-        wx, wy = self.map.world_to_px((gx, gy))
-        sx, sy = self.camera.world_to_screen(wx, wy)
-        tile_rect = pygame.Rect(int(sx - sz // 2), int(sy - sz // 2), sz, sz)
-
-        # Highlight ubin terpilih
-        hl = pygame.Surface((sz, sz), SRCALPHA)
         col = info["color"]
-        pygame.draw.rect(hl, (*col, 55), hl.get_rect(), border_radius=4)
-        self.screen.blit(hl, tile_rect.topleft)
-        pygame.draw.rect(self.screen, col, tile_rect, 2, border_radius=4)
+
+        # Hitung bounding box objek & gambar highlight menyatu (hanya garis tepi luar)
+        min_x = min_y = 10**9
+        max_x = max_y = -10**9
+        hl = pygame.Surface((sz, sz), SRCALPHA)
+        hl.fill((*col, 50))
+        for tg in tiles:
+            wx, wy = self.map.world_to_px(tg)
+            sx, sy = self.camera.world_to_screen(wx, wy)
+            rx, ry = int(sx - sz // 2), int(sy - sz // 2)
+            self.screen.blit(hl, (rx, ry))
+            min_x = min(min_x, rx)
+            min_y = min(min_y, ry)
+            max_x = max(max_x, rx + sz)
+            max_y = max(max_y, ry + sz)
+            gx, gy = tg
+            if (gx, gy - 1) not in tiles_set:
+                pygame.draw.line(self.screen, col, (rx, ry), (rx + sz, ry), 2)
+            if (gx, gy + 1) not in tiles_set:
+                pygame.draw.line(self.screen, col, (rx, ry + sz), (rx + sz, ry + sz), 2)
+            if (gx - 1, gy) not in tiles_set:
+                pygame.draw.line(self.screen, col, (rx, ry), (rx, ry + sz), 2)
+            if (gx + 1, gy) not in tiles_set:
+                pygame.draw.line(self.screen, col, (rx + sz, ry), (rx + sz, ry + sz), 2)
 
         font_tiny = self.fonts.get("tiny") or pygame.font.Font(None, 13)
         font_sm = self.fonts.get("sm") or pygame.font.Font(None, 16)
@@ -1966,10 +2074,11 @@ class ExplorationModeMixin:
         ch = 44
         sw, sh = self.screen.get_size()
         left_w = self.camera.left_panel_w
-        cx = max(left_w + 8, min(sw - cw - 8, int(sx - cw // 2)))
-        cy = tile_rect.top - ch - 8
+        obj_cx = (min_x + max_x) // 2
+        cx = max(left_w + 8, min(sw - cw - 8, obj_cx - cw // 2))
+        cy = min_y - ch - 8
         if cy < 8:
-            cy = min(sh - ch - 8, tile_rect.bottom + 8)
+            cy = min(sh - ch - 8, max_y + 8)
         card_r = pygame.Rect(cx, cy, cw, ch)
 
         card = pygame.Surface((cw, ch), SRCALPHA)

@@ -1864,21 +1864,54 @@ class ExplorationModeMixin:
     # =========================================================================
 
     def _get_layer3_lookup(self) -> Dict[Tuple[int, int], Tuple[str, int, int]]:
-        """Cache peta (gx, gy) -> (src, atlas_x, atlas_y) untuk objek/bangunan di layer atas."""
+        """Cache peta (gx, gy) -> (src, atlas_x, atlas_y) dari layer objek teratas (ordered_layers[-1])."""
         cache = getattr(self, "_layer3_lookup_cache", None)
         if cache is not None:
             return cache
         lookup: Dict[Tuple[int, int], Tuple[str, int, int]] = {}
-        # decorations + obstacles menyimpan seluruh objek bangunan, pagar, tebing, dll.
+        skip_tokens = ("wood_bridge", "tilled_dirt", "grass.png", "water.png")
+
         for src_dict in (getattr(self.map, "decorations", {}), getattr(self.map, "obstacles", {})):
             for pos, val in src_dict.items():
                 if isinstance(val, tuple) and len(val) >= 3 and val[0]:
-                    lookup[pos] = (val[0], int(val[1]), int(val[2]))
+                    if not any(tk in val[0].lower() for tk in skip_tokens):
+                        lookup[pos] = (val[0], int(val[1]), int(val[2]))
+
+        ordered = getattr(self.map, "ordered_layers", [])
+        if ordered:
+            for pos, val in ordered[-1]:
+                if isinstance(val, tuple) and len(val) >= 3 and val[0]:
+                    if not any(tk in val[0].lower() for tk in skip_tokens):
+                        lookup[pos] = (val[0], int(val[1]), int(val[2]))
+
         self._layer3_lookup_cache = lookup
         return lookup
 
+    def _object_group_key(self, src: str, ax: int, ay: int) -> str:
+        """Kunci grup objek agar BFS hanya menyatukan ubin dari benda yang sama."""
+        s = src.lower()
+        if "ext_10a" in s:
+            if ax == 7 and ay in (9, 10):
+                return "ext_lamp"
+            if ax in (9, 10) and ay in (9, 10):
+                return "ext_tree_2x2"
+            if ax == 11 and ay in (9, 10):
+                return "ext_tree_1x2"
+            return "ext_building"
+        if "objects.png" in s:
+            if ax in (3, 4) and ay in (3, 4):
+                return "obj_table"
+            if ax == 3 and ay == 0:
+                return "obj_sign"
+            return f"obj_{ax}_{ay}"
+        if "basic_grass_biom_things" in s:
+            if ay <= 1 and ax <= 4:
+                return "bio_tree"
+            return "bio_prop"
+        return s
+
     def _collect_connected_same_src(
-        self, start: Tuple[int, int], target_src: str, lookup: Dict[Tuple[int, int], Tuple[str, int, int]], max_tiles: int = 80
+        self, start: Tuple[int, int], target_key: str, lookup: Dict[Tuple[int, int], Tuple[str, int, int]], max_tiles: int = 80
     ) -> List[Tuple[int, int]]:
         """Mengumpulkan seluruh ubin terhubung milik satu objek yang sama (BFS cepat saat klik)."""
         from collections import deque
@@ -1892,13 +1925,13 @@ class ExplorationModeMixin:
                 if nb in visited:
                     continue
                 meta = lookup.get(nb)
-                if meta and meta[0] == target_src:
+                if meta and self._object_group_key(meta[0], meta[1], meta[2]) == target_key:
                     visited.add(nb)
                     q.append(nb)
         return list(visited)
 
     def _classify_layer3_object(self, src: str, ax: int, ay: int) -> Tuple[str, str, str, Tuple[int, int, int]]:
-        """Mengembalikan (badge, title, detail, color) yang spesifik sesuai aset objek."""
+        """Mengembalikan (badge, title, detail, color) yang spesifik sesuai aset & koordinat atlas."""
         s = src.lower()
         if "abandoned tower" in s:
             return ("BANGUNAN", "Menara Kuno (Sarang Boss)", "Markas Boss Kage (Obstacle): masuk lewat portal depan dengan 3 Kunci Rune.", (135, 70, 195))
@@ -1915,7 +1948,13 @@ class ExplorationModeMixin:
         if "chicken_house" in s:
             return ("BANGUNAN", "Kandang Ayam", "Kandang desa (Obstacle): memblokir rute Pathfinding.", (175, 80, 60))
         if "ext_10a" in s:
-            return ("BANGUNAN", "Bangunan / Struktur Desa", "Struktur bangunan (Obstacle): diblokir di grid Pathfinding.", (175, 80, 60))
+            if ax == 7 and ay in (9, 10):
+                return ("DEKORASI", "Lampu Taman (1x2)", "Lampu penerangan desa (Obstacle): memblokir jalur Pathfinding.", (195, 135, 35))
+            if ax in (9, 10) and ay in (9, 10):
+                return ("POHON", "Pohon Rindang (2x2)", "Obstacle alami: 4 ubin pohon ini diblokir di Pathfinding A* & UCS.", (45, 145, 75))
+            if ax == 11 and ay in (9, 10):
+                return ("POHON", "Pohon Ramping (1x2)", "Obstacle alami: 2 ubin pohon ini diblokir di Pathfinding A* & UCS.", (45, 145, 75))
+            return ("BANGUNAN", "Bangunan Desa", "Struktur bangunan (Obstacle): diblokir di grid Pathfinding.", (175, 80, 60))
         if "fences" in s:
             return ("PAGAR", "Pagar Kayu", "Pembatas jalan (Obstacle): menghalangi jalur Player & NPC.", (165, 105, 45))
         if "hills" in s:
@@ -1925,7 +1964,11 @@ class ExplorationModeMixin:
                 return ("POHON", "Pohon", "Obstacle alami: diblokir di grid Pathfinding A* & UCS.", (45, 145, 75))
             return ("OBJEK", "Batu / Tunggul / Dekorasi", "Objek alam di peta (Obstacle bila tidak bisa dilewati).", (140, 110, 80))
         if "objects.png" in s:
-            return ("DEKORASI", "Lampu / Properti Desa", "Objek properti desa di sekitar jalan.", (145, 115, 65))
+            if ax in (3, 4) and ay in (3, 4):
+                return ("OBJEK", "Meja Kayu (2x2)", "Meja taman di tengah pulau (Obstacle): tidak bisa dilewati.", (155, 100, 50))
+            if ax == 3 and ay == 0:
+                return ("OBJEK", "Papan Petunjuk", "Penanda jalan di pulau.", (155, 105, 55))
+            return ("DEKORASI", "Properti Desa", "Objek dekorasi peta.", (145, 115, 65))
         return ("OBJEK", "Objek Peta", "Elemen lingkungan pada peta.", (145, 115, 65))
 
     def _handle_map_inspect_click(self, pos: Tuple[int, int]):
@@ -2007,7 +2050,8 @@ class ExplorationModeMixin:
                         if grid_pos in l3:
                             src, ax, ay = l3[grid_pos]
                             info = self._classify_layer3_object(src, ax, ay)
-                            tiles = self._collect_connected_same_src(grid_pos, src, l3)
+                            g_key = self._object_group_key(src, ax, ay)
+                            tiles = self._collect_connected_same_src(grid_pos, g_key, l3)
                         elif grid_pos in self.map.water and grid_pos not in getattr(self.map, "bridge_set", set()):
                             info = ("AIR", "Sungai / Perairan", "Rintangan alami: tidak dapat dilewati Player & NPC.", (45, 130, 195))
                         elif grid_pos in self.map.obstacle_set or not self.map.is_walkable(grid_pos):

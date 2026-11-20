@@ -1763,7 +1763,7 @@ class ExplorationModeMixin:
         }
 
     def _draw_relic_heatmap(self):
-        """Merender heatmap probabilitas Bayesian Belief secara halus di atas peta eksplorasi."""
+        """Merender heatmap probabilitas Bayesian Belief sebagai kabut gradien halus (smoothscale)."""
         sonar = getattr(self, "relic_sonar", None)
         if not sonar or not sonar.heatmap_visible:
             return
@@ -1772,8 +1772,6 @@ class ExplorationModeMixin:
         map_pos, max_p = sonar.get_map_estimate()
         zoom = self.camera.zoom
         sz = max(4, int(round(self.map.cell_size * zoom)))
-        sw, sh = self.screen.get_size()
-        left_w = self.camera.left_panel_w
 
         if sonar.scan_count > 0 and max_p > 0.0 and sonar.belief:
             n_cells = max(1, len(sonar.belief))
@@ -1782,30 +1780,39 @@ class ExplorationModeMixin:
             high_count = sum(1 for p in sonar.belief.values() if p >= 0.70 * max_p)
             focus_t = min(1.0, max(0.0, (concentration - 1.2) / 4.0))
 
-            for cell, prob in sonar.belief.items():
-                ratio = prob / max_p
-                if ratio < 0.45:
-                    continue
-                wx, wy = self.map.world_to_px(cell)
-                sx, sy = self.camera.world_to_screen(wx, wy)
-                rx = int(sx - sz // 2)
-                ry = int(sy - sz // 2)
-                if rx + sz < left_w or rx > sw or ry + sz < 0 or ry > sh:
-                    continue
+            cache = getattr(self, "_heatmap_cache", None)
+            cache_key = (sonar.scan_count, sonar.relic_pos, round(zoom, 3), id(sonar.belief))
+            if cache and cache.get("key") == cache_key:
+                heat_surf = cache["surf"]
+            else:
+                mw, mh = self.map.width, self.map.height
+                grid_surf = pygame.Surface((mw, mh), SRCALPHA)
+                for (gx, gy), prob in sonar.belief.items():
+                    ratio = prob / max_p
+                    if ratio < 0.30:
+                        continue
+                    if ratio >= 0.65:
+                        t = min(1.0, (ratio - 0.65) / 0.35)
+                        r = 255
+                        g = int(210 - 55 * t)
+                        b = int(65 - 35 * t)
+                        a = int((55 + 75 * focus_t) * (0.55 + 0.45 * t))
+                    else:
+                        t = (ratio - 0.30) / 0.35
+                        r = int(45 + 115 * t)
+                        g = int(195 + 18 * t)
+                        b = int(225 - 60 * t)
+                        a = int(24 + 34 * t)
+                    if 0 <= gx < mw and 0 <= gy < mh:
+                        grid_surf.set_at((gx, gy), (r, g, b, max(0, min(255, a))))
 
-                if ratio >= 0.85:
-                    alpha_tile = int(50 + 60 * focus_t)
-                    col = (255, 175, 40, alpha_tile)
-                elif ratio >= 0.60:
-                    col = (120, 210, 195, int(34 + 30 * focus_t))
-                else:
-                    col = (55, 185, 225, 28)
+                mid_surf = pygame.transform.smoothscale(grid_surf, (max(1, mw * 3), max(1, mh * 3)))
+                target_w = max(1, int(round(self.map_w * zoom)))
+                target_h = max(1, int(round(self.map_h * zoom)))
+                heat_surf = pygame.transform.smoothscale(mid_surf, (target_w, target_h))
+                self._heatmap_cache = {"key": cache_key, "surf": heat_surf}
 
-                tile_s = pygame.Surface((sz, sz), SRCALPHA)
-                tile_s.fill(col)
-                self.screen.blit(tile_s, (rx, ry))
-                if ratio >= 0.85 and focus_t >= 0.35:
-                    pygame.draw.rect(self.screen, (235, 155, 25), (rx, ry, sz, sz), 1)
+            self.screen.blit(heat_surf, (int(self.camera.offset_x), int(self.camera.offset_y)))
 
             # 1. Penanda Tebakan AI Terbaik (MAP) -> Siku bidik Cyan (berbeda dari Relik asli)
             if map_pos and sonar.scan_count >= 2 and high_count <= 150:

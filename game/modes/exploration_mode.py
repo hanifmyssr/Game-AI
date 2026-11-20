@@ -1858,3 +1858,124 @@ class ExplorationModeMixin:
                 inner_r = max(2, r - int(10 * self.camera.zoom))
                 pygame.draw.circle(surf, (150, 240, 255, int(alpha * 0.55)), (r + 2, r + 2), inner_r, width=1)
             self.screen.blit(surf, (int(sx - r - 2), int(sy - r - 2)))
+
+    # =========================================================================
+    # KLIK-UNTUK-INSPEKSI ELEMEN MAP (O(1) SAAT KLIK, NOL BEBAN IDLE)
+    # =========================================================================
+
+    def _handle_map_inspect_click(self, pos: Tuple[int, int]):
+        """Mengidentifikasi objek/terrain pada ubin peta yang diklik kiri."""
+        if getattr(self, "gacha_active", False) or getattr(self, "gacha_showcase", None):
+            return
+        wx = (pos[0] - self.camera.offset_x) / max(0.01, self.camera.zoom)
+        wy = (pos[1] - self.camera.offset_y) / max(0.01, self.camera.zoom)
+        gx = int(wx // self.map.cell_size)
+        gy = int(wy // self.map.cell_size)
+        if not (0 <= gx < self.map.width and 0 <= gy < self.map.height):
+            self.inspected_tile = None
+            return
+        grid_pos = (gx, gy)
+        cur = getattr(self, "inspected_tile", None)
+        if cur and cur.get("pos") == grid_pos:
+            self.inspected_tile = None
+            return
+
+        # Identifikasi konten ubin secara O(1)
+        if grid_pos == self.player.grid:
+            hidden_note = " (Tersembunyi di semak)" if getattr(self.player, "is_hidden", False) else ""
+            info = ("PLAYER", f"Bolu (Hero){hidden_note}", "Karakter utama: gerakkan dengan WASD/Panah.", (55, 145, 90))
+        else:
+            npc_hit = next(
+                (n for n in (getattr(self, "npc", None), getattr(self, "npc_kuro", None), getattr(self, "npc_shiro", None)) if n and n.grid == grid_pos),
+                None,
+            )
+            if npc_hit:
+                st = "Mengejar Bolu!" if npc_hit.chasing else ("Investigasi Suara" if getattr(npc_hit, "investigating", False) else "Patroli Rute A*/UCS")
+                info = ("NPC AI", npc_hit.name, f"Status: {st} | Sentuh untuk Pre-Battle.", (205, 115, 30))
+            else:
+                chest_hit = next((c for c in getattr(self, "chests", []) if tuple(c["pos"]) == grid_pos), None)
+                portal = getattr(self.map, "boss_portal", {"x": 38, "y": 5})
+                portal_pos = (portal.get("x", 38), portal.get("y", 5))
+                sonar = getattr(self, "relic_sonar", None)
+                relic_visible = bool(
+                    sonar and sonar.relic_pos == grid_pos and (
+                        sonar.found or abs(self.player.grid[0] - gx) + abs(self.player.grid[1] - gy) <= 2
+                    )
+                )
+                if chest_hit:
+                    opened = chest_hit.get("opened", False)
+                    info = (
+                        "PETI",
+                        f"Peti Harta ({'Terbuka' if opened else 'Tersegel'})",
+                        "Sudah diambil." if opened else "Dekati & tekan [E] untuk gacha + trigger KB & PDDL.",
+                        (195, 135, 30),
+                    )
+                elif grid_pos == portal_pos:
+                    rk = len(getattr(self.player, "rune_keys", []))
+                    info = ("BOSS PORTAL", "Portal Menara Kuno", f"Butuh 3 Kunci Rune (Saat ini: {rk}/3) untuk lawan Boss Kage.", (135, 70, 195))
+                elif relic_visible:
+                    info = ("RELIK M9", "Relik Ikan Emas Kuno", "Artefak Materi 09: +10 ATK, +6 DEF, HP Penuh & +1 Potion.", (210, 145, 25))
+                elif self.map.is_bush(grid_pos):
+                    info = ("STEALTH", "Semak Persembunyian", "Bolu tak terlihat NPC dari jarak > 1 ubin saat di sini.", (45, 145, 75))
+                elif grid_pos in self.map.water and grid_pos not in getattr(self.map, "bridge_set", set()):
+                    info = ("OBSTACLE", "Sungai / Perairan", "Rintangan alami: tidak dapat dilewati Player & NPC.", (45, 130, 195))
+                elif grid_pos in self.map.obstacle_set or not self.map.is_walkable(grid_pos):
+                    info = ("OBSTACLE", "Pohon / Bangunan / Batu", "Rintangan keras: diblokir di grid Pathfinding A* & UCS.", (185, 65, 65))
+                elif grid_pos in getattr(self.map, "bridge_set", set()):
+                    info = ("BRIDGE", "Jembatan Kayu", "Jalur penyeberangan sungai (Walkable, Cost: 2.0).", (155, 105, 55))
+                elif self.map.is_dirt_road(grid_pos):
+                    info = ("COST 1.0", "Jalan Tanah", "Terrain Cost: 1.0 (Jalur prioritas tercepat bagi A*).", (165, 115, 45))
+                else:
+                    info = ("COST 2.0", "Padang Rumput", "Terrain Cost: 2.0 (2x lebih berat dari jalan tanah di A*).", (75, 145, 75))
+
+        self.inspected_tile = {
+            "pos": grid_pos,
+            "badge": info[0],
+            "title": info[1],
+            "detail": info[2],
+            "color": info[3],
+        }
+
+    def _draw_inspected_tile_popup(self):
+        """Merender highlight ubin terpilih & kartu info ringkas di atasnya."""
+        info = getattr(self, "inspected_tile", None)
+        if not info:
+            return
+        gx, gy = info["pos"]
+        zoom = self.camera.zoom
+        sz = max(8, int(round(self.map.cell_size * zoom)))
+        wx, wy = self.map.world_to_px((gx, gy))
+        sx, sy = self.camera.world_to_screen(wx, wy)
+        tile_rect = pygame.Rect(int(sx - sz // 2), int(sy - sz // 2), sz, sz)
+
+        # Highlight ubin terpilih
+        hl = pygame.Surface((sz, sz), SRCALPHA)
+        col = info["color"]
+        pygame.draw.rect(hl, (*col, 55), hl.get_rect(), border_radius=4)
+        self.screen.blit(hl, tile_rect.topleft)
+        pygame.draw.rect(self.screen, col, tile_rect, 2, border_radius=4)
+
+        font_tiny = self.fonts.get("tiny") or pygame.font.Font(None, 13)
+        font_sm = self.fonts.get("sm") or pygame.font.Font(None, 16)
+        b_surf = font_tiny.render(f"[{info['badge']}]", True, col)
+        t_surf = font_sm.render(info["title"], True, (42, 32, 24))
+        d_surf = font_tiny.render(info["detail"], True, (95, 80, 68))
+
+        pad_x, pad_y = 10, 7
+        cw = max(b_surf.get_width() + t_surf.get_width() + 26, d_surf.get_width() + pad_x * 2)
+        ch = 44
+        sw, sh = self.screen.get_size()
+        left_w = self.camera.left_panel_w
+        cx = max(left_w + 8, min(sw - cw - 8, int(sx - cw // 2)))
+        cy = tile_rect.top - ch - 8
+        if cy < 8:
+            cy = min(sh - ch - 8, tile_rect.bottom + 8)
+        card_r = pygame.Rect(cx, cy, cw, ch)
+
+        card = pygame.Surface((cw, ch), SRCALPHA)
+        pygame.draw.rect(card, (255, 253, 248, 246), card.get_rect(), border_radius=8)
+        pygame.draw.rect(card, col, card.get_rect(), 2, border_radius=8)
+        self.screen.blit(card, card_r.topleft)
+        self.screen.blit(b_surf, (card_r.x + pad_x, card_r.y + pad_y))
+        self.screen.blit(t_surf, (card_r.x + pad_x + b_surf.get_width() + 6, card_r.y + pad_y - 2))
+        self.screen.blit(d_surf, (card_r.x + pad_x, card_r.y + pad_y + 17))

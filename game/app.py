@@ -406,6 +406,7 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
         self.whistle_waves = []
         self.sonar_waves = []
         self.relic_sonar = None
+        self.inspected_tile = None
         self.ai_ticker_info = None
         self.is_boss_battle = False
         self._tower_prompted = False
@@ -487,6 +488,7 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
         # 6. Reset State Stealth, Whistle, Boss Portal & Sonar Materi 09
         self.whistle_waves.clear()
         self.sonar_waves.clear()
+        self.inspected_tile = None
         self._init_relic_sonar()
         self.ai_ticker_info = None
         self.is_boss_battle = False
@@ -1064,7 +1066,8 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
                     if getattr(self, "btn_guide_pill", None) and self.btn_guide_pill.collidepoint(pos):
                         self.guide_modal.toggle()
                         return
-                    self.overlay.handle_event(event)
+                    if not self.overlay.handle_event(event) and event.button == 1:
+                        self._handle_map_inspect_click(pos)
             elif event.type in (MOUSEBUTTONUP, MOUSEMOTION):
                 if self.game_mode == "BATTLE" and self.overlay.tree_overlay.visible:
                     self.overlay.tree_overlay.handle_event(event)
@@ -1111,6 +1114,9 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
                     self.pre_battle_visualizer.toggle()
                     return
                 self.exit_battle()
+                return
+            elif self.game_mode == "EXPLORATION" and getattr(self, "inspected_tile", None):
+                self.inspected_tile = None
                 return
             self.running = False
             return
@@ -1327,6 +1333,7 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
             if self.player.call_bubble_visible:
                 self._draw_call_bubble()
             self._draw_npc_offscreen_indicator()
+            self._draw_inspected_tile_popup()
             self._draw_obtained_items_hud()
             self._draw_guide_pill_button()
             self._draw_ai_ticker_banner()

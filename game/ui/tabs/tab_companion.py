@@ -105,6 +105,15 @@ class TabCompanion:
                     self._on_inv_prev()
                     return True
 
+        if event.type == MOUSEBUTTONDOWN and event.button == 1 and hasattr(event, "pos"):
+            for s_rect, name, desc in getattr(self, "_slot_tooltips", []):
+                if s_rect.collidepoint(event.pos):
+                    cur = getattr(self, "selected_slot_tip", None)
+                    self.selected_slot_tip = None if (cur and cur[0] == name) else (name, desc, s_rect)
+                    return True
+            if getattr(self, "selected_slot_tip", None):
+                self.selected_slot_tip = None
+
         return False
 
     def update(self, dt: float) -> None:
@@ -279,12 +288,27 @@ class TabCompanion:
         slot_y = cy + 34
 
         visible_items = items_def[self.inv_scroll_idx : self.inv_scroll_idx + visible_count]
+        item_desc_map = {
+            "item_sword": "Menambah daya serang (ATK) Bolu saat duel.",
+            "item_shield": "Mengurangi damage serangan musuh (DEF).",
+            "health_potion": "Memulihkan +25 HP instan saat giliran duel.",
+            "mega_potion": "Artefak langka: +ATK/DEF atau +50 HP duel.",
+            "item_boots": "Meningkatkan kelincahan & peluang menghindar.",
+            "item_bow": "Serangan jarak jauh presisi (+ATK duel).",
+            "item_dagger": "Meningkatkan peluang serangan kritikal.",
+        }
+        self._slot_tooltips = []
 
         for i, (name, img_key, fallback_code, buff, acquired) in enumerate(visible_items):
             sx = cx + 12 + i * (slot_w + 4)
             s_rect = pygame.Rect(sx, slot_y, slot_w, slot_h)
-            s_bg = (248, 242, 230) if acquired else (244, 240, 234)
-            s_bd = config.COLOR_ACCENT_GOLD if acquired else (222, 212, 198)
+            desc_full = f"{buff} - {item_desc_map.get(img_key, 'Item petualangan.')}"
+            if not acquired:
+                desc_full = f"(Belum didapat) {desc_full}"
+            self._slot_tooltips.append((s_rect, name, desc_full))
+            is_sel = bool(getattr(self, "selected_slot_tip", None) and self.selected_slot_tip[0] == name)
+            s_bg = (255, 249, 232) if is_sel else ((248, 242, 230) if acquired else (244, 240, 234))
+            s_bd = config.COLOR_ACCENT_BLUE if is_sel else (config.COLOR_ACCENT_GOLD if acquired else (222, 212, 198))
             draw_card(surface, s_rect, s_bg, border_color=s_bd, border_radius=6)
 
             drawn_sprite = False
@@ -342,6 +366,15 @@ class TabCompanion:
             kd_surf = font_tiny.render(f": {k_desc}", True, config.COLOR_TEXT_PRIMARY)
             surface.blit(kb_surf, (cx + 14, ky))
             surface.blit(kd_surf, (cx + 14 + kb_surf.get_width(), ky))
+
+        tip = getattr(self, "selected_slot_tip", None)
+        if tip:
+            t_name, t_desc, t_rect = tip
+            tip_r = pygame.Rect(cx, slot_y + slot_h + 6, card_w, 42)
+            draw_card(surface, tip_r, (255, 253, 248), border_color=config.COLOR_ACCENT_BLUE, border_radius=6)
+            surface.blit(font_tiny.render(f"{t_name}:", True, config.COLOR_ACCENT_BLUE), (tip_r.x + 8, tip_r.y + 4))
+            from ..components import render_fitted_text
+            render_fitted_text(surface, font_tiny, t_desc, config.COLOR_TEXT_PRIMARY, (tip_r.x + 8, tip_r.y + 20), card_w - 16)
 
         cy += guide_h + 14
         self.btn_call.rect = pygame.Rect(cx, cy, card_w, 42)

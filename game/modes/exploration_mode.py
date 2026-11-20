@@ -1672,8 +1672,8 @@ class ExplorationModeMixin:
             "detail": "Segel gerbang Menara Kuno terbuka! Memasuki pertarungan menghadapi Boss Kage!",
             "timer": 4.5,
         }
-        # Langsung masuk mode battle melawan Boss Kage the Shadow Lord
-        self.enter_boss_battle()
+        # Masuk fase Pre-Battle Boss Kage (bisa atur kesulitan di Tab 05-06 sebelum duel)
+        self.enter_boss_pre_battle()
 
     # =========================================================================
     # MATERI 09: DECISION UNDER UNCERTAINTY (BAYESIAN BELIEF SONAR & RELIK)

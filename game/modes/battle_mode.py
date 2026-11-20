@@ -19,6 +19,7 @@ class BattleModeMixin:
     """Mixin method mode Battle untuk App."""
 
     def enter_pre_battle(self, leader_npc=None):
+        self.is_boss_battle = False
         self.current_encounter_npc = leader_npc
         self.game_mode = "PRE_BATTLE"
         self.overlay.set_mode("PRE_BATTLE")
@@ -75,11 +76,42 @@ class BattleModeMixin:
         # Hitung preview awal evaluasi AI untuk metrik & skor aksi di panel
         self.battle_system.update_ai_preview()
 
-    def enter_boss_battle(self):
-        """Memulai pertarungan langsung menghadapi Boss Kage the Shadow Lord."""
+    def enter_boss_pre_battle(self):
+        """Masuk fase Pre-Battle khusus Boss Kage agar kesulitan & pengawal bisa diatur sebelum duel."""
         self.is_boss_battle = True
         self.current_encounter_npc = None
-        self.current_squad = NPCSquad.create_boss_squad()
+        self.game_mode = "PRE_BATTLE"
+        self.overlay.set_mode("PRE_BATTLE")
+        self.overlay.set_chasing_visualization(False)
+        self.overlay.stop_path_animation()
+        for n in (getattr(self, "npc", None), getattr(self, "npc_kuro", None), getattr(self, "npc_shiro", None)):
+            if n:
+                n.chasing = False
+                n.investigating = False
+        if getattr(self.player, "persistent_hp", 100) <= 10:
+            self.player.persistent_hp = 100
+            self.player.persistent_potions = max(2, self.player.persistent_potions)
+        self._run_optimization()
+        self.pre_battle_anim = {
+            "phase": "REVEAL",
+            "timer": 0.0,
+            "search_dur": 0.0,
+            "stagger": 0.13,
+            "fade_dur": 0.26,
+            "popped": set(),
+        }
+
+    def enter_boss_battle(self):
+        """Memulai pertarungan menghadapi Boss Kage the Shadow Lord."""
+        self.is_boss_battle = True
+        self.current_encounter_npc = None
+        has_boss = bool(
+            self.current_squad
+            and self.current_squad.members
+            and "Kage" in self.current_squad.members[0].name
+        )
+        if not has_boss:
+            self.current_squad = NPCSquad.create_boss_squad()
         self.enter_battle()
 
     def exit_battle(self):

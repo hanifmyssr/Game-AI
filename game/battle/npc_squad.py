@@ -162,35 +162,64 @@ class NPCSquad:
         return cls(members)
 
     @classmethod
-    def create_boss_squad(cls) -> "NPCSquad":
+    def create_boss_squad(
+        cls,
+        target_difficulty: Optional[float] = None,
+        player_context: Optional[Dict[str, Any]] = None,
+        randomize: bool = False,
+    ) -> "NPCSquad":
         """Membangun squad Boss Kage (Kucing Hitam Menara Kuno / Abandoned Tower)."""
+        import random
+
+        if target_difficulty is None and player_context is None:
+            scale = 1.0
+            boss_potions = 3
+            m1_pot = 1
+            m2_pot = 2
+            m1_prof = "BALANCED"
+            m2_prof = "BALANCED"
+        else:
+            td = float(target_difficulty if target_difficulty is not None else 0.65)
+            pctx = player_context or {}
+            patk = pctx.get("player_atk_bonus", 0)
+            pdef = pctx.get("player_def_bonus", 0)
+            # Skala kesulitan: 0.20 -> ~0.65x, 0.55 -> ~1.0x, 0.90 -> ~1.45x + penyesuaian item player
+            item_boost = min(0.50, patk * 0.015 + pdef * 0.012) if td >= 0.45 else 0.0
+            scale = max(0.65, min(1.85, 0.95 + (td - 0.55) * 1.25 + item_boost))
+            boss_potions = 2 if td < 0.40 else (3 if td < 0.72 else 4)
+            m1_pot = 1 if td < 0.70 else 2
+            m2_pot = 1 if td < 0.45 else (2 if td < 0.75 else 3)
+            profiles = ["BALANCED", "AGGRESSIVE", "DEFENSIVE"]
+            m1_prof = random.choice(profiles) if randomize else ("AGGRESSIVE" if td >= 0.70 else "BALANCED")
+            m2_prof = random.choice(profiles) if randomize else ("DEFENSIVE" if td >= 0.65 else "BALANCED")
+
         boss = NPCMember(
             name="Kage the Shadow Lord",
             char_type="assassin",
-            max_hp=160,
-            potions=3,
-            atk_bonus=8,
-            def_bonus=5,
+            max_hp=int(round(160 * scale)),
+            potions=boss_potions,
+            atk_bonus=int(round(8 * scale)),
+            def_bonus=int(round(5 * scale)),
             eval_profile="AGGRESSIVE",
             allow_boss_assets=True,
         )
         minion_1 = NPCMember(
             name="Shadow Ranger",
             char_type="ranger",
-            max_hp=80,
-            potions=1,
-            atk_bonus=4,
-            def_bonus=2,
-            eval_profile="BALANCED",
+            max_hp=int(round(80 * scale)),
+            potions=m1_pot,
+            atk_bonus=int(round(4 * scale)),
+            def_bonus=int(round(2 * scale)),
+            eval_profile=m1_prof,
         )
         minion_2 = NPCMember(
             name="Shadow Mage",
             char_type="mage",
-            max_hp=80,
-            potions=2,
-            atk_bonus=5,
-            def_bonus=1,
-            eval_profile="BALANCED",
+            max_hp=int(round(80 * scale)),
+            potions=m2_pot,
+            atk_bonus=int(round(5 * scale)),
+            def_bonus=int(round(1 * scale)),
+            eval_profile=m2_prof,
         )
         return cls([boss, minion_1, minion_2])
 

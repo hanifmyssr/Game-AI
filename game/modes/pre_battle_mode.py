@@ -32,6 +32,57 @@ class PreBattleModeMixin:
             "player_def_bonus": self.player.def_bonus,
         }
         manual_diff = getattr(self, "manual_target_difficulty", None)
+        if getattr(self, "is_boss_battle", False):
+            if manual_diff is not None:
+                td = manual_diff
+            else:
+                # Mode adaptif Boss memperhitungkan bonus item Bolu (sampai 0.88)
+                item_adj = min(0.28, (player_ctx["player_atk_bonus"] * 0.009 + player_ctx["player_def_bonus"] * 0.008))
+                hp_adj = (player_ctx["player_hp"] - 100) / 300.0
+                td = max(0.50, min(0.88, 0.62 + item_adj + hp_adj))
+            self.optimizer.target_difficulty = td
+            squad = NPCSquad.create_boss_squad(target_difficulty=td, player_context=player_ctx, randomize=randomize)
+            self.current_squad = squad
+            tot_hp = sum(m.max_hp for m in squad.members)
+            tot_pot = sum(m.potions for m in squad.members)
+            tot_atk = sum(m.atk_bonus for m in squad.members)
+            cfg = {
+                "npc_count": len(squad.members),
+                "total_hp": tot_hp,
+                "total_potions": tot_pot,
+                "total_atk": tot_atk,
+                "members": [
+                    {
+                        "name": m.name,
+                        "char_type": m.char_type,
+                        "hp": m.max_hp,
+                        "potions": m.potions,
+                        "atk_bonus": m.atk_bonus,
+                        "def_bonus": m.def_bonus,
+                        "eval_profile": m.eval_profile,
+                    }
+                    for m in squad.members
+                ],
+            }
+            stats = {
+                "algorithm": self.selected_ls_algo,
+                "final_difficulty": round(td, 4),
+                "final_fitness": 0.0,
+                "iterations": 1,
+                "time_ms": 0.05,
+            }
+            self.current_squad_config = cfg
+            self.current_optimizer_stats = stats
+            self.overlay.set_pre_battle_data(cfg, stats, self.selected_ls_algo)
+            dock = getattr(self.overlay, "dock", None)
+            tab_csp = dock.tabs.get(3) if dock and hasattr(dock, "tabs") else None
+            if tab_csp and hasattr(tab_csp, "slider_diff") and not tab_csp.slider_diff.is_dragging:
+                tab_csp.slider_diff.value = max(tab_csp.slider_diff.min_val, min(tab_csp.slider_diff.max_val, td))
+            if randomize:
+                if hasattr(self, "audio") and self.audio:
+                    self.audio.play_reroll()
+            return
+
         if manual_diff is not None:
             self.optimizer.target_difficulty = manual_diff
             ctx_for_opt = None
@@ -307,14 +358,19 @@ class PreBattleModeMixin:
         ui_fonts = (font_title, font_bubble, font_sm, font_tiny)
 
         # Header Title + bayangan lembut agar tajam terbaca
-        title_str = "PERSIAPAN PERTEMPURAN (PRE-BATTLE)"
+        is_boss = bool(getattr(self, "is_boss_battle", False))
+        title_str = "PERSIAPAN DUEL BOSS: MENARA KUNO" if is_boss else "PERSIAPAN PERTEMPURAN (PRE-BATTLE)"
         t_shadow = font_huge.render(title_str, True, (28, 20, 14))
         t_surf = font_huge.render(title_str, True, (255, 224, 110))
         tx_hdr = area_cx - t_surf.get_width() // 2
         self.screen.blit(t_shadow, (tx_hdr + 1, 24))
         self.screen.blit(t_surf, (tx_hdr, 22))
 
-        sub_txt = "Keseimbangan komposisi skuad lawan dioptimasi via CSP (MRV+LCV+AC-3) & Local Search"
+        sub_txt = (
+            "Kekuatan Kage & pengawalnya menyesuaikan Target Difficulty & item Bolu (Tab 05-06)"
+            if is_boss
+            else "Keseimbangan komposisi skuad lawan dioptimasi via CSP (MRV+LCV+AC-3) & Local Search"
+        )
         f_sub = font_sm if font_sm.size(sub_txt)[0] <= arena_w - 40 else font_tiny
         if f_sub.size(sub_txt)[0] > arena_w - 40:
             sub_txt = "Komposisi skuad lawan dioptimasi via CSP & Local Search"

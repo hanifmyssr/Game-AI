@@ -50,6 +50,7 @@ class DebugOverlay:
         self.expanded_reveal = 1.0
         self.path_reveal = 1.0
         self.visualization_active = False
+        self.show_path_visualization = True
         self.chasing_visualization = False
         self.show_costs = False
         self.last_expanded_count = 0
@@ -150,7 +151,7 @@ class DebugOverlay:
         self.last_time_ms = time_ms
         self.expanded_reveal = 1.0
         self.path_reveal = 1.0
-        self.visualization_active = True
+        self.visualization_active = bool(getattr(self, "show_path_visualization", True))
 
     def update_stats(self, count: int, time_ms: float) -> None:
         self.last_expanded_count = count
@@ -200,7 +201,7 @@ class DebugOverlay:
     # Drawing: Peta Dunia Game (World Space)
     # ------------------------------------------------------------------ #
     def draw_world(self, surface: pygame.Surface, camera: Any, map_data: Any, _npc: Any, _player: Any) -> None:
-        if self.mode != "EXPLORATION" or not self.visualization_active:
+        if self.mode != "EXPLORATION" or not self.visualization_active or not getattr(self, "show_path_visualization", True):
             return
 
         tile_size = map_data.cell_size

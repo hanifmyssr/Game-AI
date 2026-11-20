@@ -1206,13 +1206,22 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
                 return
 
             if key in (K_LCTRL, K_RCTRL):
-                if self.npc.chasing:
-                    self.overlay.set_chasing_visualization(True)
-                elif self.overlay.visualization_active:
-                    self.overlay.stop_path_animation()
-                else:
-                    self.npc.find_path(self.player.grid)
+                cur_vis = getattr(self.overlay, "show_path_visualization", True) and self.overlay.visualization_active
+                new_vis = not cur_vis
+                self.overlay.show_path_visualization = new_vis
+                if new_vis:
+                    if self.npc.chasing:
+                        self.overlay.set_chasing_visualization(True)
+                    else:
+                        self.npc.find_path(self.player.grid)
                     self.overlay.start_path_animation()
+                else:
+                    self.overlay.stop_path_animation()
+                dock = getattr(self.overlay, "dock", None)
+                tab_search = dock.tabs.get(1) if dock and hasattr(dock, "tabs") else None
+                if tab_search and hasattr(tab_search, "btn_toggle_path"):
+                    tab_search.show_path_line = new_vis
+                    tab_search.btn_toggle_path.text = f"Toggle Jalur di Peta: {'AKTIF' if new_vis else 'OFF'}"
                 return
 
             if key == K_e:

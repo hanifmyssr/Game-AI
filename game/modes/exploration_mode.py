@@ -1710,6 +1710,15 @@ class ExplorationModeMixin:
         sonar = getattr(self, "relic_sonar", None)
         if not sonar:
             return
+        # Matikan overlay jalur pathfinding A* agar tampilan heatmap sonar tetap bersih
+        if hasattr(self, "overlay") and self.overlay:
+            self.overlay.show_path_visualization = False
+            self.overlay.stop_path_animation()
+            dock = getattr(self.overlay, "dock", None)
+            tab_search = dock.tabs.get(1) if dock and hasattr(dock, "tabs") else None
+            if tab_search and hasattr(tab_search, "btn_toggle_path"):
+                tab_search.show_path_line = False
+                tab_search.btn_toggle_path.text = "Toggle Jalur di Peta: OFF"
         if sonar.found:
             self.ai_ticker_info = {
                 "title": "[BAYES SONAR] Relik Ikan Emas Kuno sudah ditemukan!",

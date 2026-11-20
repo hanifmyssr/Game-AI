@@ -80,7 +80,11 @@ class TabSearch:
         self.show_path_line = not self.show_path_line
         self.btn_toggle_path.text = f"Toggle Jalur di Peta: {'AKTIF' if self.show_path_line else 'OFF'}"
         if hasattr(self.app, "overlay"):
-            setattr(self.app.overlay, "show_path_visualization", self.show_path_line)
+            self.app.overlay.show_path_visualization = self.show_path_line
+            if self.show_path_line:
+                self.app.overlay.start_path_animation()
+            else:
+                self.app.overlay.stop_path_animation()
 
     def handle_event(self, event: pygame.event.Event) -> bool:
         if getattr(self.dropdown_focus, "is_open", False) and self.dropdown_focus.handle_event(event):

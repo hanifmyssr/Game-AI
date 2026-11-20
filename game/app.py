@@ -345,6 +345,9 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
         self.gacha_showcase = None
         self.loot_toast = None
         self.loot_modal = None
+        self.battle_result_modal = None
+        self.btn_result_restart = pygame.Rect(0, 0, 0, 0)
+        self.btn_result_exit = pygame.Rect(0, 0, 0, 0)
         self.npc_defeat_anim = None
         self.final_loot_shown = False
 
@@ -872,7 +875,7 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
                     elif anim.get("next_npc"):
                         self._start_card_summon_anim(anim["npc"], anim["next_npc"])
                     elif anim.get("is_final"):
-                        self.exit_battle()
+                        self._open_battle_result_modal(is_victory=True)
 
             # Mode Battle: Cek kemenangan final jika player memenangkan seluruh duel
             if (
@@ -895,6 +898,16 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
                     "duration": 1.4,
                     "is_final": True,
                 }
+
+            # Mode Battle: Jika Player kalah (winner == NPC), buka pop-up hasil duel
+            if (
+                self.battle_system.is_finished
+                and self.battle_system.winner == "NPC"
+                and not getattr(self, "battle_result_modal", None)
+                and not self.loot_modal
+                and not self.npc_defeat_anim
+            ):
+                self._open_battle_result_modal(is_victory=False)
 
             # Mode Battle: Update floating action text timer & VFX animasi
             self.battle_system.update_action_texts(dt)
@@ -981,6 +994,17 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
                     else:
                         self.overlay.handle_event(event)
                 elif self.game_mode == "BATTLE":
+                    if getattr(self, "battle_result_modal", None):
+                        if self.btn_result_restart.collidepoint(pos):
+                            is_boss = self.battle_result_modal.get("is_boss", False)
+                            self.battle_result_modal = None
+                            if is_boss:
+                                self.enter_boss_battle()
+                            else:
+                                self.enter_battle()
+                        elif self.btn_result_exit.collidepoint(pos):
+                            self.exit_battle()
+                        return
                     if self.loot_modal:
                         self._dismiss_loot_modal()
                         return
@@ -1160,6 +1184,17 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
             return
 
         if self.game_mode == "BATTLE":
+            if getattr(self, "battle_result_modal", None):
+                if key == K_r:
+                    is_boss = self.battle_result_modal.get("is_boss", False)
+                    self.battle_result_modal = None
+                    if is_boss:
+                        self.enter_boss_battle()
+                    else:
+                        self.enter_battle()
+                elif key in (K_ESCAPE, K_RETURN, K_KP_ENTER, K_SPACE):
+                    self.exit_battle()
+                return
             # Jika modal rampasan perang aktif, tekan ENTER atau SPASI untuk lanjut
             if self.loot_modal:
                 if key in (K_RETURN, K_KP_ENTER, K_SPACE, K_ESCAPE):
@@ -1306,9 +1341,11 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
         # 2. Gambar overlay UI terpadu di sisi kiri (Nav Rail & Collapsible Inspector Drawer)
         self.overlay.draw_ui(self.screen)
 
-        # 4. Gambar modal rampasan perang di paling atas (menutup seluruh layar dengan dramatis)
+        # 4. Gambar modal rampasan perang & hasil duel di paling atas
         if self.game_mode == "BATTLE" and getattr(self, "loot_modal", None):
             self._draw_loot_modal()
+        if self.game_mode == "BATTLE" and getattr(self, "battle_result_modal", None):
+            self._draw_battle_result_modal()
 
         # 5. Gambar modal visualizer Pohon CSP & Local Search jika terbuka di mode PRE_BATTLE
         if self.game_mode == "PRE_BATTLE" and self.pre_battle_visualizer.is_open:

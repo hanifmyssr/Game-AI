@@ -56,6 +56,7 @@ class BattleModeMixin:
         self.battle_log_scroll_offset = 0
         self.card_summon_anim = None
         self.loot_modal = None
+        self.battle_result_modal = None
         self.npc_defeat_anim = None
         self.final_loot_shown = False
         if hasattr(self, "vfx") and self.vfx:
@@ -91,6 +92,7 @@ class BattleModeMixin:
         self.card_summon_anim = None
         self.loot_toast = None
         self.loot_modal = None
+        self.battle_result_modal = None
         self.npc_defeat_anim = None
         self.final_loot_shown = False
         if hasattr(self, "vfx") and self.vfx:
@@ -881,7 +883,16 @@ class BattleModeMixin:
         else:
             self.battle_system.is_locked = False
             if modal.get("is_final", False):
-                self.exit_battle()
+                self._open_battle_result_modal(is_victory=True)
+
+    def _open_battle_result_modal(self, is_victory: bool):
+        """Membuka pop-up hasil duel (Menang/Kalah/Kalahkan Boss) dengan tombol Ulangi & Keluar."""
+        is_boss = bool(getattr(self, "is_boss_battle", False))
+        self.battle_result_modal = {
+            "is_victory": is_victory,
+            "is_boss": is_boss,
+        }
+        self.battle_system.is_locked = True
 
     def _update_card_summon_anim(self, dt: float):
         """Memperbarui fisika partikel dan timeline animasi pemanggilan kartu."""
@@ -1285,7 +1296,7 @@ class BattleModeMixin:
         if not self.loot_modal:
             return
 
-        from .ui.components import fit_text_to_width
+        from ..ui.components import fit_text_to_width
 
         modal = self.loot_modal
         loot = modal["loot"]
@@ -1422,3 +1433,117 @@ class BattleModeMixin:
 
         # Blit Modal Card ke Layar
         self.screen.blit(card_surf, modal_rect)
+
+    def _draw_battle_result_modal(self):
+        """Merender pop-up hasil duel (Menang, Kalah, & Ucapan Selamat Boss) bergaya Cozy Warm Parchment."""
+        modal = getattr(self, "battle_result_modal", None)
+        if not modal:
+            return
+        from ..ui.components import fit_text_to_width, draw_badge_pill
+
+        is_victory = modal.get("is_victory", False)
+        is_boss = modal.get("is_boss", False)
+        w, h = self.screen.get_size()
+        is_dock_open = getattr(self.overlay.dock, "is_open", False) if hasattr(self, "overlay") and hasattr(self.overlay, "dock") else False
+        panel_w = self.overlay.dock.rect.right if is_dock_open else config.NAV_RAIL_WIDTH
+        cx = panel_w + (w - panel_w) // 2
+        cy = h // 2
+
+        dim_surf = pygame.Surface((w, h), SRCALPHA)
+        dim_surf.fill((12, 10, 16, 175))
+        self.screen.blit(dim_surf, (0, 0))
+
+        mw, mh = min(500, max(360, w - panel_w - 40)), 256
+        modal_rect = pygame.Rect(cx - mw // 2, cy - mh // 2, mw, mh)
+
+        # Shadow + Card
+        sh_surf = pygame.Surface((mw + 10, mh + 10), SRCALPHA)
+        pygame.draw.rect(sh_surf, (0, 0, 0, 95), sh_surf.get_rect(), border_radius=16)
+        self.screen.blit(sh_surf, (modal_rect.x - 2, modal_rect.y + 4))
+
+        if is_victory and is_boss:
+            bdr_col = (212, 160, 42)
+            hdr_bg = (254, 244, 214)
+            badge_txt = "BOSS DIKALAHKAN!"
+            badge_bg, badge_fg = (252, 236, 190), (165, 95, 12)
+            title_str = "SELAMAT! PENJAGA MENARA TAKLUK!"
+            sub_str = "Ucapan Selamat untuk Bolu & Para Penjaga Skuad:"
+            body_lines = [
+                "Pertarungan melawan Kage the Shadow Lord berakhir gemilang!",
+                "Terima kasih telah menguji strategi AI & menaklukkan Menara Kuno.",
+            ]
+        elif is_victory:
+            bdr_col = (55, 165, 95)
+            hdr_bg = (232, 248, 236)
+            badge_txt = "KEMENANGAN"
+            badge_bg, badge_fg = (214, 242, 222), (32, 125, 62)
+            title_str = "DUEL DIMENANGKAN!"
+            sub_str = "Bolu berhasil mengalahkan seluruh skuad lawan."
+            body_lines = [
+                "Kamu bisa mengulang duel ini untuk menguji strategi AI lagi,",
+                "atau kembali ke peta untuk melanjutkan petualangan.",
+            ]
+        else:
+            bdr_col = (195, 68, 68)
+            hdr_bg = (254, 236, 236)
+            badge_txt = "DEFEAT"
+            badge_bg, badge_fg = (248, 214, 214), (168, 42, 42)
+            title_str = "BOLU TUMBANG DI ARENA!"
+            sub_str = "HP habis — strategi AI lawan berhasil mengungguli giliran ini."
+            body_lines = [
+                "Pilih 'Ulangi Duel' untuk mencoba lagi dengan formasi sekarang,",
+                "atau 'Keluar Battle' untuk memulihkan diri & mencari buff di peta.",
+            ]
+
+        pygame.draw.rect(self.screen, (255, 253, 248), modal_rect, border_radius=14)
+        hdr_rect = pygame.Rect(modal_rect.x, modal_rect.y, mw, 52)
+        pygame.draw.rect(self.screen, hdr_bg, hdr_rect, border_top_left_radius=14, border_top_right_radius=14)
+        pygame.draw.line(self.screen, bdr_col, (modal_rect.x, hdr_rect.bottom), (modal_rect.right, hdr_rect.bottom), 1)
+        pygame.draw.rect(self.screen, bdr_col, modal_rect, 2, border_radius=14)
+
+        font_title = self.fonts.get("title", self.fonts["sm"])
+        font_bubble = self.fonts.get("bubble", self.fonts["sm"])
+        font_sm = self.fonts["sm"]
+        font_tiny = self.fonts.get("tiny", self.fonts["sm"])
+
+        bw = font_tiny.size(badge_txt)[0] + 18
+        draw_badge_pill(
+            self.screen,
+            pygame.Rect(modal_rect.centerx - bw // 2, modal_rect.y + 8, bw, 18),
+            badge_txt, badge_bg, badge_fg, font_tiny, border_color=bdr_col,
+        )
+        t_fit = fit_text_to_width(font_title, title_str, mw - 28)
+        t_surf = font_title.render(t_fit, True, (45, 34, 24))
+        self.screen.blit(t_surf, t_surf.get_rect(center=(modal_rect.centerx, modal_rect.y + 37)))
+
+        s_fit = fit_text_to_width(font_sm, sub_str, mw - 32)
+        s_surf = font_sm.render(s_fit, True, badge_fg)
+        self.screen.blit(s_surf, s_surf.get_rect(center=(modal_rect.centerx, modal_rect.y + 82)))
+
+        by = modal_rect.y + 114
+        for ln in body_lines:
+            l_fit = fit_text_to_width(font_tiny, ln, mw - 36)
+            l_surf = font_tiny.render(l_fit, True, (90, 76, 64))
+            self.screen.blit(l_surf, l_surf.get_rect(center=(modal_rect.centerx, by)))
+            by += 22
+
+        # Tombol Restart Battle & Keluar Battle
+        btn_gap = 14
+        btn_w = (mw - 48 - btn_gap) // 2
+        btn_h = 40
+        btn_y = modal_rect.bottom - btn_h - 18
+        self.btn_result_restart = pygame.Rect(modal_rect.x + 24, btn_y, btn_w, btn_h)
+        self.btn_result_exit = pygame.Rect(self.btn_result_restart.right + btn_gap, btn_y, btn_w, btn_h)
+
+        # Tombol Ulangi Duel (Aksen Emas/Biru Hangat)
+        pygame.draw.rect(self.screen, (242, 230, 202), self.btn_result_restart, border_radius=8)
+        pygame.draw.rect(self.screen, (195, 140, 35), self.btn_result_restart, 2, border_radius=8)
+        r_txt = font_bubble.render("Ulangi Duel [R]", True, (130, 76, 12))
+        self.screen.blit(r_txt, r_txt.get_rect(center=self.btn_result_restart.center))
+
+        # Tombol Keluar Battle
+        pygame.draw.rect(self.screen, (48, 122, 185), self.btn_result_exit, border_radius=8)
+        pygame.draw.rect(self.screen, (30, 90, 148), self.btn_result_exit, 2, border_radius=8)
+        e_lbl = "Kembali ke Peta [ESC]" if is_boss else "Keluar Battle [ESC]"
+        e_txt = font_bubble.render(fit_text_to_width(font_bubble, e_lbl, btn_w - 12), True, (255, 255, 255))
+        self.screen.blit(e_txt, e_txt.get_rect(center=self.btn_result_exit.center))

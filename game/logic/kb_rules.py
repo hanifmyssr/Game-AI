@@ -6,7 +6,7 @@ fakta (TELL), penarikan kesimpulan (ASK), serta kumpulan aturan deklaratif
 koordinasi patroli 3 NPC sesuai standar akademis perkuliahan AI.
 """
 
-from typing import Set, List, Tuple, Dict, Optional, FrozenSet, Union
+from typing import Any, Set, List, Tuple, Dict, Optional, FrozenSet, Union
 
 
 def is_negative(literal: str) -> bool:

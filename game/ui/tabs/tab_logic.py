@@ -52,7 +52,7 @@ class TabLogic:
         self.btn_proof_modal = UIButton(
             pygame.Rect(self.rect.x + 12, self.rect.y + 540, btn_w, 38),
             "Buka Pembuktian Resolusi [K]",
-            fonts.get("sm", pygame.font.Font(None, 16)),
+            fonts.get("sm") or pygame.font.Font(None, 16),
             on_click=self._on_open_proof,
             bg_color=(242, 235, 222),
             hover_color=(255, 252, 245),
@@ -77,9 +77,9 @@ class TabLogic:
         pass
 
     def draw(self, surface: pygame.Surface) -> None:
-        font_tiny = self.fonts.get("tiny", pygame.font.Font(None, 13))
-        font_sm = self.fonts.get("sm", pygame.font.Font(None, 16))
-        font_title = self.fonts.get("title", pygame.font.Font(None, 19))
+        font_tiny = self.fonts.get("tiny") or pygame.font.Font(None, 13)
+        font_sm = self.fonts.get("sm") or pygame.font.Font(None, 16)
+        font_title = self.fonts.get("title") or pygame.font.Font(None, 19)
 
         cx = self.rect.x + 12
         cy = self.rect.y + 12

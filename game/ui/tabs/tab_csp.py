@@ -27,7 +27,7 @@ class TabCSP:
             ls_options,
             on_select=self._on_ls_selected,
             initial_idx=0,
-            font=fonts.get("sm", pygame.font.Font(None, 16)),
+            font=fonts.get("sm") or pygame.font.Font(None, 16),
         )
 
         self.slider_diff = UISlider(
@@ -38,13 +38,13 @@ class TabCSP:
             label="Target Kesulitan (Adaptif)",
             format_str="{:.2f}",
             on_change=self._on_diff_slider_changed,
-            font=fonts.get("sm", pygame.font.Font(None, 16)),
+            font=fonts.get("sm") or pygame.font.Font(None, 16),
         )
 
         self.btn_auto_diff = UIButton(
             pygame.Rect(self.rect.right - 72, self.rect.y + 122, 54, 24),
             "Auto",
-            fonts.get("tiny", pygame.font.Font(None, 13)),
+            fonts.get("tiny") or pygame.font.Font(None, 13),
             on_click=self._on_auto_diff_clicked,
             bg_color=(235, 248, 238),
             hover_color=(245, 255, 248),
@@ -58,7 +58,7 @@ class TabCSP:
         self.btn_reroll = UIButton(
             pygame.Rect(self.rect.x + 12, btn_y, btn_w, 38),
             "Acak Ulang [R]",
-            fonts.get("sm", pygame.font.Font(None, 16)),
+            fonts.get("sm") or pygame.font.Font(None, 16),
             on_click=self._on_reroll_clicked,
             bg_color=(242, 235, 222),
             hover_color=(255, 252, 245),
@@ -69,7 +69,7 @@ class TabCSP:
         self.btn_tree_modal = UIButton(
             pygame.Rect(self.rect.x + 20 + btn_w, btn_y, btn_w, 38),
             "Visualizer [T]",
-            fonts.get("sm", pygame.font.Font(None, 16)),
+            fonts.get("sm") or pygame.font.Font(None, 16),
             on_click=self._on_tree_modal_clicked,
             bg_color=(242, 235, 222),
             hover_color=(255, 252, 245),
@@ -129,9 +129,9 @@ class TabCSP:
         pass
 
     def draw(self, surface: pygame.Surface) -> None:
-        font_tiny = self.fonts.get("tiny", pygame.font.Font(None, 13))
-        font_sm = self.fonts.get("sm", pygame.font.Font(None, 16))
-        font_title = self.fonts.get("title", pygame.font.Font(None, 19))
+        font_tiny = self.fonts.get("tiny") or pygame.font.Font(None, 13)
+        font_sm = self.fonts.get("sm") or pygame.font.Font(None, 16)
+        font_title = self.fonts.get("title") or pygame.font.Font(None, 19)
 
         cx = self.rect.x + 12
         cy = self.rect.y + 12

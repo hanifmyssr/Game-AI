@@ -124,8 +124,8 @@ class TreeOverlay:
             self.font_badge = pygame.font.SysFont(["segoeui", "arial", "sans-serif"], 9, bold=True)
             self.font_body = pygame.font.SysFont(["consolas", "segoeui", "arial"], 11, bold=True)
         except (OSError, RuntimeError):
-            self.font_badge = fonts.get("sm", pygame.font.Font(None, 12))
-            self.font_body = fonts.get("sm", pygame.font.Font(None, 14))
+            self.font_badge = fonts.get("sm") or pygame.font.Font(None, 12)
+            self.font_body = fonts.get("sm") or pygame.font.Font(None, 14)
 
         self.visible = False        # Default hidden saat duel dimulai (buka via tombol/T)
         self.is_modal = True        # Mode modal fullscreen semi-transparan

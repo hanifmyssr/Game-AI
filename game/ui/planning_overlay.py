@@ -51,14 +51,14 @@ class PlanningOverlay:
             engine_options,
             on_select=self._on_engine_selected,
             initial_idx=0,
-            font=fonts.get("sm", pygame.font.Font(None, 16)),
+            font=fonts.get("sm") or pygame.font.Font(None, 16),
         )
 
         # Tombol Buka Pohon Rencana
         self.btn_tree = UIButton(
             pygame.Rect(0, 0, 260, 36),
             "Buka Pohon Rencana PDDL [T]",
-            fonts.get("sm", pygame.font.Font(None, 16)),
+            fonts.get("sm") or pygame.font.Font(None, 16),
             on_click=self._on_open_tree,
             bg_color=(242, 235, 222),
             hover_color=(255, 252, 245),
@@ -71,7 +71,7 @@ class PlanningOverlay:
         self.btn_close = UIButton(
             pygame.Rect(0, 0, 110, 36),
             "Tutup [ESC]",
-            fonts.get("sm", pygame.font.Font(None, 16)),
+            fonts.get("sm") or pygame.font.Font(None, 16),
             on_click=self.toggle,
             bg_color=(242, 235, 222),
             hover_color=(255, 240, 240),

@@ -482,8 +482,8 @@ class UnifiedGraphModal:
             self._compute_layout()
 
         sw, sh = surface.get_size()
-        font_tiny = self.fonts.get("tiny", pygame.font.Font(None, 13))
-        font_sm = self.fonts.get("sm", pygame.font.Font(None, 15))
+        font_tiny = self.fonts.get("tiny") or pygame.font.Font(None, 13)
+        font_sm = self.fonts.get("sm") or pygame.font.Font(None, 15)
         font_bubble = self.fonts.get("bubble", font_sm)
         font_title = self.fonts.get("title", font_sm)
 

@@ -35,14 +35,14 @@ class TabUncertainty:
             label="Akurasi Sensor Sonar",
             format_str="{:.0%}",
             on_change=self._on_acc_changed,
-            font=fonts.get("sm", pygame.font.Font(None, 16)),
+            font=fonts.get("sm") or pygame.font.Font(None, 16),
         )
 
         btn_w = (self.rect.width - 32) // 2
         self.btn_scan = UIButton(
             pygame.Rect(self.rect.x + 12, self.rect.y + 490, btn_w, 38),
             "Pindai Sonar [F]",
-            fonts.get("sm", pygame.font.Font(None, 16)),
+            fonts.get("sm") or pygame.font.Font(None, 16),
             on_click=self._on_scan_clicked,
             bg_color=(232, 246, 252),
             hover_color=(244, 252, 255),
@@ -53,7 +53,7 @@ class TabUncertainty:
         self.btn_heatmap = UIButton(
             pygame.Rect(self.rect.x + 20 + btn_w, self.rect.y + 490, btn_w, 38),
             "Heatmap: ON",
-            fonts.get("sm", pygame.font.Font(None, 16)),
+            fonts.get("sm") or pygame.font.Font(None, 16),
             on_click=self._on_toggle_heatmap,
             bg_color=(242, 235, 222),
             hover_color=(255, 252, 245),
@@ -91,8 +91,8 @@ class TabUncertainty:
         pass
 
     def draw(self, surface: pygame.Surface) -> None:
-        font_tiny = self.fonts.get("tiny", pygame.font.Font(None, 13))
-        font_sm = self.fonts.get("sm", pygame.font.Font(None, 16))
+        font_tiny = self.fonts.get("tiny") or pygame.font.Font(None, 13)
+        font_sm = self.fonts.get("sm") or pygame.font.Font(None, 16)
 
         cx = self.rect.x + 12
         cy = self.rect.y + 12

@@ -28,7 +28,7 @@ class TabSettings:
             label="Volume Musik Latar (BGM)",
             format_str="{:.0%}",
             on_change=self._on_bgm_changed,
-            font=fonts.get("sm", pygame.font.Font(None, 16)),
+            font=fonts.get("sm") or pygame.font.Font(None, 16),
         )
 
         self.slider_sfx = UISlider(
@@ -39,14 +39,14 @@ class TabSettings:
             label="Volume Efek Suara (SFX)",
             format_str="{:.0%}",
             on_change=self._on_sfx_changed,
-            font=fonts.get("sm", pygame.font.Font(None, 16)),
+            font=fonts.get("sm") or pygame.font.Font(None, 16),
         )
 
         btn_w = self.rect.width - 24
         self.btn_reset = UIButton(
             pygame.Rect(self.rect.x + 12, self.rect.y + 208, btn_w, 38),
             "Reset Status Peti Harta & Hero",
-            fonts.get("sm", pygame.font.Font(None, 16)),
+            fonts.get("sm") or pygame.font.Font(None, 16),
             on_click=self._on_reset_clicked,
             bg_color=(255, 242, 242),
             hover_color=(255, 230, 230),
@@ -106,9 +106,9 @@ class TabSettings:
                 self.btn_reset.text = "Reset Status Peti Harta & Hero"
 
     def draw(self, surface: pygame.Surface) -> None:
-        font_tiny = self.fonts.get("tiny", pygame.font.Font(None, 13))
-        font_sm = self.fonts.get("sm", pygame.font.Font(None, 16))
-        font_title = self.fonts.get("title", pygame.font.Font(None, 19))
+        font_tiny = self.fonts.get("tiny") or pygame.font.Font(None, 13)
+        font_sm = self.fonts.get("sm") or pygame.font.Font(None, 16)
+        font_title = self.fonts.get("title") or pygame.font.Font(None, 19)
 
         cx = self.rect.x + 12
         cy = self.rect.y + 12

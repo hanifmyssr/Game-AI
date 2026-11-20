@@ -274,7 +274,7 @@ class BattleModeMixin:
 
         font_bubble = self.fonts.get("bubble", self.fonts["sm"])
         font_sm = self.fonts["sm"]
-        font_tiny = self.fonts.get("tiny", pygame.font.Font(None, 13))
+        font_tiny = self.fonts.get("tiny") or pygame.font.Font(None, 13)
 
         # ------------------------------------------------------------------ #
         # Layout HUD Arena Bawah: RPG Diamond Action Hub (Tengah) & Battle Log
@@ -597,13 +597,13 @@ class BattleModeMixin:
                 self.screen.blit(txt_name, (info_x, curr_y + 6))
 
                 if is_next:
-                    next_badge = self.fonts.get("tiny", pygame.font.Font(None, 13)).render("NEXT", True, (20, 15, 5))
+                    next_badge = (self.fonts.get("tiny") or pygame.font.Font(None, 13)).render("NEXT", True, (20, 15, 5))
                     nb_w = next_badge.get_width() + 6
                     nb_rect = pygame.Rect(bench_x + bench_w - nb_w - 6, curr_y + 6, nb_w, 14)
                     pygame.draw.rect(self.screen, (255, 215, 75), nb_rect, border_radius=3)
                     self.screen.blit(next_badge, (nb_rect.x + 3, nb_rect.y + 1))
                 else:
-                    role_lbl = self.fonts.get("tiny", pygame.font.Font(None, 13)).render(role_tag, True, role_color)
+                    role_lbl = (self.fonts.get("tiny") or pygame.font.Font(None, 13)).render(role_tag, True, role_color)
                     self.screen.blit(role_lbl, (bench_x + bench_w - role_lbl.get_width() - 8, curr_y + 7))
 
                 # Mini HP Bar
@@ -619,7 +619,7 @@ class BattleModeMixin:
                     hp_col = (65, 205, 100) if hp_ratio > 0.4 else (235, 160, 45) if hp_ratio > 0.2 else (235, 65, 65)
                     pygame.draw.rect(self.screen, hp_col, (bar_x, bar_y, fill_w, bar_h), border_radius=2)
 
-                hp_txt = self.fonts.get("tiny", pygame.font.Font(None, 13)).render(f"{cur_hp}/{mem.max_hp} HP", True, (160, 172, 192))
+                hp_txt = (self.fonts.get("tiny") or pygame.font.Font(None, 13)).render(f"{cur_hp}/{mem.max_hp} HP", True, (160, 172, 192))
                 self.screen.blit(hp_txt, (bar_x, curr_y + 34))
 
                 curr_y += card_h + 8
@@ -639,7 +639,7 @@ class BattleModeMixin:
                 pygame.draw.rect(self.screen, (26, 16, 18, 220), d_rect, border_radius=5)
                 pygame.draw.rect(self.screen, (100, 40, 45), d_rect, 1, border_radius=5)
                 d_name = mem.name.split()[0]
-                d_txt = self.fonts.get("tiny", pygame.font.Font(None, 13)).render(f"[KO] {d_name}", True, (225, 110, 110))
+                d_txt = (self.fonts.get("tiny") or pygame.font.Font(None, 13)).render(f"[KO] {d_name}", True, (225, 110, 110))
                 self.screen.blit(d_txt, (bench_x + 8, curr_y + 5))
                 curr_y += 28
 
@@ -769,7 +769,7 @@ class BattleModeMixin:
         pygame.draw.rect(surf, bd_color, (0, 0, banner_w, banner_h), 2, border_radius=10)
 
         # Header Badge
-        font_tiny = self.fonts.get("tiny", pygame.font.Font(None, 13))
+        font_tiny = self.fonts.get("tiny") or pygame.font.Font(None, 13)
 
         # Badge pill judul taktik
         pill_rect = pygame.Rect(12, 8, banner_w - 24, 24)

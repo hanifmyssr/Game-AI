@@ -4,7 +4,7 @@ Menerapkan penalaran logika proposisional murni dengan membuktikan KB |= query
 melalui pencarian kontradiksi (klausa kosong []) saat negasi query ditambahkan ke KB.
 """
 
-from typing import Set, List, Tuple, Dict, Optional, FrozenSet
+from typing import Any, Set, List, Tuple, Dict, Optional, FrozenSet
 from .kb_rules import KnowledgeBase, negate_literal, complement, clause_to_str
 
 

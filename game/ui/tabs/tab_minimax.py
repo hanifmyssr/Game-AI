@@ -46,7 +46,7 @@ class TabMinimax:
             algo_options,
             on_select=self._on_algo_selected,
             initial_idx=0,
-            font=fonts.get("sm", pygame.font.Font(None, 16)),
+            font=fonts.get("sm") or pygame.font.Font(None, 16),
         )
 
         self.dropdown_eval = UIDropdown(
@@ -54,14 +54,14 @@ class TabMinimax:
             eval_options,
             on_select=self._on_eval_selected,
             initial_idx=0,
-            font=fonts.get("sm", pygame.font.Font(None, 16)),
+            font=fonts.get("sm") or pygame.font.Font(None, 16),
         )
 
         btn_w = self.rect.width - 24
         self.btn_tree_modal = UIButton(
             pygame.Rect(self.rect.x + 12, self.rect.y + 520, btn_w, 38),
             "Buka Pohon Minimax [T]",
-            fonts.get("sm", pygame.font.Font(None, 16)),
+            fonts.get("sm") or pygame.font.Font(None, 16),
             on_click=self._on_open_tree,
             bg_color=(242, 235, 222),
             hover_color=(255, 252, 245),
@@ -129,9 +129,9 @@ class TabMinimax:
         pass
 
     def draw(self, surface: pygame.Surface) -> None:
-        font_tiny = self.fonts.get("tiny", pygame.font.Font(None, 13))
-        font_sm = self.fonts.get("sm", pygame.font.Font(None, 16))
-        font_title = self.fonts.get("title", pygame.font.Font(None, 19))
+        font_tiny = self.fonts.get("tiny") or pygame.font.Font(None, 13)
+        font_sm = self.fonts.get("sm") or pygame.font.Font(None, 16)
+        font_title = self.fonts.get("title") or pygame.font.Font(None, 19)
 
         cx = self.rect.x + 12
         cy = self.rect.y + 12

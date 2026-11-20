@@ -172,8 +172,8 @@ def draw_tab_glossary(
 ) -> float:
     """Merender kartu glosarium & penjelasan istilah tab ke dalam content_rect; mengembalikan max_scroll."""
     data = TAB_GLOSSARY_DATA.get(tab_id, TAB_GLOSSARY_DATA[0])
-    font_tiny = fonts.get("tiny", pygame.font.Font(None, 13))
-    font_sm = fonts.get("sm", pygame.font.Font(None, 16))
+    font_tiny = fonts.get("tiny") or pygame.font.Font(None, 13)
+    font_sm = fonts.get("sm") or pygame.font.Font(None, 16)
 
     cx = content_rect.x + 12
     card_w = content_rect.width - 28  # sisakan ruang tipis untuk scrollbar

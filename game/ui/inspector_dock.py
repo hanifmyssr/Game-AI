@@ -77,7 +77,7 @@ class InspectorDock:
         self.btn_collapse = UIButton(
             pygame.Rect(self.rect.right - btn_collapse_w - 10, self.rect.y + 10, btn_collapse_w, 28),
             "[TAB] Tutup",
-            fonts.get("tiny", pygame.font.Font(None, 13)),
+            fonts.get("tiny") or pygame.font.Font(None, 13),
             on_click=self.close,
             bg_color=(238, 230, 216),
             hover_color=(255, 252, 245),
@@ -87,7 +87,7 @@ class InspectorDock:
         self.btn_help = UIButton(
             pygame.Rect(self.btn_collapse.rect.x - btn_help_w - 6, self.rect.y + 10, btn_help_w, 28),
             "?",
-            fonts.get("sm", pygame.font.Font(None, 16)),
+            fonts.get("sm") or pygame.font.Font(None, 16),
             on_click=self.toggle_glossary,
             bg_color=(252, 243, 218),
             hover_color=(255, 252, 245),
@@ -264,8 +264,8 @@ class InspectorDock:
                          (self.rect.x, header_rect.bottom - 1), (self.rect.right - 1, header_rect.bottom - 1), 1)
 
         title, subtitle = TAB_HEADERS[self.active_tab_id] if 0 <= self.active_tab_id < len(TAB_HEADERS) else ("INSPEKTOR AI", "Detail Modul")
-        font_title = self.fonts.get("title", pygame.font.Font(None, 19))
-        font_tiny = self.fonts.get("tiny", pygame.font.Font(None, 13))
+        font_title = self.fonts.get("title") or pygame.font.Font(None, 19)
+        font_tiny = self.fonts.get("tiny") or pygame.font.Font(None, 13)
 
         max_title_w = max(80, self.btn_help.rect.x - (self.rect.x + 14) - 8)
         font_bubble = self.fonts.get("bubble", font_title)

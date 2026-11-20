@@ -1434,7 +1434,7 @@ class ExplorationModeMixin:
     def _draw_stealth_badge(self):
         """Gambar lencana mengambang di atas kepala pemain saat bersembunyi di semak."""
         sx, sy = self.camera.world_to_screen(self.player.px, self.player.py)
-        font = self.fonts.get("tiny", pygame.font.Font(None, 13))
+        font = self.fonts.get("tiny") or pygame.font.Font(None, 13)
         text = "Sembunyi"
         surf = font.render(text, True, (245, 255, 240))
         pad_x, pad_y = 6, 2
@@ -1480,7 +1480,7 @@ class ExplorationModeMixin:
         dy = abs(self.player.grid[1] - pt_y)
         if max(dx, dy) <= 3:
             font = self.fonts.get("bubble", self.fonts.get("sm"))
-            font_sub = self.fonts.get("tiny", pygame.font.Font(None, 12))
+            font_sub = self.fonts.get("tiny") or pygame.font.Font(None, 12)
             if is_ready:
                 main_txt = "[E] Masuk Menara Kuno & Hadapi Boss Kage!"
                 sub_txt = "3/3 Kunci Rune Terpasang • Portal Siap!"
@@ -1532,7 +1532,7 @@ class ExplorationModeMixin:
         for n in (self.npc, self.npc_kuro, self.npc_shiro):
             if n and getattr(n, "speech_bubble", None):
                 sx, sy = self.camera.world_to_screen(n.px, n.py)
-                font = self.fonts.get("bubble", pygame.font.Font(None, 14))
+                font = self.fonts.get("bubble") or pygame.font.Font(None, 14)
                 surf = font.render(n.speech_bubble, True, (35, 25, 20))
                 pad_x, pad_y = 8, 4
                 bw = surf.get_width() + pad_x * 2
@@ -1562,7 +1562,7 @@ class ExplorationModeMixin:
         alpha = min(255, int(255 * (timer / 0.35))) if timer < 0.35 else 255
 
         font_t = self.fonts.get("bubble", self.fonts.get("sm"))
-        font_d = self.fonts.get("tiny", pygame.font.Font(None, 13))
+        font_d = self.fonts.get("tiny") or pygame.font.Font(None, 13)
 
         # Pilih aksen warna yang harmonis sesuai jenis notifikasi
         if "SOUND PERCEPT" in title:

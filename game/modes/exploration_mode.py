@@ -1809,21 +1809,33 @@ class ExplorationModeMixin:
             if is_focused and ratio >= 0.85:
                 pygame.draw.rect(self.screen, (235, 155, 25), (rx, ry, sz, sz), 1)
 
-        # Penanda target halus pada koordinat MAP terbaik saat zona sudah cukup mengerucut
+        # 1. Penanda Tebakan AI Terbaik (MAP) -> Siku bidik Cyan (berbeda dari Relik asli)
         if map_pos and sonar.scan_count >= 2 and high_count <= 35:
             wx, wy = self.map.world_to_px(map_pos)
             sx, sy = self.camera.world_to_screen(wx, wy)
-            pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() * 0.008)
-            pygame.draw.circle(self.screen, (255, 210, 60), (int(sx), int(sy)), int(sz * 0.42 + pulse * 3), 2)
+            half = max(6, sz // 2 - 2)
+            arm = max(4, half // 2)
+            cx_m, cy_m = int(sx), int(sy)
+            cyan_col = (25, 175, 225)
+            for dx_s, dy_s in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+                px_c = cx_m + dx_s * half
+                py_c = cy_m + dy_s * half
+                pygame.draw.line(self.screen, cyan_col, (px_c, py_c), (px_c - dx_s * arm, py_c), 2)
+                pygame.draw.line(self.screen, cyan_col, (px_c, py_c), (px_c, py_c - dy_s * arm), 2)
 
-        # Kilau halus pada titik Relik hanya jika Bolu sangat dekat (<= 2 ubin)
+        # 2. Penanda Relik Asli (saat Bolu <= 2 ubin) -> Permata/Relik Emas mengambang
         if sonar.relic_pos:
             d = abs(self.player.grid[0] - sonar.relic_pos[0]) + abs(self.player.grid[1] - sonar.relic_pos[1])
             if d <= 2:
                 wx, wy = self.map.world_to_px(sonar.relic_pos)
                 sx, sy = self.camera.world_to_screen(wx, wy)
-                pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() * 0.01)
-                pygame.draw.circle(self.screen, (255, 225, 80), (int(sx), int(sy)), int(5 + pulse * 3), 2)
+                bob = math.sin(pygame.time.get_ticks() * 0.007) * 2.5
+                rx_c, ry_c = int(sx), int(sy + bob)
+                r_gem = max(6, int(sz * 0.28))
+                pts = [(rx_c, ry_c - r_gem), (rx_c + r_gem, ry_c), (rx_c, ry_c + r_gem), (rx_c - r_gem, ry_c)]
+                pygame.draw.polygon(self.screen, (255, 215, 55), pts)
+                pygame.draw.polygon(self.screen, (170, 95, 15), pts, 2)
+                pygame.draw.circle(self.screen, (255, 250, 220), (rx_c - r_gem // 4, ry_c - r_gem // 4), max(2, r_gem // 4))
 
     def _draw_sonar_waves(self):
         """Menggambar cincin gelombang sonar warna Cyan saat [F] ditekan."""

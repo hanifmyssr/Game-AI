@@ -1262,8 +1262,7 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
                 self.enter_pre_battle()
 
     def _draw(self):
-        if self.game_mode != "EXPLORATION":
-            self.screen.fill(config.BG_COLOR)
+        self.screen.fill((118, 186, 178) if self.game_mode == "EXPLORATION" else config.BG_COLOR)
 
         # 1. Gambar peta di sisi kanan (khusus mode eksplorasi)
         assert self.scaled_map is not None

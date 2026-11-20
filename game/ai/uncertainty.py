@@ -76,28 +76,30 @@ class BayesianRelicSonar:
         self.found = False
 
     def observation_likelihood(self, signal: str, dist: int) -> float:
-        """Model observasi P(Sinyal | Jarak) dengan toleransi noise sensor."""
+        """Model observasi P(Sinyal | Jarak): error sensor hanya bergeser maksimal +-1 band."""
         true_band = band_for_distance(dist)
         idx_sig = SIGNALS.index(signal) if signal in SIGNALS else 0
         idx_true = SIGNALS.index(true_band)
         diff = abs(idx_sig - idx_true)
         acc = self.sensor_accuracy
-        err = max(0.01, 1.0 - acc)
+        err = max(0.02, 1.0 - acc)
         if diff == 0:
             return acc
         if diff == 1:
-            return err * 0.70
-        if diff == 2:
-            return err * 0.22
-        return err * 0.08
+            return err * 0.50
+        return 0.015
 
     def _sample_noisy_signal(self, player_pos: Tuple[int, int]) -> Tuple[str, str, bool]:
         if not self.relic_pos:
             return SIGNAL_FAR, SIGNAL_FAR, False
         true_d = manhattan_dist(player_pos, self.relic_pos)
         true_band = band_for_distance(true_d)
-        weights = [self.observation_likelihood(s, true_d) for s in SIGNALS]
-        chosen = random.choices(SIGNALS, weights=weights, k=1)[0]
+        idx_true = SIGNALS.index(true_band)
+        if random.random() < self.sensor_accuracy:
+            return true_band, true_band, False
+        neighbors = [i for i in (idx_true - 1, idx_true + 1) if 0 <= i < len(SIGNALS)]
+        chosen_idx = random.choice(neighbors) if neighbors else idx_true
+        chosen = SIGNALS[chosen_idx]
         return chosen, true_band, (chosen != true_band)
 
     def scan(self, player_pos: Tuple[int, int]) -> Dict[str, Any]:

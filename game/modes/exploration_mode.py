@@ -1775,7 +1775,7 @@ class ExplorationModeMixin:
         uniform_p = 1.0 / float(n_cells)
         concentration = max_p / uniform_p
         high_count = sum(1 for p in sonar.belief.values() if p >= 0.70 * max_p)
-        is_focused = (high_count <= 60 and concentration >= 3.0)
+        focus_t = min(1.0, max(0.0, (concentration - 1.2) / 4.0))
 
         zoom = self.camera.zoom
         sz = max(4, int(round(self.map.cell_size * zoom)))
@@ -1784,7 +1784,7 @@ class ExplorationModeMixin:
 
         for cell, prob in sonar.belief.items():
             ratio = prob / max_p
-            if ratio < (0.35 if is_focused else 0.50):
+            if ratio < 0.45:
                 continue
             wx, wy = self.map.world_to_px(cell)
             sx, sy = self.camera.world_to_screen(wx, wy)
@@ -1793,24 +1793,22 @@ class ExplorationModeMixin:
             if rx + sz < left_w or rx > sw or ry + sz < 0 or ry > sh:
                 continue
 
-            if not is_focused:
-                # Zona kandidat masih luas -> tint cyan sangat tipis agar map tetap jernih
-                col = (45, 195, 225, 36)
-            elif ratio >= 0.85:
-                col = (255, 185, 45, 105)
-            elif ratio >= 0.55:
-                col = (110, 210, 200, 62)
+            if ratio >= 0.85:
+                alpha_tile = int(50 + 60 * focus_t)
+                col = (255, 175, 40, alpha_tile)
+            elif ratio >= 0.60:
+                col = (120, 210, 195, int(34 + 30 * focus_t))
             else:
-                col = (55, 180, 225, 34)
+                col = (55, 185, 225, 28)
 
             tile_s = pygame.Surface((sz, sz), SRCALPHA)
             tile_s.fill(col)
             self.screen.blit(tile_s, (rx, ry))
-            if is_focused and ratio >= 0.85:
+            if ratio >= 0.85 and focus_t >= 0.35:
                 pygame.draw.rect(self.screen, (235, 155, 25), (rx, ry, sz, sz), 1)
 
         # 1. Penanda Tebakan AI Terbaik (MAP) -> Siku bidik Cyan (berbeda dari Relik asli)
-        if map_pos and sonar.scan_count >= 2 and high_count <= 35:
+        if map_pos and sonar.scan_count >= 2 and high_count <= 150:
             wx, wy = self.map.world_to_px(map_pos)
             sx, sy = self.camera.world_to_screen(wx, wy)
             half = max(6, sz // 2 - 2)

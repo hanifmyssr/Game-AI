@@ -42732,6 +42732,34 @@
       "src": "",
       "atlas_x": 0,
       "atlas_y": 1
+    },
+    {
+      "x": 27,
+      "y": 9,
+      "src": "",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
+      "x": 27,
+      "y": 10,
+      "src": "",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
+      "x": 28,
+      "y": 10,
+      "src": "",
+      "atlas_x": 0,
+      "atlas_y": 1
+    },
+    {
+      "x": 28,
+      "y": 11,
+      "src": "",
+      "atlas_x": 0,
+      "atlas_y": 1
     }
   ],
   "foliage": {

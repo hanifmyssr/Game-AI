@@ -73,6 +73,7 @@ K_RIGHT = getattr(pygame, "K_RIGHT", 1073741903)
 K_SPACE = getattr(pygame, "K_SPACE", 32)
 K_b = getattr(pygame, "K_b", 98)
 K_t = getattr(pygame, "K_t", 116)
+K_v = getattr(pygame, "K_v", 118)
 
 
 class Camera:
@@ -398,6 +399,8 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
         # Modal Panduan Awal & Buku Panduan 3-Tab [H]
         self.guide_modal = GuideModal(self.fonts, audio=self.audio)
         self.btn_guide_pill = pygame.Rect(0, 0, 0, 0)
+        self.btn_pause_pill = pygame.Rect(0, 0, 0, 0)
+        self.demo_paused = False
         if hasattr(self.overlay, "nav_rail"):
             self.overlay.nav_rail.on_guide_clicked = self.guide_modal.toggle
 
@@ -491,7 +494,21 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
         self.ai_ticker_info = None
         self.is_boss_battle = False
         self._tower_prompted = False
+        self.demo_paused = False
         self.refresh_search_focus(force=True)
+
+    def _is_world_paused(self) -> bool:
+        """True jika pergerakan dunia eksplorasi dijeda (manual [V] atau saat overlay/modal AI terbuka)."""
+        if getattr(self, "demo_paused", False):
+            return True
+        if getattr(self, "logic_overlay", None) and self.logic_overlay.visible:
+            return True
+        if getattr(self, "planning_overlay", None) and self.planning_overlay.visible:
+            return True
+        overlay = getattr(self, "overlay", None)
+        if overlay and getattr(overlay, "graph_modal", None) and overlay.graph_modal.visible:
+            return True
+        return False
 
     def get_focused_search_npc(self):
         """Mengembalikan NPC yang menjadi fokus visualisasi pathfinding & metrik Tab Search."""
@@ -649,21 +666,22 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
             if wave["radius"] >= wave["max_radius"]:
                 self.whistle_waves.remove(wave)
 
-        # Update HUD AI Ticker banner timer
-        if self.ai_ticker_info:
+        # Update HUD AI Ticker banner timer (jangan habiskan timer saat dunia sedang dijeda)
+        if self.ai_ticker_info and not (self.game_mode == "EXPLORATION" and self._is_world_paused()):
             self.ai_ticker_info["timer"] -= dt
             if self.ai_ticker_info["timer"] <= 0:
                 self.ai_ticker_info = None
 
         if self.game_mode == "EXPLORATION":
-            self.player.update(dt)
-            self.npc.update(dt)
-            self.npc_kuro.update(dt)
-            self.npc_shiro.update(dt)
+            world_paused = self._is_world_paused()
+            if not world_paused:
+                self.player.update(dt)
+                self.npc.update(dt)
+                self.npc_kuro.update(dt)
+                self.npc_shiro.update(dt)
+                if not self.player.moving and not self.gacha_active and not self.gacha_showcase:
+                    self._process_continuous_player_movement()
             self.refresh_search_focus()
-
-            if not self.player.moving and not self.gacha_active and not self.gacha_showcase:
-                self._process_continuous_player_movement()
 
             # Animasi Gacha / Loot Peti
             if self.gacha_active:
@@ -692,8 +710,9 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
 
             # Animasi angin, ayam & partikel kilau padang rumput
             self.wind_timer += dt
-            self.chicken_timer += dt
-            self._update_chickens(dt)
+            if not world_paused:
+                self.chicken_timer += dt
+                self._update_chickens(dt)
 
             # Efek suara denting prompt [E] Buka Peti saat pemain mendekat ke peti tertutup
             near_unopened_chest = False
@@ -760,55 +779,56 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
             self._last_camera_target = camera_target
             self._update_bridge_uncertainty(dt)
 
-            # Cek jika pemain tiba di ubin portal Menara Kuno (Abandoned Tower)
-            portal_pos = getattr(self.map, "boss_portal", {"x": 38, "y": 5})
-            pt_x, pt_y = portal_pos.get("x", 38), portal_pos.get("y", 5)
-            if self.player.grid == (pt_x, pt_y) and not self.player.moving and not self.battle_reentry_locked:
-                if not getattr(self, "_tower_prompted", False):
-                    self._tower_prompted = True
-                    self._interact_tower_portal()
-            else:
-                if self.player.grid != (pt_x, pt_y):
-                    self._tower_prompted = False
+            if not world_paused:
+                # Cek jika pemain tiba di ubin portal Menara Kuno (Abandoned Tower)
+                portal_pos = getattr(self.map, "boss_portal", {"x": 38, "y": 5})
+                pt_x, pt_y = portal_pos.get("x", 38), portal_pos.get("y", 5)
+                if self.player.grid == (pt_x, pt_y) and not self.player.moving and not self.battle_reentry_locked:
+                    if not getattr(self, "_tower_prompted", False):
+                        self._tower_prompted = True
+                        self._interact_tower_portal()
+                else:
+                    if self.player.grid != (pt_x, pt_y):
+                        self._tower_prompted = False
 
-            # Cek jarak kedekatan dengan NPC mana pun di peta (Grid distance <= 1 atau Pixel distance <= 18)
-            all_npcs = [getattr(self, "npc", None), getattr(self, "npc_kuro", None), getattr(self, "npc_shiro", None)]
-            min_dist = 999
-            closest_npc = None
-            pixel_collision_npc = None
+                # Cek jarak kedekatan dengan NPC mana pun di peta (Grid distance <= 1 atau Pixel distance <= 18)
+                all_npcs = [getattr(self, "npc", None), getattr(self, "npc_kuro", None), getattr(self, "npc_shiro", None)]
+                min_dist = 999
+                closest_npc = None
+                pixel_collision_npc = None
 
-            for n in all_npcs:
-                if not n:
-                    continue
-                d = abs(self.player.grid[0] - n.grid[0]) + abs(self.player.grid[1] - n.grid[1])
-                if d < min_dist:
-                    min_dist = d
-                    closest_npc = n
-                # Cek jarak pixel langsung saat entitas melangkah/bergerak
-                px_dist = math.hypot(self.player.px - n.px, self.player.py - n.py)
-                if px_dist <= 18.0:
-                    pixel_collision_npc = n
+                for n in all_npcs:
+                    if not n:
+                        continue
+                    d = abs(self.player.grid[0] - n.grid[0]) + abs(self.player.grid[1] - n.grid[1])
+                    if d < min_dist:
+                        min_dist = d
+                        closest_npc = n
+                    # Cek jarak pixel langsung saat entitas melangkah/bergerak
+                    px_dist = math.hypot(self.player.px - n.px, self.player.py - n.py)
+                    if px_dist <= 18.0:
+                        pixel_collision_npc = n
 
-            # Unlock reentry lock jika pemain sudah menjauh atau jeda waktu habis
-            if getattr(self, "battle_reentry_timer", 0.0) > 0.0:
-                self.battle_reentry_timer = max(0.0, self.battle_reentry_timer - dt)
-                if self.battle_reentry_timer <= 0.0:
+                # Unlock reentry lock jika pemain sudah menjauh atau jeda waktu habis
+                if getattr(self, "battle_reentry_timer", 0.0) > 0.0:
+                    self.battle_reentry_timer = max(0.0, self.battle_reentry_timer - dt)
+                    if self.battle_reentry_timer <= 0.0:
+                        self.battle_reentry_locked = False
+                elif min_dist > 1:
                     self.battle_reentry_locked = False
-            elif min_dist > 1:
-                self.battle_reentry_locked = False
 
-            target_encounter_npc = pixel_collision_npc or (closest_npc if min_dist <= 1 else None)
+                target_encounter_npc = pixel_collision_npc or (closest_npc if min_dist <= 1 else None)
 
-            if target_encounter_npc and not self.battle_reentry_locked:
-                # Tabrakan fisik terdeteksi! Kunci seketika gerakan kedua entitas agar tidak saling tembus
-                self.player.moving = False
-                self.player.move_t = 1.0
-                self.player.px, self.player.py = self.map.world_to_px(self.player.grid)
-                target_encounter_npc.moving = False
-                target_encounter_npc.move_t = 1.0
-                target_encounter_npc.px, target_encounter_npc.py = self.map.world_to_px(target_encounter_npc.grid)
-                self.player.is_hidden = False
-                self.enter_pre_battle(target_encounter_npc)
+                if target_encounter_npc and not self.battle_reentry_locked:
+                    # Tabrakan fisik terdeteksi! Kunci seketika gerakan kedua entitas agar tidak saling tembus
+                    self.player.moving = False
+                    self.player.move_t = 1.0
+                    self.player.px, self.player.py = self.map.world_to_px(self.player.grid)
+                    target_encounter_npc.moving = False
+                    target_encounter_npc.move_t = 1.0
+                    target_encounter_npc.px, target_encounter_npc.py = self.map.world_to_px(target_encounter_npc.grid)
+                    self.player.is_hidden = False
+                    self.enter_pre_battle(target_encounter_npc)
         elif self.game_mode == "PRE_BATTLE":
             # Animasi searching & fade-in satu-per-satu kartu skuad Pre-Battle
             anim = getattr(self, "pre_battle_anim", None)
@@ -1048,6 +1068,9 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
                     if getattr(self, "gacha_showcase", None):
                         self.gacha_showcase = None
                         return
+                    if getattr(self, "btn_pause_pill", None) and self.btn_pause_pill.collidepoint(pos):
+                        self.demo_paused = not self.demo_paused
+                        return
                     if getattr(self, "btn_guide_pill", None) and self.btn_guide_pill.collidepoint(pos):
                         self.guide_modal.toggle()
                         return
@@ -1125,6 +1148,9 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
             if hasattr(self, "planning_overlay"):
                 self.planning_overlay.toggle()
                 return
+        if key == K_v and self.game_mode == "EXPLORATION":
+            self.demo_paused = not self.demo_paused
+            return
 
         if self.game_mode == "PRE_BATTLE":
             if self.pre_battle_visualizer.is_open:
@@ -1248,6 +1274,9 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
                 if tab_search and hasattr(tab_search, "btn_toggle_path"):
                     tab_search.show_path_line = new_vis
                     tab_search.btn_toggle_path.text = f"Toggle Jalur di Peta: {'AKTIF' if new_vis else 'OFF'}"
+                return
+
+            if self._is_world_paused():
                 return
 
             if key == K_e:

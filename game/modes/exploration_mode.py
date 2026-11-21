@@ -253,9 +253,11 @@ class ExplorationModeMixin:
                 return
 
     def _draw_guide_pill_button(self):
-        """Merender tombol cepat Buku Panduan [H] di pojok kanan atas area peta eksplorasi."""
+        """Merender tombol cepat Pause [V] dan Buku Panduan [H] di pojok kanan atas area peta eksplorasi."""
         sw = self.screen.get_width()
         font_sm = self.fonts.get("tiny", self.fonts["sm"])
+        mouse_pos = pygame.mouse.get_pos()
+
         lbl = "[H] Buku Panduan"
         t_surf = font_sm.render(lbl, True, (115, 62, 16))
         bw = t_surf.get_width() + 26
@@ -264,7 +266,7 @@ class ExplorationModeMixin:
         by = 14
         self.btn_guide_pill = pygame.Rect(bx, by, bw, bh)
 
-        hov = self.btn_guide_pill.collidepoint(pygame.mouse.get_pos())
+        hov = self.btn_guide_pill.collidepoint(mouse_pos)
         bg_col = (255, 252, 244, 245) if hov else (248, 242, 228, 232)
         bd_col = (205, 135, 25) if hov else (196, 174, 144)
 
@@ -273,6 +275,40 @@ class ExplorationModeMixin:
         pygame.draw.rect(pill, bd_col, pill.get_rect(), 1, border_radius=8)
         self.screen.blit(pill, self.btn_guide_pill.topleft)
         self.screen.blit(t_surf, t_surf.get_rect(center=self.btn_guide_pill.center))
+
+        # Tombol Pause Demo [V] di sebelah kiri tombol Buku Panduan
+        manual_paused = getattr(self, "demo_paused", False)
+        auto_paused = (not manual_paused) and self._is_world_paused()
+        if manual_paused:
+            p_lbl = "PAUSED • [V] Lanjut"
+            p_txt_col = (146, 64, 14)
+        elif auto_paused:
+            p_lbl = "AUTO-PAUSE • [V] Kunci"
+            p_txt_col = (12, 74, 110)
+        else:
+            p_lbl = "[V] Pause"
+            p_txt_col = (115, 62, 16)
+
+        p_surf = font_sm.render(p_lbl, True, p_txt_col)
+        pw = p_surf.get_width() + 24
+        px = bx - pw - 8
+        self.btn_pause_pill = pygame.Rect(px, by, pw, bh)
+        p_hov = self.btn_pause_pill.collidepoint(mouse_pos)
+        if manual_paused:
+            p_bg = (255, 246, 214, 250) if p_hov else (254, 240, 199, 242)
+            p_bd = (217, 119, 6)
+        elif auto_paused:
+            p_bg = (236, 248, 255, 250) if p_hov else (224, 242, 254, 240)
+            p_bd = (56, 189, 248)
+        else:
+            p_bg = (255, 252, 244, 245) if p_hov else (248, 242, 228, 232)
+            p_bd = (205, 135, 25) if p_hov else (196, 174, 144)
+
+        p_pill = pygame.Surface((pw, bh), SRCALPHA)
+        pygame.draw.rect(p_pill, p_bg, p_pill.get_rect(), border_radius=8)
+        pygame.draw.rect(p_pill, p_bd, p_pill.get_rect(), 1, border_radius=8)
+        self.screen.blit(p_pill, self.btn_pause_pill.topleft)
+        self.screen.blit(p_surf, p_surf.get_rect(center=self.btn_pause_pill.center))
 
     def _draw_npc_offscreen_indicator(self):
         # Batas area viewport kamera (sebelah kanan sidebar debug)

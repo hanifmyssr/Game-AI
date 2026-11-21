@@ -113,14 +113,20 @@ class TabMinimax:
 
             if self.btn_depth_minus.collidepoint(event.pos):
                 bs.depth = max(1, bs.depth - 1)
+                if hasattr(bs, "update_ai_preview"):
+                    bs.update_ai_preview()
                 return True
             if self.btn_depth_plus.collidepoint(event.pos):
                 bs.depth = min(8, bs.depth + 1)
+                if hasattr(bs, "update_ai_preview"):
+                    bs.update_ai_preview()
                 return True
             if self.btn_move_ordering.collidepoint(event.pos):
                 cur_idx = MOVE_ORDERING_MODES.index(bs.move_ordering_mode) if bs.move_ordering_mode in MOVE_ORDERING_MODES else 0
                 next_mode = MOVE_ORDERING_MODES[(cur_idx + 1) % len(MOVE_ORDERING_MODES)]
                 bs.move_ordering_mode = next_mode
+                if hasattr(bs, "update_ai_preview"):
+                    bs.update_ai_preview()
                 return True
 
         return False

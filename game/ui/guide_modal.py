@@ -351,40 +351,41 @@ class GuideModal:
         if self.active_tab == 0:
             # Banner Tujuan Utama (Full width)
             hero_bullets = [
-                ("1. Jelajahi pulau untuk membuka 3 Peti Harta (Kiri Atas, Kiri Bawah, Kanan Bawah) dan dapatkan 3 Kunci Rune.", COLOR_TEXT),
-                ("2. Hindari atau kalahkan para penjaga (Shiro, Oyen, Kuro) — setiap peti yang dibuka memberi buff perlengkapan bertarung.", COLOR_BLUE),
-                ("3. Setelah 3 Kunci Rune terkumpul, pergi ke gerbang Menara Kuno di timur laut lalu tekan [E] untuk menantang Boss Kage!", COLOR_GREEN),
+                ("1. Jelajahi pulau untuk membuka 3 Peti Harta dan kumpulkan 3 Kunci Rune, lalu pindai Relik Tersembunyi [F] untuk buff tambahan.", COLOR_TEXT),
+                ("2. Hindari atau kalahkan para penjaga (Shiro, Oyen, Kuro) — setiap peti & kemenangan duel memberi buff perlengkapan.", COLOR_BLUE),
+                ("3. Setelah 3 Kunci Rune terkumpul, datangi Portal Menara Kuno lalu tekan [E] untuk masuk Pre-Battle Boss & tantang Boss Kage!", COLOR_GREEN),
             ]
             h_hero, wr_hero = self._compute_card_height(w, hero_bullets, font_sm, font_tiny)
             rc_hero = pygame.Rect(x0, cy, w, h_hero)
             items.append((
                 rc_hero,
                 lambda s, r, w_l=wr_hero: self._draw_info_card(
-                    s, r, "TUJUAN UTAMA PETUALANGAN", "3 KUNCI -> BOSS", COLOR_GOLD, (252, 243, 218), w_l, font_sm, font_tiny
+                    s, r, "TUJUAN UTAMA PETUALANGAN", "3 KUNCI + RELIK -> BOSS", COLOR_GOLD, (252, 243, 218), w_l, font_sm, font_tiny
                 ),
             ))
             cy += h_hero + gap
 
-            # Grid 3 Kolom: Cara Bermain, Stealth & Peluit, Kontrol Penting
+            # Grid 3 Kolom: Cara Bermain, Stealth & Sonar, Kontrol Pre-Battle & Duel
             row_specs = [
                 ("Kontrol Eksplorasi", "PETA", COLOR_BLUE, (235, 245, 255), [
                     ("• W A S D / Panah: Gerakkan Bolu", COLOR_TEXT),
                     ("• E: Buka Peti / Masuk Menara Kuno", COLOR_TEXT),
                     ("• SPASI: Tiup Peluit (pancing NPC 12 ubin)", COLOR_BLUE),
-                    ("• TAB: Buka / tutup panel Inspektor AI", COLOR_TEXT_SUB),
-                    ("• Scroll / +/-: Zoom kamera peta", COLOR_TEXT_SUB),
+                    ("• F: Pindai Sonar Bayesian (cari Relik)", COLOR_BLUE),
+                    ("• Klik Peta: Inspeksi Pohon/Bangunan/Terrain", COLOR_TEXT_SUB),
+                    ("• TAB / Scroll: Buka-tutup Panel / Zoom Peta", COLOR_TEXT_SUB),
                 ]),
-                ("Taktik Stealth & Peluit", "TIPS", COLOR_GREEN, (232, 248, 236), [
-                    ("• Masuk ke ubin semak-semak untuk bersembunyi (NPC kehilangan jejak jika tidak menempel).", COLOR_TEXT),
-                    ("• Tiup peluit [SPASI] dari jarak aman untuk menarik NPC menjauh dari peti!", COLOR_GREEN),
-                    ("• Saat peti dibuka, penjaga sektor itu langsung menyergap selama beberapa detik sebelum kembali waspada.", COLOR_TEXT_SUB),
+                ("Stealth, Sonar & UI Panel", "TIPS", COLOR_GREEN, (232, 248, 236), [
+                    ("• Masuk ke ubin semak-semak untuk bersembunyi (aman kecuali jarak 1 ubin).", COLOR_TEXT),
+                    ("• Sonar [F] senyap (tidak memancing NPC) dan menyalakan heatmap probabilitas Relik.", COLOR_GREEN),
+                    ("• Geser garis tepi kanan panel untuk memperlebar tab, dan klik [?] untuk glosarium tab.", COLOR_TEXT_SUB),
                 ]),
                 ("Kontrol Pre-Battle & Duel", "DUEL", COLOR_PURPLE, (248, 235, 252), [
-                    ("• R (Pre-Battle): Acak ulang skuad lawan", COLOR_TEXT),
-                    ("• T (Pre-Battle): Buka Pohon CSP & Local Search", COLOR_PURPLE),
-                    ("• SPASI (Pre-Battle): Mulai pertarungan", COLOR_TEXT),
+                    ("• R (Pre-Battle): Acak ulang skuad | T: Visualizer CSP", COLOR_TEXT),
+                    ("• SPASI (Pre-Battle): Mulai duel (termasuk Boss)", COLOR_TEXT),
                     ("• 1 / 2 / 3 / 4 (Duel): Serang, Heavy, Bertahan, Potion", COLOR_TEXT_SUB),
-                    ("• H / K / P: Buka Panduan / Pohon Logic / Pohon PDDL", COLOR_TEXT_SUB),
+                    ("• Akhir Duel: Pop-up Ulangi Duel [R] / Keluar [ESC]", COLOR_PURPLE),
+                    ("• H / K / P: Panduan / Pohon Logic / Pohon PDDL", COLOR_TEXT_SUB),
                 ]),
             ]
             add_grid_rows(row_specs, cols=3)
@@ -392,19 +393,19 @@ class GuideModal:
         elif self.active_tab == 1:
             tab_specs = [
                 ("Tab 1: Hero Companion (*)", "GAME", COLOR_GOLD, (252, 243, 218), [
-                    ("• Memantau HP Bolu, jumlah Kunci Rune (0/3), Peti Terbuka, serta isi Tas Inventaris.", COLOR_TEXT),
-                    ("• Tersedia tombol cepat Panggil NPC [SPACE].", COLOR_TEXT_SUB),
+                    ("• Memantau HP Bolu, Kunci Rune (0/3), Peti Terbuka, & Tas Inventaris (klik item untuk detail efek).", COLOR_TEXT),
+                    ("• Tersedia tombol slide < > dan tombol cepat Panggil NPC [SPACE].", COLOR_TEXT_SUB),
                 ]),
                 ("Tab 2: Search (Pathfinding)", "MATERI 01-03", COLOR_BLUE, (235, 245, 255), [
-                    ("• Pilih algoritma UCS atau A* (Manhattan, Euclidean, Chebyshev) serta Target NPC Fokus (Auto / Oyen / Kuro / Shiro).", COLOR_TEXT),
+                    ("• Pilih UCS atau A* (Manhattan, Euclidean, Chebyshev), Target NPC Fokus, & Toggle Jalur di Peta (Ctrl).", COLOR_TEXT),
                     ("• Menampilkan jalur biru, area ekspansi kuning, Total Bobot medan, dan penghematan simpul vs UCS.", COLOR_TEXT_SUB),
                 ]),
                 ("Tab 3: Minimax (Duel AI)", "MATERI 04", COLOR_PURPLE, (248, 235, 252), [
-                    ("• Aktif saat duel: ubah algoritma (Minimax, Alpha-Beta Pruning, Expectimax), Depth (2-6), Evaluasi, & Move Ordering.", COLOR_TEXT),
-                    ("• Tekan tombol Pohon Keputusan untuk melihat cabang MAX/MIN/CHANCE & pemangkasan.", COLOR_TEXT_SUB),
+                    ("• Aktif saat duel: ubah algoritma (Minimax, Alpha-Beta, Expectimax), Depth (1-8), Evaluasi, & Move Ordering.", COLOR_TEXT),
+                    ("• Tekan Pohon Keputusan [T] untuk melihat cabang MAX/MIN/CHANCE & pemangkasan.", COLOR_TEXT_SUB),
                 ]),
                 ("Tab 4: CSP & Local Search", "MATERI 05-06", COLOR_GREEN, (232, 248, 236), [
-                    ("• Memilih optimizer Local Search (Hill Climbing, Sideways, Random Restart, SA, GA) & slider Target Difficulty.", COLOR_TEXT),
+                    ("• Memilih 5 optimizer Local Search, slider Target Difficulty (Manual/Adaptif + tombol Auto), & Acak Ulang [R].", COLOR_TEXT),
                     ("• Memvalidasi aturan legalitas tim C1-C8 & tombol Visualizer [T] animasi langkah CSP.", COLOR_TEXT_SUB),
                 ]),
                 ("Tab 5: Logic KB (TELL -> ASK)", "MATERI 07", COLOR_GOLD, (252, 243, 218), [
@@ -412,17 +413,16 @@ class GuideModal:
                     ("• Klik tombol / tekan [K] untuk melihat Pohon Resolusi Refutasi (Klausa Kosong).", COLOR_TEXT_SUB),
                 ]),
                 ("Tab 6: Planning (PDDL)", "MATERI 08", COLOR_BLUE, (235, 245, 255), [
-                    ("• Memilih mesin perencana (Forward Progression A* vs Backward Regression STRIPS) untuk taktik pulau & rotasi duel.", COLOR_TEXT),
+                    ("• Memilih Forward Progression A* vs Backward Regression STRIPS untuk taktik pulau & rotasi duel.", COLOR_TEXT),
                     ("• Klik tombol / tekan [P] untuk inspeksi aksi STRIPS, Preconditions, Effects, dan State Fluents.", COLOR_TEXT_SUB),
                 ]),
-                ("Tab 7: Settings & ? Panduan", "KONTROL", COLOR_TEXT_SUB, (240, 235, 224), [
-                    ("• Settings (gir di pojok kiri bawah): mengatur volume musik latar (BGM) & melihat informasi proyek.", COLOR_TEXT),
-                    ("• Tombol (?) di NavRail kiri atau [H] membuka Buku Panduan ini kapan saja.", COLOR_TEXT_SUB),
+                ("Tab 7: Uncertainty (M9)", "MATERI 09", COLOR_GREEN, (232, 248, 236), [
+                    ("• Mengatur Akurasi Sensor Sonar (60%-95%), memantau Scan, Sinyal, Puncak Peluang, Entropi, & Top-3 lokasi.", COLOR_TEXT),
+                    ("• Tombol Pindai Sonar [F] & Heatmap: ON/OFF untuk menampilkan kabut probabilitas & posisi Relik.", COLOR_TEXT_SUB),
                 ]),
-                ("Pintasan Visualizer Pohon", "SHORTCUT", COLOR_PURPLE, (248, 235, 252), [
-                    ("• [T] di Pre-Battle -> Visualizer Pohon Backtracking CSP & Grafik Local Search.", COLOR_TEXT),
-                    ("• [K] -> Pohon Resolusi Refutasi Logic KB.", COLOR_TEXT),
-                    ("• [P] -> Pohon Perencanaan PDDL STRIPS (klik simpul untuk detail).", COLOR_TEXT),
+                ("Tab 8: Settings, [?] & Panduan", "KONTROL", COLOR_TEXT_SUB, (240, 235, 224), [
+                    ("• Settings (gir di kiri bawah): mengatur volume BGM/SFX & tombol Reset Status Peti Harta & Hero.", COLOR_TEXT),
+                    ("• Tombol [?] di header tiap tab membuka glosarium istilah; [H] membuka Buku Panduan ini.", COLOR_TEXT_SUB),
                 ]),
             ]
             add_grid_rows(tab_specs, cols=2)
@@ -451,7 +451,11 @@ class GuideModal:
                 ]),
                 ("Materi 08: Classical Planning (PDDL)", "TAKTIK STRIPS", COLOR_BLUE, (235, 245, 255), [
                     ("• Metode: Forward State-Space Progression (A*) & Backward Regression STRIPS.", COLOR_TEXT),
-                    ("• Implementasi: Rencana pengamanan pulau saat peti dicuri & rotasi darurat tim (SwapRetreat -> CastDefend -> HealTeammate) saat HP kritis.", COLOR_TEXT_SUB),
+                    ("• Implementasi: Rencana pengamanan pulau saat peti dicuri & rotasi darurat tim (SwapRetreat -> CastDefend -> HealTeammate).", COLOR_TEXT_SUB),
+                ]),
+                ("Materi 09: Decision Under Uncertainty", "BAYES SONAR", COLOR_GREEN, (232, 248, 236), [
+                    ("• Metode: Bayesian Belief Filtering (Prior -> Observation Model P(e|X) -> Posterior) & Entropi Shannon.", COLOR_TEXT),
+                    ("• Implementasi: Melacak Relik Ikan Emas acak lewat sinyal sonar [F] ber-noise (+-1 band) dengan heatmap kabut gradien.", COLOR_TEXT_SUB),
                 ]),
             ]
             add_grid_rows(ai_specs, cols=2)

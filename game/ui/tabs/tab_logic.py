@@ -32,6 +32,9 @@ def _clean_cnf_str(raw_s: str) -> str:
         ("Unopened_A", "Safe(A)"),
         ("Unopened_B", "Safe(B)"),
         ("Unopened_C", "Safe(C)"),
+        ("HasKey_A", "Key(A)"),
+        ("HasKey_B", "Key(B)"),
+        ("HasKey_C", "Key(C)"),
         ("∨", " v "),
     ]
     s = raw_s
@@ -82,11 +85,12 @@ class TabLogic:
         font_title = self.fonts.get("title") or pygame.font.Font(None, 19)
 
         cx = self.rect.x + 12
-        cy = self.rect.y + 12
+        cy = self.rect.y + 10
         card_w = self.rect.width - 24
+        line_h = max(18, font_tiny.get_height() + 3)
 
         # 1. KARTU PERSEPSI SENSORIK (TELL)
-        card_tell_h = 108
+        card_tell_h = 82 + line_h + 6
         draw_card(surface, pygame.Rect(cx, cy, card_w, card_tell_h), config.COLOR_CARD_BG,
                   border_color=config.COLOR_CARD_BORDER, border_radius=8)
 
@@ -120,8 +124,10 @@ class TabLogic:
         render_fitted_text(surface, font_tiny, kb_fact, config.COLOR_TEXT_SECONDARY, (cx + 14, cy + 82), card_w - 28)
 
         # 2. KARTU BASIS ATURAN LOGIKA (CNF RULES)
-        cy += card_tell_h + 12
-        card_cnf_h = 135
+        cy += card_tell_h + 8
+        rule_h = max(26, font_tiny.get_height() + 10)
+        rule_step = rule_h + 4
+        card_cnf_h = 25 + 4 * rule_step + 4
         draw_card(surface, pygame.Rect(cx, cy, card_w, card_cnf_h), config.COLOR_CARD_BG,
                   border_color=config.COLOR_CARD_BORDER, border_radius=8)
 
@@ -129,25 +135,31 @@ class TabLogic:
         surface.blit(cnf_title, (cx + (card_w - cnf_title.get_width()) // 2, cy + 6))
 
         if mgr and mgr.kb.rules_meta:
-            cnf_rules = [(_clean_cnf_str(r["cnf_str"]), r["desc"]) for r in mgr.kb.rules_meta[:3]]
+            selected_rules = list(mgr.kb.rules_meta[:3])
+            portal_rule = next((r for r in mgr.kb.rules_meta if r.get("id") == "R6_PORTAL"), None)
+            if portal_rule and portal_rule not in selected_rules:
+                selected_rules.append(portal_rule)
+            cnf_rules = [(f"{r['id']}: {_clean_cnf_str(r['cnf_str'])}", r["desc"]) for r in selected_rules]
         else:
             cnf_rules = [
                 ("R1: ~Open(A) v Alert(K)", "Kuro bertindak saat Peti A terusik"),
                 ("R2: ~Alert(K) v Chaser(K)", "Penugasan mode pengejar agresif"),
                 ("R3: ~Alert(K) v Guard(S)", "Shiro siaga menjaga peti tersisa"),
+                ("R6_PORTAL: ~Key(A) v ~Key(B) v ~Key(C) v PortalActive", "Portal terbuka dengan 3 Kunci Rune"),
             ]
 
-        ry = cy + 28
+        ry = cy + 25
         inner_w = card_w - 20
-        for rule_text, rule_desc in cnf_rules:
-            r_rect = pygame.Rect(cx + 10, ry, inner_w, 30)
+        for rule_text, _rule_desc in cnf_rules:
+            r_rect = pygame.Rect(cx + 10, ry, inner_w, rule_h)
             draw_card(surface, r_rect, (250, 246, 238), border_color=(226, 216, 202), border_radius=4)
-            render_fitted_text(surface, font_tiny, rule_text, config.COLOR_ACCENT_BLUE, (r_rect.x + 8, r_rect.y + 7), inner_w - 16)
-            ry += 34
+            render_fitted_text(surface, font_tiny, rule_text, config.COLOR_ACCENT_BLUE, (r_rect.x + 8, r_rect.y + 5), inner_w - 16)
+            ry += rule_step
 
         # 3. KARTU INFERENSI RESOLUSI REFUTASI
-        cy += card_cnf_h + 12
-        card_res_h = 120
+        cy += card_cnf_h + 8
+        step_h = max(21, font_tiny.get_height() + 4)
+        card_res_h = 26 + 4 * step_h + 6
         draw_card(surface, pygame.Rect(cx, cy, card_w, card_res_h), config.COLOR_CARD_BG,
                   border_color=config.COLOR_CARD_BORDER, border_radius=8)
 
@@ -173,16 +185,20 @@ class TabLogic:
         for step_text, is_contra in steps:
             col = config.COLOR_STATUS_SUCCESS if is_contra else config.COLOR_TEXT_PRIMARY
             render_fitted_text(surface, font_tiny, step_text, col, (cx + 14, sy), card_w - 28)
-            sy += 21
+            sy += step_h
 
         # 4. KARTU KESIMPULAN AKSI (ASK RESULTS)
-        cy += card_res_h + 12
-        card_ask_h = 92
+        cy += card_res_h + 8
+        ask_step = max(18, font_tiny.get_height() + 3)
+        card_ask_h = 28 + 4 * ask_step + 8
         draw_card(surface, pygame.Rect(cx, cy, card_w, card_ask_h), config.COLOR_CARD_BG,
                   border_color=config.COLOR_CARD_BORDER, border_radius=8)
 
         ask_title = font_tiny.render("KESIMPULAN AKSI (ASK):", True, config.COLOR_ACCENT_GOLD)
         surface.blit(ask_title, (cx + 12, cy + 8))
+
+        keys_count = len(opened)
+        portal_active = mgr.can_open_portal()[0] if (mgr and hasattr(mgr, "can_open_portal")) else (keys_count >= 3)
 
         if mgr:
             kuro_role = "• Kuro -> MODE CHASER (Kejar Bolu)" if mgr.chaser_assigned else "• Kuro -> PATROLI TEBING UTARA"
@@ -192,13 +208,26 @@ class TabLogic:
             kuro_role = "• Kuro -> MODE CHASER (Kejar Bolu)" if opened else "• Kuro -> PATROLI TEBING UTARA"
             shiro_role = "• Shiro -> TIGHT GUARD (Jaga Peti 2)" if opened else "• Shiro -> PATROLI DERMAGA"
             oyen_role = "• Oyen -> TIGHT GUARD (Jaga Peti 3)" if opened else "• Oyen -> PATROLI HUTAN"
+        portal_role = (
+            "• Portal (R6) -> TERBUKA (3/3 Kunci)"
+            if portal_active
+            else f"• Portal (R6) -> TERSEGEL ({keys_count}/3 Kunci)"
+        )
 
         render_fitted_text(surface, font_tiny, kuro_role, config.COLOR_STATUS_DANGER if opened else config.COLOR_TEXT_PRIMARY, (cx + 14, cy + 28), card_w - 28)
-        render_fitted_text(surface, font_tiny, shiro_role, config.COLOR_ACCENT_BLUE, (cx + 14, cy + 46), card_w - 28)
-        render_fitted_text(surface, font_tiny, oyen_role, config.COLOR_ACCENT_GOLD, (cx + 14, cy + 64), card_w - 28)
+        render_fitted_text(surface, font_tiny, shiro_role, config.COLOR_ACCENT_BLUE, (cx + 14, cy + 28 + ask_step), card_w - 28)
+        render_fitted_text(surface, font_tiny, oyen_role, config.COLOR_ACCENT_GOLD, (cx + 14, cy + 28 + ask_step * 2), card_w - 28)
+        render_fitted_text(
+            surface,
+            font_tiny,
+            portal_role,
+            config.COLOR_STATUS_SUCCESS if portal_active else config.COLOR_TEXT_SECONDARY,
+            (cx + 14, cy + 28 + ask_step * 3),
+            card_w - 28,
+        )
 
-        cy += card_ask_h + 12
-        self.btn_proof_modal.rect = pygame.Rect(cx, cy, card_w, 38)
+        cy += card_ask_h + 10
+        self.btn_proof_modal.rect = pygame.Rect(cx, cy, card_w, 36)
         self.btn_proof_modal.draw(surface)
 
     def draw_popups(self, surface: pygame.Surface) -> None:

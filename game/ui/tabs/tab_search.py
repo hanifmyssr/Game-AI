@@ -110,7 +110,8 @@ class TabSearch:
         font_title = self.fonts.get("title") or pygame.font.Font(None, 19)
 
         cx = self.rect.x + 12
-        cy = self.rect.y + 12
+        compact = self.rect.height < 640
+        cy = self.rect.y + (8 if compact else 12)
         card_w = self.rect.width - 24
 
         cur_mode = getattr(self.app, "game_mode", "EXPLORATION")
@@ -119,27 +120,27 @@ class TabSearch:
             "Pathfinding peta aktif saat fase eksplorasi.", font_tiny,
         )
         cy += banner_h
-        gap = 8 if banner_h > 0 else 12
+        gap = 5 if compact else (8 if banner_h > 0 else 12)
 
         # 1. KARTU PILIH ALGORITMA & TARGET NPC FOKUS
-        card_algo_h = 144
+        card_algo_h = 128 if compact else 144
         draw_card(surface, pygame.Rect(cx, cy, card_w, card_algo_h), config.COLOR_CARD_BG,
                   border_color=config.COLOR_CARD_BORDER, border_radius=8)
         lbl_algo = font_sm.render("Pilih Algoritma AI:", True, config.COLOR_TEXT_PRIMARY)
-        surface.blit(lbl_algo, (cx + 12, cy + 8))
+        surface.blit(lbl_algo, (cx + 12, cy + 6 if compact else cy + 8))
 
-        self.dropdown_algo.rect = pygame.Rect(cx + 10, cy + 32, card_w - 20, 34)
+        self.dropdown_algo.rect = pygame.Rect(cx + 10, cy + (26 if compact else 32), card_w - 20, 30 if compact else 34)
         self.dropdown_algo.draw(surface)
 
         lbl_focus = font_sm.render("Target NPC Fokus:", True, config.COLOR_TEXT_PRIMARY)
-        surface.blit(lbl_focus, (cx + 12, cy + 74))
+        surface.blit(lbl_focus, (cx + 12, cy + (64 if compact else 74)))
 
-        self.dropdown_focus.rect = pygame.Rect(cx + 10, cy + 98, card_w - 20, 34)
+        self.dropdown_focus.rect = pygame.Rect(cx + 10, cy + (84 if compact else 98), card_w - 20, 30 if compact else 34)
         self.dropdown_focus.draw(surface)
 
         # 2. KARTU METRIK JALUR (GRID 2x2)
         cy += card_algo_h + gap
-        card_m_h = 132
+        card_m_h = 120 if compact else 132
         draw_card(surface, pygame.Rect(cx, cy, card_w, card_m_h), config.COLOR_CARD_BG,
                   border_color=config.COLOR_CARD_BORDER, border_radius=8)
 
@@ -158,9 +159,9 @@ class TabSearch:
         cur_cost = comp_data.get("cur_cost", 0.0) if comp_data else 0.0
 
         tile_w = (card_w - 28) // 2
-        tile_h = 44
-        ty1 = cy + 28
-        ty2 = ty1 + tile_h + 6
+        tile_h = 40 if compact else 44
+        ty1 = cy + (24 if compact else 28)
+        ty2 = ty1 + tile_h + (4 if compact else 6)
 
         draw_metric_tile(surface, pygame.Rect(cx + 10, ty1, tile_w, tile_h),
                          "NODE DIEKSPANSI", f"{expanded_count} node",
@@ -184,26 +185,26 @@ class TabSearch:
 
         # 3. KARTU BOBOT MEDAN (TERRAIN COST)
         cy += card_m_h + gap
-        card_cost_h = 84
+        card_cost_h = 76 if compact else 84
         draw_card(surface, pygame.Rect(cx, cy, card_w, card_cost_h), config.COLOR_CARD_BG,
                   border_color=config.COLOR_CARD_BORDER, border_radius=8)
 
         c_title = font_tiny.render("── BOBOT MEDAN (TERRAIN COST) ──", True, config.COLOR_TEXT_SECONDARY)
         surface.blit(c_title, (cx + (card_w - c_title.get_width()) // 2, cy + 6))
 
-        draw_metric_tile(surface, pygame.Rect(cx + 10, cy + 28, tile_w, tile_h),
+        draw_metric_tile(surface, pygame.Rect(cx + 10, cy + (24 if compact else 28), tile_w, tile_h),
                          "JALAN TANAH", "Cost 1.0 (Cepat)",
                          val_color=config.COLOR_STATUS_SUCCESS,
                          font_lbl=font_tiny, font_val=font_tiny)
 
-        draw_metric_tile(surface, pygame.Rect(cx + 18 + tile_w, cy + 28, tile_w, tile_h),
+        draw_metric_tile(surface, pygame.Rect(cx + 18 + tile_w, cy + (24 if compact else 28), tile_w, tile_h),
                          "RUMPUT LIAR", "Cost 2.0 (Normal)",
                          val_color=config.COLOR_ACCENT_GOLD,
                          font_lbl=font_tiny, font_val=font_tiny)
 
         # 4. KARTU PERBANDINGAN KOMPUTASI (UCS vs A*)
         cy += card_cost_h + gap
-        card_comp_h = 128 if banner_h > 0 else 145
+        card_comp_h = 114 if compact else (128 if banner_h > 0 else 145)
         draw_card(surface, pygame.Rect(cx, cy, card_w, card_comp_h), config.COLOR_CARD_BG,
                   border_color=config.COLOR_CARD_BORDER, border_radius=8)
 
@@ -214,20 +215,20 @@ class TabSearch:
         ucs_c = comp_data.get("ucs_cost", 0.0) if comp_data else 0.0
 
         # Row 1: UCS
-        r1_rect = pygame.Rect(cx + 10, cy + 30, card_w - 20, 28)
+        r1_rect = pygame.Rect(cx + 10, cy + (26 if compact else 30), card_w - 20, 24 if compact else 28)
         draw_card(surface, r1_rect, (250, 246, 238), border_color=(226, 216, 202), border_radius=5)
         u_txt = font_tiny.render("• UCS (h=0)", True, (190, 110, 15))
         u_val = font_tiny.render(f"{ucs_exp} node │ Cost {ucs_c:.1f}", True, config.COLOR_TEXT_PRIMARY)
-        surface.blit(u_txt, (r1_rect.x + 8, r1_rect.y + 6))
-        surface.blit(u_val, (r1_rect.right - u_val.get_width() - 8, r1_rect.y + 6))
+        surface.blit(u_txt, (r1_rect.x + 8, r1_rect.y + (4 if compact else 6)))
+        surface.blit(u_val, (r1_rect.right - u_val.get_width() - 8, r1_rect.y + (4 if compact else 6)))
 
         # Row 2: A* Terpilih
-        r2_rect = pygame.Rect(cx + 10, cy + 64, card_w - 20, 28)
+        r2_rect = pygame.Rect(cx + 10, cy + (54 if compact else 64), card_w - 20, 24 if compact else 28)
         draw_card(surface, r2_rect, (250, 246, 238), border_color=(226, 216, 202), border_radius=5)
         a_txt = font_tiny.render("• A* Terpilih", True, config.COLOR_ACCENT_BLUE)
         a_val = font_tiny.render(f"{expanded_count} node │ Cost {cur_cost:.1f}", True, config.COLOR_TEXT_PRIMARY)
-        surface.blit(a_txt, (r2_rect.x + 8, r2_rect.y + 6))
-        surface.blit(a_val, (r2_rect.right - a_val.get_width() - 8, r2_rect.y + 6))
+        surface.blit(a_txt, (r2_rect.x + 8, r2_rect.y + (4 if compact else 6)))
+        surface.blit(a_val, (r2_rect.right - a_val.get_width() - 8, r2_rect.y + (4 if compact else 6)))
 
         if ucs_exp > 0 and expanded_count > 0:
             saving = max(0, int(round((1.0 - (expanded_count / float(ucs_exp))) * 100)))
@@ -238,11 +239,11 @@ class TabSearch:
             eff_color = config.COLOR_TEXT_MUTED
 
         eff_surf = font_tiny.render(eff_str, True, eff_color)
-        eff_y = cy + (98 if banner_h > 0 else 106)
+        eff_y = cy + (84 if compact else (98 if banner_h > 0 else 106))
         surface.blit(eff_surf, (cx + (card_w - eff_surf.get_width()) // 2, eff_y))
 
         cy += card_comp_h + gap
-        self.btn_toggle_path.rect = pygame.Rect(cx, cy, card_w, 38)
+        self.btn_toggle_path.rect = pygame.Rect(cx, cy, card_w, 34 if compact else 38)
         self.btn_toggle_path.draw(surface)
 
     def draw_popups(self, surface: pygame.Surface) -> None:

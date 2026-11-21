@@ -200,9 +200,21 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
 
     def __init__(self):
         getattr(pygame, "init")()
+        init_w, init_h = config.WINDOW_WIDTH, config.WINDOW_HEIGHT
+        if os.environ.get("SDL_VIDEODRIVER") != "dummy" and hasattr(pygame.display, "get_desktop_sizes"):
+            try:
+                sizes = pygame.display.get_desktop_sizes()
+                if sizes:
+                    desk_w, desk_h = sizes[0]
+                    init_w = max(800, min(init_w, desk_w - 40))
+                    init_h = max(600, min(init_h, desk_h - 80))
+            except Exception:
+                pass
         self.screen = pygame.display.set_mode(
-            (config.WINDOW_WIDTH, config.WINDOW_HEIGHT), RESIZABLE
+            (init_w, init_h), RESIZABLE
         )
+        self._windowed_size = (init_w, init_h)
+        self._last_screen_size = self.screen.get_size()
         pygame.display.set_caption("Bakekok - AI Pathfinding & Minimax Duel")
         self.clock = pygame.time.Clock()
         self.running = True
@@ -620,6 +632,9 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
 
     def _on_window_resized(self, w: int, h: int) -> None:
         """Sinkronisasi kamera dan ukuran panel UI terpadu (NavRail & InspectorDock) saat resolusi berubah."""
+        self._last_screen_size = (w, h)
+        if not getattr(self, "is_fullscreen", False):
+            self._windowed_size = (w, h)
         ui_scale = config.update_ui_scale(w, h)
         if hasattr(self, "fonts") and self.fonts:
             self.fonts.update(self._build_fonts(ui_scale))
@@ -631,9 +646,18 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
         """Mengalihkan mode fullscreen / windowed resizable (F11)."""
         self.is_fullscreen = not getattr(self, "is_fullscreen", False)
         if self.is_fullscreen:
+            self._windowed_size = self.screen.get_size()
             self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
         else:
-            self.screen = pygame.display.set_mode((config.WINDOW_WIDTH, config.WINDOW_HEIGHT), RESIZABLE)
+            win_w, win_h = getattr(self, "_windowed_size", (config.WINDOW_WIDTH, config.WINDOW_HEIGHT))
+            self.screen = pygame.display.set_mode((win_w, win_h), RESIZABLE)
+        # Buang event resize usang dari transisi mode layar
+        resize_ev_types = [VIDEORESIZE]
+        for ev_name in ("WINDOWRESIZED", "WINDOWSIZECHANGED"):
+            ev_t = getattr(pygame, ev_name, None)
+            if ev_t is not None:
+                resize_ev_types.append(ev_t)
+        pygame.event.clear(resize_ev_types)
         w, h = self.screen.get_size()
         self._on_window_resized(w, h)
 
@@ -819,7 +843,7 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
 
                 target_encounter_npc = pixel_collision_npc or (closest_npc if min_dist <= 1 else None)
 
-                if target_encounter_npc and not self.battle_reentry_locked:
+                if target_encounter_npc and not self.battle_reentry_locked and not self.gacha_active and not getattr(self, "gacha_showcase", None):
                     # Tabrakan fisik terdeteksi! Kunci seketika gerakan kedua entitas agar tidak saling tembus
                     self.player.moving = False
                     self.player.move_t = 1.0
@@ -959,9 +983,27 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
 
             if event.type == QUIT:
                 self.running = False
-            elif event.type == VIDEORESIZE:
-                self.screen = pygame.display.set_mode(event.size, RESIZABLE)
-                self._on_window_resized(event.size[0], event.size[1])
+            elif event.type in (
+                VIDEORESIZE,
+                getattr(pygame, "WINDOWRESIZED", -1),
+                getattr(pygame, "WINDOWSIZECHANGED", -1),
+                getattr(pygame, "WINDOWMAXIMIZED", -1),
+                getattr(pygame, "WINDOWRESTORED", -1),
+            ):
+                if getattr(self, "is_fullscreen", False):
+                    cur_surf = pygame.display.get_surface()
+                    if cur_surf is not None:
+                        self.screen = cur_surf
+                else:
+                    cur_surf = pygame.display.get_surface()
+                    ev_size = getattr(event, "size", None)
+                    if cur_surf is not None:
+                        self.screen = cur_surf
+                    elif ev_size:
+                        self.screen = pygame.display.set_mode(ev_size, RESIZABLE)
+                w, h = self.screen.get_size()
+                if (w, h) != getattr(self, "_last_screen_size", None):
+                    self._on_window_resized(w, h)
             elif event.type == MOUSEWHEEL:
                 m_pos = pygame.mouse.get_pos()
                 if self.game_mode == "PRE_BATTLE":
@@ -1276,10 +1318,12 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
                     tab_search.btn_toggle_path.text = f"Toggle Jalur di Peta: {'AKTIF' if new_vis else 'OFF'}"
                 return
 
-            if self._is_world_paused():
-                return
-
-            if key == K_e:
+            modal_open = (
+                (getattr(self, "logic_overlay", None) and self.logic_overlay.visible)
+                or (getattr(self, "planning_overlay", None) and self.planning_overlay.visible)
+                or (getattr(self, "overlay", None) and getattr(self.overlay, "graph_modal", None) and self.overlay.graph_modal.visible)
+            )
+            if key == K_e and not modal_open:
                 # Buka peti harta jika berjarak <= 1 langkah ubin (termasuk diagonal)
                 for ch in self.chests:
                     if not ch["opened"]:
@@ -1294,6 +1338,9 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
                 if max(abs(self.player.grid[0] - tx), abs(self.player.grid[1] - ty)) <= 2:
                     self._interact_tower_portal()
                     return
+                return
+
+            if self._is_world_paused():
                 return
 
             mapping = {
@@ -1315,6 +1362,9 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
                 self.enter_pre_battle()
 
     def _draw(self):
+        cur_size = self.screen.get_size()
+        if cur_size != getattr(self, "_last_screen_size", None):
+            self._on_window_resized(cur_size[0], cur_size[1])
         self.screen.fill((118, 186, 178) if self.game_mode == "EXPLORATION" else config.BG_COLOR)
 
         # 1. Gambar peta di sisi kanan (khusus mode eksplorasi)

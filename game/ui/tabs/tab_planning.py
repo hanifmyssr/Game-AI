@@ -126,14 +126,6 @@ class TabPlanning:
 
         # 2. KARTU FLUENTS AWAL & SASARAN (S0 vs GOAL) - DENGAN PROTEKSI MULTI-LINE ANTI-OVERFLOW
         cy += card_eng_h + 12
-        card_fluents_h = 138
-        fl_rect = pygame.Rect(cx, cy, card_w, card_fluents_h)
-        draw_card(surface, fl_rect, config.COLOR_CARD_BG,
-                  border_color=config.COLOR_CARD_BORDER, border_radius=8)
-
-        fl_title = font_tiny.render("── STATE FLUENTS (s0 vs Goal) ──", True, config.COLOR_TEXT_SECONDARY)
-        surface.blit(fl_title, (cx + (card_w - fl_title.get_width()) // 2, cy + 6))
-
         mode_str = getattr(self.app, "game_mode", "EXPLORATION")
         plan_res = getattr(self.app, "latest_plan_result", None)
 
@@ -157,19 +149,31 @@ class TabPlanning:
                 "* Goal: Hadang Bolu & Amankan Peti B, C",
             ]
 
+        line_h = max(18, font_tiny.get_height() + 3)
+        hdr_h = max(18, font_tiny.get_height() + 3)
+        card_fluents_h = 28 + hdr_h + len(s0_lines) * line_h + 4 + hdr_h + len(goal_lines) * line_h + 8
+        fl_rect = pygame.Rect(cx, cy, card_w, card_fluents_h)
+        draw_card(surface, fl_rect, config.COLOR_CARD_BG,
+                  border_color=config.COLOR_CARD_BORDER, border_radius=8)
+
+        fl_title = font_tiny.render("── STATE FLUENTS (s0 vs Goal) ──", True, config.COLOR_TEXT_SECONDARY)
+        surface.blit(fl_title, (cx + (card_w - fl_title.get_width()) // 2, cy + 6))
+
         # Render s0
-        surface.blit(font_tiny.render("State Awal (s0):", True, config.COLOR_ACCENT_BLUE), (cx + 12, cy + 26))
-        fy = cy + 44
+        fy = cy + 26
+        surface.blit(font_tiny.render("State Awal (s0):", True, config.COLOR_ACCENT_BLUE), (cx + 12, fy))
+        fy += hdr_h
         for line in s0_lines:
             render_fitted_text(surface, font_tiny, line, config.COLOR_TEXT_PRIMARY, (cx + 14, fy), card_w - 28)
-            fy += 18
+            fy += line_h
 
         # Render Goal
-        surface.blit(font_tiny.render("Sasaran (Goal):", True, config.COLOR_ACCENT_GOLD), (cx + 12, fy + 4))
-        fy += 22
+        fy += 4
+        surface.blit(font_tiny.render("Sasaran (Goal):", True, config.COLOR_ACCENT_GOLD), (cx + 12, fy))
+        fy += hdr_h
         for line in goal_lines:
             render_fitted_text(surface, font_tiny, line, config.COLOR_STATUS_SUCCESS, (cx + 14, fy), card_w - 28)
-            fy += 18
+            fy += line_h
 
         # 3. KARTU SEKUENS RENCANA STRIPS TERBENTUK
         cy += card_fluents_h + 12

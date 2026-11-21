@@ -47,6 +47,7 @@ class InspectorDock:
         self.is_open = True  # Status buka / tutup drawer
         self.header_h = 48
 
+        self.tab_scroll_y = 0.0
         content_rect = pygame.Rect(self.rect.x, self.rect.y + self.header_h, self.rect.width, self.rect.height - self.header_h)
 
         # Inisialisasi 8 Tab
@@ -73,6 +74,8 @@ class InspectorDock:
         self.show_glossary: bool = False
         self.glossary_scroll_y: float = 0.0
         self.glossary_max_scroll: float = 0.0
+        self.tab_scroll_y: float = 0.0
+        self.tab_max_scroll: float = 0.0
 
         self.btn_collapse = UIButton(
             pygame.Rect(self.rect.right - btn_collapse_w - 10, self.rect.y + 10, btn_collapse_w, 28),
@@ -112,6 +115,7 @@ class InspectorDock:
         if tab_id in self.tabs:
             self.active_tab_id = tab_id
             self.glossary_scroll_y = 0.0
+            self.tab_scroll_y = 0.0
             self.is_open = True  # Otomatis buka jika pemain memilih tab baru
 
     def resize(self, height: int, width: Optional[int] = None, x: Optional[int] = None) -> None:
@@ -139,6 +143,7 @@ class InspectorDock:
             btn_help_w,
             btn_collapse_h,
         )
+        self.tab_scroll_y = 0.0
         content_rect = pygame.Rect(self.rect.x, self.rect.y + self.header_h, self.rect.width, self.rect.height - self.header_h)
         for tab in self.tabs.values():
             if hasattr(tab, "resize"):
@@ -233,6 +238,15 @@ class InspectorDock:
         if active_tab and active_tab.handle_event(event):
             return True
 
+        if event.type == MOUSEWHEEL:
+            mx, my = pygame.mouse.get_pos()
+            if self.rect.collidepoint((mx, my)) and self.tab_max_scroll > 0:
+                self.tab_scroll_y = max(
+                    0.0,
+                    min(self.tab_max_scroll, self.tab_scroll_y - event.y * 28.0),
+                )
+                return True
+
         if hasattr(event, "pos"):
             if self.rect.collidepoint(event.pos):
                 return True
@@ -298,7 +312,42 @@ class InspectorDock:
             )
             self.glossary_scroll_y = max(0.0, min(self.glossary_max_scroll, self.glossary_scroll_y))
         elif active_tab:
+            scroll_off = int(round(self.tab_scroll_y))
+            scrolled_rect = pygame.Rect(
+                content_rect.x,
+                content_rect.y - scroll_off,
+                content_rect.width,
+                content_rect.height,
+            )
+            if hasattr(active_tab, "rect"):
+                active_tab.rect = scrolled_rect
             active_tab.draw(surface)
+
+            # Hitung batas bawah elemen interaktif tab agar scroll aktif otomatis jika layar pendek
+            max_bottom = content_rect.bottom
+            for attr_name in dir(active_tab):
+                if attr_name.startswith(("btn_", "slider_", "dropdown_")) or attr_name in ("inv_rect",):
+                    obj = getattr(active_tab, attr_name, None)
+                    r = obj if isinstance(obj, pygame.Rect) else getattr(obj, "rect", None)
+                    if isinstance(r, pygame.Rect):
+                        # Kembalikan ke koordinat tanpa scroll untuk hitung tinggi total konten
+                        unscrolled_bottom = r.bottom + scroll_off
+                        if unscrolled_bottom > max_bottom:
+                            max_bottom = unscrolled_bottom
+            self.tab_max_scroll = max(0.0, float(max_bottom - content_rect.bottom + 14)) if max_bottom > content_rect.bottom else 0.0
+            self.tab_scroll_y = max(0.0, min(self.tab_max_scroll, self.tab_scroll_y))
+
+            if self.tab_max_scroll > 0:
+                total_h = float(content_rect.height) + self.tab_max_scroll
+                thumb_h = max(24, int(round((content_rect.height / total_h) * (content_rect.height - 12))))
+                track_h = max(1, content_rect.height - 12 - thumb_h)
+                thumb_y = content_rect.y + 6 + int(round((self.tab_scroll_y / self.tab_max_scroll) * track_h))
+                pygame.draw.rect(
+                    surface,
+                    (195, 180, 160),
+                    pygame.Rect(content_rect.right - 6, thumb_y, 4, thumb_h),
+                    border_radius=2,
+                )
         surface.set_clip(orig_clip)
         if not self.show_glossary and active_tab:
             active_tab.draw_popups(surface)

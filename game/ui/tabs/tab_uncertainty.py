@@ -230,7 +230,12 @@ class TabUncertainty:
 
         # 2. KARTU BAYESIAN BELIEF UPDATE
         cy += card_top_h + gap
-        card_bayes_h = 166
+        tile_h = max(44, font_tiny.get_height() + font_sm.get_height() + 14)
+        tile_gap = 6
+        row1_y = cy + 32
+        row2_y = row1_y + tile_h + tile_gap
+        inspect_y = row2_y + tile_h + tile_gap
+        card_bayes_h = (inspect_y - cy) + 34 + 8
         draw_card(
             surface, pygame.Rect(cx, cy, card_w, card_bayes_h), config.COLOR_CARD_BG,
             border_color=config.COLOR_CARD_BORDER, border_radius=8,
@@ -243,35 +248,35 @@ class TabUncertainty:
 
         tile_w = (card_w - 28) // 2
         draw_metric_tile(
-            surface, pygame.Rect(cx + 10, cy + 32, tile_w, 40),
+            surface, pygame.Rect(cx + 10, row1_y, tile_w, tile_h),
             "Prior Awal", f"{prior * 100:.0f}%",
             val_color=config.COLOR_TEXT_SECONDARY, font_lbl=font_tiny, font_val=font_sm,
         )
         post_col = config.COLOR_STATUS_DANGER if post >= 0.50 else config.COLOR_ACCENT_BLUE
         draw_metric_tile(
-            surface, pygame.Rect(cx + 18 + tile_w, cy + 32, tile_w, 40),
+            surface, pygame.Rect(cx + 18 + tile_w, row1_y, tile_w, tile_h),
             "Posterior P(Ambruk)", f"{post * 100:.1f}%",
             val_color=post_col, font_lbl=font_tiny, font_val=font_sm,
         )
         draw_metric_tile(
-            surface, pygame.Rect(cx + 10, cy + 78, tile_w, 40),
+            surface, pygame.Rect(cx + 10, row2_y, tile_w, tile_h),
             "Entropi H(S)", f"{ent:.2f} bit",
             val_color=config.COLOR_STATUS_SUCCESS, font_lbl=font_tiny, font_val=font_sm,
         )
         short_obs = "Retak!" if "Retak" in obs_lbl else ("Kokoh" if "Kokoh" in obs_lbl else "-")
         obs_col = config.COLOR_STATUS_DANGER if short_obs == "Retak!" else config.COLOR_ACCENT_BLUE
         draw_metric_tile(
-            surface, pygame.Rect(cx + 18 + tile_w, cy + 78, tile_w, 40),
+            surface, pygame.Rect(cx + 18 + tile_w, row2_y, tile_w, tile_h),
             "Bukti Terakhir", short_obs,
             val_color=obs_col, font_lbl=font_tiny, font_val=font_sm,
         )
 
-        self.btn_inspect.rect = pygame.Rect(cx + 10, cy + 124, card_w - 20, 34)
+        self.btn_inspect.rect = pygame.Rect(cx + 10, inspect_y, card_w - 20, 34)
         self.btn_inspect.draw(surface)
 
         # 3. KARTU EXPECTED COST & REKOMENDASI
         cy += card_bayes_h + gap
-        card_exp_h = 84
+        card_exp_h = 32 + tile_h + 8
         draw_card(
             surface, pygame.Rect(cx, cy, card_w, card_exp_h), config.COLOR_CARD_BG,
             border_color=config.COLOR_CARD_BORDER, border_radius=8,
@@ -285,13 +290,13 @@ class TabUncertainty:
 
         exp_up_str = "INF" if exp["expected_upper"] == float("inf") else f"{exp['expected_upper']:.1f}"
         draw_metric_tile(
-            surface, pygame.Rect(cx + 10, cy + 32, tile_w, 42),
+            surface, pygame.Rect(cx + 10, cy + 32, tile_w, tile_h),
             "Exp. Cost Jembatan", exp_up_str,
             val_color=config.COLOR_STATUS_DANGER if exp["recommend_detour"] else config.COLOR_ACCENT_BLUE,
             font_lbl=font_tiny, font_val=font_sm,
         )
         draw_metric_tile(
-            surface, pygame.Rect(cx + 18 + tile_w, cy + 32, tile_w, 42),
+            surface, pygame.Rect(cx + 18 + tile_w, cy + 32, tile_w, tile_h),
             "Cost Pulau Tengah", f"{exp['safe_cost']:.1f}",
             val_color=config.COLOR_STATUS_SUCCESS, font_lbl=font_tiny, font_val=font_sm,
         )

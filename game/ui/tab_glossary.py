@@ -115,12 +115,12 @@ TAB_GLOSSARY_DATA: Dict[int, Dict[str, object]] = {
     6: {
         "title": "PANDUAN: 09 UNCERTAINTY",
         "phase": "AKTIF DI EXPLORATION",
-        "purpose": "Menimbang risiko melintasi Jembatan Atas saat hujan menggunakan Bayesian Belief Update & Expected Cost.",
+        "purpose": "Menimbang risiko melintasi 3 jembatan pintas antarpulau (Atas, Kiri, Bawah) saat hujan dengan Bayesian Belief Update & Expected Cost.",
         "cards": [
             ("INFORMASI DI TAB INI", config.COLOR_ACCENT_BLUE, [
-                ("Cuaca & Status Jembatan", "Cerah/Hujan menentukan Prior awal; jembatan berstatus UTUH, RAWAN, atau AMBRUK."),
+                ("Cuaca & Pilihan Jembatan", "Pilih jembatan Atas, Kiri, atau Bawah (status UTUH, RAWAN, AMBRUK); jembatan Pulau Tengah selalu aman 0%."),
                 ("Cek Jembatan (Bayes)", "Melakukan observasi ber-noise (Derit Retak / Kokoh) untuk memperbarui Posterior P(Ambruk) & Entropi."),
-                ("Expected Cost", "Membandingkan biaya harapan lewat Jembatan Atas (risiko kehilangan item non-kunci) vs memutar aman."),
+                ("Expected Cost", "Membandingkan biaya harapan lewat jembatan pintas (risiko kehilangan 1 item non-kunci) vs memutar lewat Pulau Tengah."),
             ]),
             ("PENGERTIAN ISTILAH", config.COLOR_ACCENT_GOLD, [
                 ("Prior & Posterior", "Prior adalah peluang awal dari cuaca; Posterior adalah peluang terbaru setelah tombol Cek Jembatan."),

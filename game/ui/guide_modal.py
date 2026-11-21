@@ -211,14 +211,15 @@ class GuideModal:
                     ],
                 },
                 {
-                    "title": "Stealth & UI Panel",
+                    "title": "Stealth, Jembatan & Panel",
                     "badge": "TIPS",
                     "accent": COLOR_GREEN,
                     "badge_bg": (232, 246, 236),
-                    "summary": "Manfaatkan semak-semak untuk bersembunyi serta panel inspektor yang bisa dilebarkan.",
+                    "summary": "Sembunyi di semak, waspadai 3 jembatan rawan saat hujan, & lebarkan panel inspektor.",
                     "full_width": False,
                     "bullets": [
                         ("Bersembunyi di Semak: Masuk ke ubin semak-semak agar tidak terdeteksi penjaga (aman kecuali jarak 1 ubin).", COLOR_TEXT),
+                        ("Jembatan Saat Hujan (M9): Jembatan Atas, Kiri, & Bawah berisiko ambruk (hilang 1 item non-kunci); cek di Tab 7 atau memutar lewat Pulau Tengah.", COLOR_GREEN),
                         ("Panel Inspektor Fleksibel: Geser garis tepi kanan panel untuk memperlebar tab, dan klik [?] untuk glosarium istilah.", COLOR_TEXT_SUB),
                     ],
                 },
@@ -321,11 +322,11 @@ class GuideModal:
                     "badge": "MATERI 09",
                     "accent": COLOR_GREEN,
                     "badge_bg": (232, 246, 236),
-                    "summary": "Pantau cuaca, status Jembatan Atas, tombol Cek Jembatan (Bayes), & Expected Cost.",
+                    "summary": "Pilih Jembatan (Atas/Kiri/Bawah), Cek Jembatan (Bayes), Expected Cost, & kontrol cuaca hujan.",
                     "full_width": False,
                     "bullets": [
-                        ("Bayesian Belief Update: Gunakan tombol Cek Jembatan untuk memperbarui Prior -> Posterior P(Ambruk) & Entropi.", COLOR_TEXT),
-                        ("Expected Cost & Slider: Bandingkan jalur pintas atas vs memutar aman, serta atur Prior Hujan & Akurasi Sensor.", COLOR_TEXT_SUB),
+                        ("Pilih & Cek Jembatan: Pilih jembatan berisiko (Atas/Kiri/Bawah) lalu tekan Cek Jembatan untuk memperbarui Posterior P(Ambruk) & Entropi.", COLOR_TEXT),
+                        ("Expected Cost & Cuaca: Bandingkan biaya jembatan berisiko vs memutar lewat Pulau Tengah (0% ambruk), atur Prior Hujan & Akurasi Sensor.", COLOR_TEXT_SUB),
                     ],
                 },
                 {
@@ -420,11 +421,11 @@ class GuideModal:
                 "badge": "JEMBATAN BAYES",
                 "accent": COLOR_GREEN,
                 "badge_bg": (232, 246, 236),
-                "summary": "Bayesian Belief Update (Cek Jembatan), Entropi, & Expected Cost pada Jembatan Atas saat hujan.",
+                "summary": "Bayesian Belief Update (Cek Jembatan), Entropi, & Expected Cost pada 3 jembatan antarpulau.",
                 "full_width": False,
                 "bullets": [
                     ("Metode: Hidden State (RAPUH/KOKOH), Bayes' Rule via Cek Jembatan, Shannon Entropy, & Expected Cost.", COLOR_TEXT),
-                    ("Implementasi: Menimbang risiko Jembatan Atas ambruk (kehilangan 1 item non-kunci; Kunci Rune aman) vs memutar jalur aman.", COLOR_TEXT_SUB),
+                    ("Implementasi: Jembatan Atas, Kiri, & Bawah berisiko ambruk saat hujan (hilang 1 item non-kunci; Kunci Rune aman), sedangkan Pulau Tengah aman 0%.", COLOR_TEXT_SUB),
                 ],
             },
         ]

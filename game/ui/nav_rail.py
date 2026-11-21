@@ -47,7 +47,7 @@ class NavRail:
             NavTabItem(3, "CSP-LS", "⚖", "CP", "Materi 05-06: CSP & Local Search Skuad"),
             NavTabItem(4, "Logic", "🧠", "KB", "Materi 07: Logic & Knowledge Base (TELL->ASK)"),
             NavTabItem(5, "Planning", "📋", "PL", "Materi 08: Automated Planning (PDDL)"),
-            NavTabItem(6, "Uncert", "🎲", "M9", "Materi 09: Decision Under Uncertainty (Jembatan Atas & Bayes)"),
+            NavTabItem(6, "Uncert", "🎲", "M9", "Materi 09: Decision Under Uncertainty (Jembatan Antarpulau & Bayes)"),
             NavTabItem(7, "Settings", "⚙", "CF", "Pengaturan Game & Audio"),
         ]
 

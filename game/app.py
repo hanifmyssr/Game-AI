@@ -312,7 +312,7 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
 
         # Audio Manager & BGM (Musik Latar)
         self.audio = AudioManager()
-        self.audio.play_bgm(volume=0.15)
+        self.audio.play_bgm(volume=0.22)
         self.was_near_chest = False
 
         # Peti Harta Interaktif & Tas Inventory (Tahap 3 & 4)
@@ -397,7 +397,7 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
         self.planning_overlay = PlanningOverlay(self.fonts, self)
 
         # Modal Panduan Awal & Buku Panduan 3-Tab [H]
-        self.guide_modal = GuideModal(self.fonts)
+        self.guide_modal = GuideModal(self.fonts, audio=self.audio)
         self.btn_guide_pill = pygame.Rect(0, 0, 0, 0)
         if hasattr(self.overlay, "nav_rail"):
             self.overlay.nav_rail.on_guide_clicked = self.guide_modal.toggle

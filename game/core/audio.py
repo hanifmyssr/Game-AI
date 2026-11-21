@@ -40,7 +40,12 @@ class AudioManager:
         self.last_step_time = 0.0
         self.step_cooldown = 0.18
 
-        # Cache SFX
+        # Level volume user-facing (0.0 - 1.0) dengan kurva perseptual agar tidak terlalu keras
+        self.bgm_volume = 0.22
+        self.sfx_volume = 0.35
+
+        # Cache SFX: simpan (Sound, base_gain) agar set_sfx_volume bisa mengubah semua suara
+        self._sfx_entries = []
         self.dirt_sounds = []
         self.grass_sounds = []
         self.stone_sounds = []
@@ -50,6 +55,7 @@ class AudioManager:
         self.card_reveal_sound = None
 
         self._load_sounds()
+        self.set_sfx_volume(self.sfx_volume)
 
     def _load_sound_file(self, *filenames):
         """Mencoba memuat salah satu berkas dari kandidat nama yang diberikan."""
@@ -73,46 +79,60 @@ class AudioManager:
         for fn in ["dirt1.wav", "dirt2.wav", "dirt4.wav", "dirt.wav"]:
             snd = self._load_sound_file(fn)
             if snd:
-                snd.set_volume(0.38)
+                self._sfx_entries.append((snd, 0.34))
                 self.dirt_sounds.append(snd)
 
         # 2. Suara langkah di rumput (grass)
         for fn in ["grass1.wav", "grass2.wav", "grass3.wav", "grass.wav"]:
             snd = self._load_sound_file(fn)
             if snd:
-                snd.set_volume(0.32)
+                self._sfx_entries.append((snd, 0.28))
                 self.grass_sounds.append(snd)
 
         # 3. Suara langkah di batu/jembatan kayu (stone)
         for fn in ["stone1.wav", "stone2.wav", "stone3.wav"]:
             snd = self._load_sound_file(fn)
             if snd:
-                snd.set_volume(0.35)
+                self._sfx_entries.append((snd, 0.30))
                 self.stone_sounds.append(snd)
 
         # 4. Suara menang / item didapat dari peti (12_win.mp3 / 15_win.mp3)
         self.win_sound = self._load_sound_file("12_win.mp3", "15_win.mp3")
         if self.win_sound:
-            self.win_sound.set_volume(0.55)
+            self._sfx_entries.append((self.win_sound, 0.42))
 
         # 5. Suara prompt peti muncul (PURBLES_SHAKEBUTTON / PURBLES_SHAKERBUTTON)
         self.chest_prompt_sound = self._load_sound_file(
             "PURBLES_SHAKEBUTTON.wav", "PURBLES_SHAKERBUTTON.wav"
         )
         if self.chest_prompt_sound:
-            self.chest_prompt_sound.set_volume(0.45)
+            self._sfx_entries.append((self.chest_prompt_sound, 0.34))
 
         # 6. Suara acak ulang / reroll skuad (shuffle efek) & kemunculan kartu skuad
         self.reroll_sound = self._load_sound_file("PURBLES_SHAKERBUTTON.wav", "PURBLES_SHAKEBUTTON.wav")
         if self.reroll_sound:
-            self.reroll_sound.set_volume(0.40)
+            self._sfx_entries.append((self.reroll_sound, 0.30))
 
         self.card_reveal_sound = self._load_sound_file("PURBLES_LEFTARROWBUTTON.wav")
         if self.card_reveal_sound:
-            self.card_reveal_sound.set_volume(0.24)
+            self._sfx_entries.append((self.card_reveal_sound, 0.20))
 
-    def play_bgm(self, loop=-1, volume=0.30):
+    def _compute_bgm_gain(self, volume: float) -> float:
+        v = max(0.0, min(1.0, float(volume)))
+        if v <= 0.001:
+            return 0.0
+        return (v ** 1.8) * 0.22
+
+    def _compute_sfx_gain(self, volume: float) -> float:
+        v = max(0.0, min(1.0, float(volume)))
+        if v <= 0.001:
+            return 0.0
+        return (v ** 1.5) * 0.55
+
+    def play_bgm(self, loop=-1, volume=None):
         """Memutar lagu latar (BGM) Rise.mp3 / Rise.mpga."""
+        if volume is not None:
+            self.bgm_volume = max(0.0, min(1.0, float(volume)))
         if not self.enabled:
             return
         bgm_candidates = ["Rise.mp3", "Rise.mpga"]
@@ -121,17 +141,30 @@ class AudioManager:
             if os.path.exists(p):
                 try:
                     pygame.mixer.music.load(p)
-                    pygame.mixer.music.set_volume(volume)
+                    pygame.mixer.music.set_volume(self._compute_bgm_gain(self.bgm_volume))
                     pygame.mixer.music.play(loop)
                     return
                 except Exception as e:
                     pass
 
-    def set_bgm_volume(self, volume=0.20):
+    def set_bgm_volume(self, volume=0.22):
         """Mengatur tingkat volume BGM (0.0 sampai 1.0)."""
+        self.bgm_volume = max(0.0, min(1.0, float(volume)))
         if self.enabled:
             try:
-                pygame.mixer.music.set_volume(volume)
+                pygame.mixer.music.set_volume(self._compute_bgm_gain(self.bgm_volume))
+            except Exception:
+                pass
+
+    def set_sfx_volume(self, volume=0.35):
+        """Mengatur tingkat volume seluruh SFX (0.0 sampai 1.0)."""
+        self.sfx_volume = max(0.0, min(1.0, float(volume)))
+        if not self.enabled:
+            return
+        master_gain = self._compute_sfx_gain(self.sfx_volume)
+        for snd, base_gain in self._sfx_entries:
+            try:
+                snd.set_volume(base_gain * master_gain)
             except Exception:
                 pass
 

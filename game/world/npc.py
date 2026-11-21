@@ -164,11 +164,11 @@ class NPC:
                     self.chase_timer = 0.0
                     self.move_one_step_towards(self.player.grid)
         elif self.is_returning_to_patrol and not self.moving and self.waypoints:
-            # Kembali cepat ke pos rute patroli (0.28s per langkah vs 0.85s jalan santai)
             self.patrol_timer += dt
-            if self.patrol_timer >= 0.28:
+            closest_wp = min(self.waypoints, key=lambda wp: abs(self.grid[0] - wp[0]) + abs(self.grid[1] - wp[1]))
+            step_delay = 0.85 if (self.grid == closest_wp or self.grid in self.waypoints) else 0.04
+            if self.patrol_timer >= step_delay:
                 self.patrol_timer = 0.0
-                closest_wp = min(self.waypoints, key=lambda wp: abs(self.grid[0] - wp[0]) + abs(self.grid[1] - wp[1]))
                 if self.grid == closest_wp or self.grid in self.waypoints:
                     self.is_returning_to_patrol = False
                     self.speech_bubble = "Kembali ke pos!"
@@ -177,9 +177,10 @@ class NPC:
                     self._patrol_step_towards(closest_wp)
         elif self.is_patrol and not self.moving and self.waypoints:
             self.patrol_timer += dt
-            if self.patrol_timer >= 0.85:
+            target_wp = self.waypoints[self.current_waypoint_idx]
+            step_delay = 0.85 if self.grid == target_wp else 0.04
+            if self.patrol_timer >= step_delay:
                 self.patrol_timer = 0.0
-                target_wp = self.waypoints[self.current_waypoint_idx]
                 if self.grid == target_wp:
                     self.current_waypoint_idx = (self.current_waypoint_idx + 1) % len(self.waypoints)
                     target_wp = self.waypoints[self.current_waypoint_idx]

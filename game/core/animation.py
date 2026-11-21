@@ -219,28 +219,109 @@ def _load_animation_frames(directory, target_height):
     set yang bersih (mis. Bolu) tetap memakai bbox alpha > 0 supaya tepi
     halus sprite tidak ikut terpotong.
     """
-    stripped = {}
-    for key, filenames in FRAME_FILES.items():
-        stripped[key] = [
-            _strip_artifact_bands(
-                pygame.image.load(os.path.join(directory, name)).convert_alpha()
-            )
-            for name in filenames
-        ]
+    is_kuro = "kuro" in os.path.basename(os.path.abspath(directory)).lower()
 
-    strict_alpha = any(
-        _has_alpha_noise(image)
-        for images in stripped.values()
-        for image in images
-    )
+    if not is_kuro:
+        stripped = {}
+        for key, filenames in FRAME_FILES.items():
+            stripped[key] = [
+                _strip_artifact_bands(
+                    pygame.image.load(os.path.join(directory, name)).convert_alpha()
+                )
+                for name in filenames
+            ]
+
+        strict_alpha = any(
+            _has_alpha_noise(image)
+            for images in stripped.values()
+            for image in images
+        )
+
+        frames = {}
+        for key, images in stripped.items():
+            loaded = [
+                _normalize_frame(image, target_height, strict_alpha)
+                for image in images
+            ]
+            frames[key] = _compose_on_canvas(loaded, target_height)
+        return frames
+
+    # Khusus Kuro: memuat 8-frame walk dinamis dengan normalisasi halus
+    stripped = {}
+    for state in (AnimationState.IDLE, AnimationState.WALK):
+        for direction in (Direction.SOUTH, Direction.NORTH, Direction.EAST, Direction.WEST):
+            key = (state, direction)
+            dname = direction.value
+            filenames = []
+            if state == AnimationState.IDLE:
+                idle_name = f"idle_{dname}.png"
+                if os.path.exists(os.path.join(directory, idle_name)):
+                    filenames = [idle_name]
+                else:
+                    filenames = list(FRAME_FILES.get(key, (idle_name,)))
+            else:
+                idx = 1
+                while os.path.exists(os.path.join(directory, f"walk_{dname}_{idx}.png")):
+                    filenames.append(f"walk_{dname}_{idx}.png")
+                    idx += 1
+                if not filenames:
+                    filenames = list(FRAME_FILES.get(key, ()))
+
+            stripped[key] = [
+                _strip_artifact_bands(
+                    pygame.image.load(os.path.join(directory, name)).convert_alpha()
+                )
+                for name in filenames
+            ]
 
     frames = {}
-    for key, images in stripped.items():
-        loaded = [
-            _normalize_frame(image, target_height, strict_alpha)
-            for image in images
-        ]
-        frames[key] = _compose_on_canvas(loaded, target_height)
+    for direction in (Direction.SOUTH, Direction.NORTH, Direction.EAST, Direction.WEST):
+        walk_imgs = stripped[(AnimationState.WALK, direction)]
+        idle_imgs = stripped[(AnimationState.IDLE, direction)]
+        all_dir_imgs = walk_imgs + idle_imgs
+
+        bboxes = [img.get_bounding_rect() for img in all_dir_imgs if img.get_bounding_rect().width > 0]
+        if not bboxes:
+            continue
+
+        ref_h = max(b.height for b in bboxes)
+        scale = target_height / float(ref_h) if ref_h > 0 else 1.0
+
+        def process_seq(images):
+            scaled_list = []
+            for img in images:
+                b = img.get_bounding_rect()
+                cropped = img.subsurface(b).copy() if (b and b.width > 0 and b.height > 0) else img
+                cw, ch = cropped.get_size()
+                nw = max(1, int(round(cw * scale)))
+                nh = max(1, int(round(ch * scale)))
+                if scale < 0.98:
+                    scaled = pygame.transform.smoothscale(cropped, (nw, nh))
+                else:
+                    scaled = pygame.transform.scale(cropped, (nw, nh))
+                scaled_list.append(scaled)
+            return scaled_list
+
+        scaled_walk = process_seq(walk_imgs)
+        scaled_idle = process_seq(idle_imgs)
+
+        canvas_w = max(
+            max(s.get_width() for s in scaled_walk) if scaled_walk else 1,
+            max(s.get_width() for s in scaled_idle) if scaled_idle else 1,
+        )
+
+        def compose(scaled_list):
+            out = []
+            for s in scaled_list:
+                canv = pygame.Surface((canvas_w, target_height), pygame.SRCALPHA)
+                canv.fill((0, 0, 0, 0))
+                canv.blit(s, ((canvas_w - s.get_width()) // 2, target_height - s.get_height()))
+                out.append(canv.convert_alpha())
+            return out
+
+        frames[(AnimationState.WALK, direction)] = compose(scaled_walk)
+        frames[(AnimationState.IDLE, direction)] = compose(scaled_idle)
+
     return frames
 
 

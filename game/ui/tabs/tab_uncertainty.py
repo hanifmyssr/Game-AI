@@ -1,13 +1,14 @@
-"""Tab 6: Materi 09: Decision Under Uncertainty — Bayesian Belief Sonar.
+"""Tab 7: Materi 09: Decision Under Uncertainty — Jembatan Antarpulau & Bayesian Update.
 
-Menampilkan akurasi sensor, metrik probabilitas Bayes (MAP, Entropi, Sinyal),
-kandidat koordinat teratas, serta tombol pindai sonar [F] dan toggle heatmap.
+Menampilkan pilihan 3 jembatan berisiko (Atas, Kiri, Bawah), Bayesian Belief Update
+(Prior -> Posterior), Entropi Shannon, Expected Cost, dan kontrol cuaca.
 """
 
 from typing import Dict, Any
 import pygame
 
 from ...core import config
+from ...ai.uncertainty import WEATHER_HUJAN, BRIDGE_KEYS, BRIDGE_NAMES
 from ..components import (
     draw_card,
     draw_badge_pill,
@@ -15,75 +16,142 @@ from ..components import (
     draw_mode_context_banner,
     UIButton,
     UISlider,
-    render_fitted_text,
 )
 
 
 class TabUncertainty:
-    """Tab 6: Materi 09 Decision Under Uncertainty (Bayesian Belief Sonar)."""
+    """Tab 7: Materi 09 Decision Under Uncertainty (3 Jembatan Antarpulau & Bayes)."""
 
     def __init__(self, rect: pygame.Rect, fonts: Dict[str, pygame.font.Font], app_ref: Any):
         self.rect = pygame.Rect(rect)
         self.fonts = fonts
         self.app = app_ref
 
-        self.slider_acc = UISlider(
-            pygame.Rect(self.rect.x + 12, self.rect.y + 60, self.rect.width - 24, 34),
-            min_val=0.60,
-            max_val=0.95,
-            initial_val=0.82,
-            label="Akurasi Sensor Sonar",
-            format_str="{:.0%}",
-            on_change=self._on_acc_changed,
-            font=fonts.get("sm") or pygame.font.Font(None, 16),
-        )
+        btn_font = fonts.get("sm") or pygame.font.Font(None, 16)
+        tiny_font = fonts.get("tiny") or pygame.font.Font(None, 13)
 
-        btn_w = (self.rect.width - 32) // 2
-        self.btn_scan = UIButton(
-            pygame.Rect(self.rect.x + 12, self.rect.y + 490, btn_w, 38),
-            "Pindai Sonar [F]",
-            fonts.get("sm") or pygame.font.Font(None, 16),
-            on_click=self._on_scan_clicked,
+        self.bridge_btns: Dict[str, UIButton] = {}
+        for key, lbl in (("atas", "Atas"), ("kiri", "Kiri"), ("bawah", "Bawah")):
+            self.bridge_btns[key] = UIButton(
+                pygame.Rect(0, 0, 80, 26),
+                lbl,
+                tiny_font,
+                on_click=lambda k=key: self._on_select_bridge(k),
+                bg_color=(242, 235, 222),
+                hover_color=(255, 252, 245),
+                active_color=(230, 220, 205),
+                border_color=config.COLOR_CARD_BORDER,
+            )
+
+        self.btn_inspect = UIButton(
+            pygame.Rect(self.rect.x + 12, self.rect.y + 180, self.rect.width - 24, 34),
+            "Cek Jembatan (Observasi Bayes)",
+            btn_font,
+            on_click=self._on_inspect_clicked,
             bg_color=(232, 246, 252),
             hover_color=(244, 252, 255),
             active_color=(212, 236, 246),
             border_color=config.COLOR_ACCENT_BLUE,
         )
 
-        self.btn_heatmap = UIButton(
-            pygame.Rect(self.rect.x + 20 + btn_w, self.rect.y + 490, btn_w, 38),
-            "Heatmap: ON",
-            fonts.get("sm") or pygame.font.Font(None, 16),
-            on_click=self._on_toggle_heatmap,
-            bg_color=(242, 235, 222),
-            hover_color=(255, 252, 245),
-            active_color=(230, 220, 205),
-            border_color=config.COLOR_ACCENT_GOLD,
+        self.slider_prior = UISlider(
+            pygame.Rect(self.rect.x + 12, self.rect.y + 340, self.rect.width - 24, 34),
+            min_val=0.05,
+            max_val=0.95,
+            initial_val=0.40,
+            label="Prior Hujan P(Ambruk)",
+            format_str="{:.0%}",
+            on_change=self._on_prior_changed,
+            font=btn_font,
+        )
+
+        self.slider_acc = UISlider(
+            pygame.Rect(self.rect.x + 12, self.rect.y + 382, self.rect.width - 24, 34),
+            min_val=0.65,
+            max_val=0.95,
+            initial_val=0.85,
+            label="Akurasi Sensor Cek",
+            format_str="{:.0%}",
+            on_change=self._on_acc_changed,
+            font=btn_font,
+        )
+
+        self.btn_weather = UIButton(
+            pygame.Rect(self.rect.x + 12, self.rect.y + 424, self.rect.width - 24, 34),
+            "Ubah Cuaca: Hujan",
+            btn_font,
+            on_click=self._on_toggle_weather,
+            bg_color=(236, 242, 252),
+            hover_color=(246, 250, 255),
+            active_color=(218, 228, 246),
+            border_color=config.COLOR_ACCENT_BLUE,
         )
 
     def resize(self, rect: pygame.Rect) -> None:
         self.rect = pygame.Rect(rect)
 
+    def _on_select_bridge(self, key: str) -> None:
+        eng = getattr(self.app, "bridge_uncertainty", None)
+        if eng:
+            eng.select_bridge(key)
+
+    def _on_inspect_clicked(self) -> None:
+        eng = getattr(self.app, "bridge_uncertainty", None)
+        if not eng:
+            return
+        res = eng.inspect_bridge()
+        b_name = BRIDGE_NAMES.get(res.get("bridge", "atas"), "Jembatan")
+        if res.get("updated"):
+            self.app.ai_ticker_info = {
+                "title": f"[M9 BAYES #{res['step']} - {b_name}] Bukti: {res['obs_label']}",
+                "detail": (
+                    f"Prior {res['prior_before'] * 100:.1f}% -> Posterior {res['posterior'] * 100:.1f}% "
+                    f"| Entropi: {res['entropy']:.2f} bit"
+                ),
+                "timer": 4.5,
+            }
+        else:
+            self.app.ai_ticker_info = {
+                "title": f"[M9 BAYES - {b_name}] Inspeksi Selesai",
+                "detail": res.get("reason", "Batas inspeksi tercapai."),
+                "timer": 3.5,
+            }
+
+    def _on_prior_changed(self, val: float) -> None:
+        eng = getattr(self.app, "bridge_uncertainty", None)
+        if eng:
+            eng.set_rain_prior(val)
+
     def _on_acc_changed(self, val: float) -> None:
-        sonar = getattr(self.app, "relic_sonar", None)
-        if sonar:
-            sonar.sensor_accuracy = val
+        eng = getattr(self.app, "bridge_uncertainty", None)
+        if eng:
+            eng.set_sensor_accuracy(val)
 
-    def _on_scan_clicked(self) -> None:
-        if self.app and hasattr(self.app, "_trigger_sonar_scan"):
-            self.app._trigger_sonar_scan()
-
-    def _on_toggle_heatmap(self) -> None:
-        sonar = getattr(self.app, "relic_sonar", None)
-        if sonar:
-            sonar.heatmap_visible = not sonar.heatmap_visible
+    def _on_toggle_weather(self) -> None:
+        eng = getattr(self.app, "bridge_uncertainty", None)
+        if not eng:
+            return
+        nxt = eng.toggle_weather()
+        if hasattr(self.app, "_sync_bridge_walkability"):
+            self.app._sync_bridge_walkability()
+        lbl = "Hujan Deras (Arus Tinggi)" if nxt == WEATHER_HUJAN else "Cerah (Arus Tenang)"
+        self.app.ai_ticker_info = {
+            "title": f"[M9 CUACA] Berubah menjadi {lbl}",
+            "detail": f"Prior P(Ambruk) awal: {eng.active_prior * 100:.0f}% | Entropi: {eng.get_entropy():.2f} bit",
+            "timer": 4.0,
+        }
 
     def handle_event(self, event: pygame.event.Event) -> bool:
+        for btn in self.bridge_btns.values():
+            if btn.handle_event(event):
+                return True
+        if self.btn_inspect.handle_event(event):
+            return True
+        if self.slider_prior.handle_event(event):
+            return True
         if self.slider_acc.handle_event(event):
             return True
-        if self.btn_scan.handle_event(event):
-            return True
-        if self.btn_heatmap.handle_event(event):
+        if self.btn_weather.handle_event(event):
             return True
         return False
 
@@ -95,118 +163,155 @@ class TabUncertainty:
         font_sm = self.fonts.get("sm") or pygame.font.Font(None, 16)
 
         cx = self.rect.x + 12
-        cy = self.rect.y + 12
+        cy = self.rect.y + 10
         card_w = self.rect.width - 24
 
         cur_mode = getattr(self.app, "game_mode", "EXPLORATION")
         banner_h = draw_mode_context_banner(
             surface, cx, cy, card_w, cur_mode, "EXPLORATION",
-            "Sonar Bayesian & Relik aktif di fase eksplorasi.", font_tiny,
+            "Jembatan antarpulau & Bayes aktif di eksplorasi.", font_tiny,
         )
         cy += banner_h
-        gap = 8 if banner_h > 0 else 12
+        gap = 8
 
-        sonar = getattr(self.app, "relic_sonar", None)
-        found = bool(sonar and sonar.found)
-        scan_count = sonar.scan_count if sonar else 0
-        last_sig = (sonar.last_signal or "-") if sonar else "-"
-        map_pos, map_prob = sonar.get_map_estimate() if sonar else (None, 0.0)
-        entropy = sonar.get_entropy() if sonar else 0.0
-        heatmap_on = bool(sonar and sonar.heatmap_visible)
+        eng = getattr(self.app, "bridge_uncertainty", None)
+        if eng:
+            is_rain = eng.weather_state == WEATHER_HUJAN
+            sel_key = eng.selected_bridge
+            status = eng.bridge_status
+            prior = eng.active_prior
+            post = eng.posterior
+            ent = eng.get_entropy()
+            obs_lbl = eng.last_obs
+            obs_cnt = len(eng.observations)
+            max_obs = eng.max_inspections
+            exp = eng.get_expected_cost_comparison()
+            if not self.slider_prior.is_dragging:
+                self.slider_prior.value = eng.rain_prior
+            if not self.slider_acc.is_dragging:
+                self.slider_acc.value = eng.sensor_accuracy
+        else:
+            is_rain, sel_key, status, prior, post, ent = False, "atas", "UTUH", 0.10, 0.10, 0.47
+            obs_lbl, obs_cnt, max_obs = "-", 0, 4
+            exp = {"expected_upper": 15.6, "safe_cost": 28.0, "recommend_detour": False, "recommend_text": "Aman Dilintasi"}
 
-        if sonar and not self.slider_acc.is_dragging:
-            self.slider_acc.value = sonar.sensor_accuracy
+        # 1. KARTU CUACA & PILIH JEMBATAN BERISIKO (ATAS / KIRI / BAWAH)
+        card_top_h = 74
+        draw_card(
+            surface, pygame.Rect(cx, cy, card_w, card_top_h), config.COLOR_CARD_BG,
+            border_color=config.COLOR_CARD_BORDER, border_radius=8,
+        )
+        w_txt = "CUACA: HUJAN" if is_rain else "CUACA: CERAH"
+        w_bg = (232, 240, 254) if is_rain else (252, 243, 218)
+        w_fg = config.COLOR_ACCENT_BLUE if is_rain else config.COLOR_ACCENT_GOLD
+        pw_w = font_tiny.size(w_txt)[0] + 16
+        draw_badge_pill(surface, pygame.Rect(cx + 10, cy + 8, pw_w, 22), w_txt, w_bg, w_fg, font_tiny, border_color=w_fg)
 
-        # 1. KARTU STATUS RELIK & AKURASI SENSOR
-        card_top_h = 104
-        draw_card(surface, pygame.Rect(cx, cy, card_w, card_top_h), config.COLOR_CARD_BG,
-                  border_color=config.COLOR_CARD_BORDER, border_radius=8)
+        if status == "AMBRUK":
+            s_bg, s_fg = (254, 232, 230), config.COLOR_STATUS_DANGER
+        elif status == "RAWAN":
+            s_bg, s_fg = (255, 242, 216), config.COLOR_ACCENT_GOLD
+        else:
+            s_bg, s_fg = (232, 248, 236), config.COLOR_STATUS_SUCCESS
+        s_txt = f"{BRIDGE_NAMES.get(sel_key, 'Jembatan').upper()}: {status}"
+        pw_s = font_tiny.size(s_txt)[0] + 14
+        draw_badge_pill(surface, pygame.Rect(cx + card_w - pw_s - 10, cy + 8, pw_s, 22), s_txt, s_bg, s_fg, font_tiny, border_color=s_fg)
 
-        lbl_st = font_tiny.render("Relik Ikan Emas Kuno:", True, config.COLOR_TEXT_SECONDARY)
-        surface.blit(lbl_st, (cx + 12, cy + 10))
-        pill_txt = "DITEMUKAN!" if found else "TERSEMBUNYI"
-        pill_bg = (232, 248, 236) if found else (252, 243, 218)
-        pill_fg = config.COLOR_STATUS_SUCCESS if found else config.COLOR_ACCENT_GOLD
-        pw = font_tiny.size(pill_txt)[0] + 18
-        draw_badge_pill(surface, pygame.Rect(cx + card_w - pw - 10, cy + 7, pw, 20),
-                        pill_txt, pill_bg, pill_fg, font_tiny, border_color=pill_fg)
+        # 3 tombol pilih jembatan (Atas, Kiri, Bawah)
+        bw = (card_w - 32) // 3
+        for i, k in enumerate(BRIDGE_KEYS):
+            btn = self.bridge_btns[k]
+            btn.rect = pygame.Rect(cx + 10 + i * (bw + 6), cy + 38, bw, 26)
+            is_sel = (k == sel_key)
+            btn.bg_color = (232, 244, 254) if is_sel else (244, 238, 226)
+            btn.border_color = config.COLOR_ACCENT_BLUE if is_sel else config.COLOR_CARD_BORDER
+            btn.text_color = config.COLOR_ACCENT_BLUE if is_sel else config.COLOR_TEXT_PRIMARY
+            btn.draw(surface)
 
-        self.slider_acc.rect = pygame.Rect(cx + 12, cy + 40, card_w - 24, 40)
-        self.slider_acc.draw(surface)
-
-        # 2. KARTU METRIK BAYESIAN BELIEF (GRID 2x2)
+        # 2. KARTU BAYESIAN BELIEF UPDATE
         cy += card_top_h + gap
-        card_m_h = 132
-        draw_card(surface, pygame.Rect(cx, cy, card_w, card_m_h), config.COLOR_CARD_BG,
-                  border_color=config.COLOR_CARD_BORDER, border_radius=8)
-
-        m_title = font_tiny.render("── METRIK BAYESIAN BELIEF ──", True, config.COLOR_TEXT_SECONDARY)
-        surface.blit(m_title, (cx + (card_w - m_title.get_width()) // 2, cy + 6))
+        card_bayes_h = 166
+        draw_card(
+            surface, pygame.Rect(cx, cy, card_w, card_bayes_h), config.COLOR_CARD_BG,
+            border_color=config.COLOR_CARD_BORDER, border_radius=8,
+        )
+        surface.blit(font_sm.render("Bayesian Belief Update:", True, config.COLOR_TEXT_PRIMARY), (cx + 10, cy + 8))
+        cnt_txt = f"Cek {obs_cnt}/{max_obs}"
+        pw_c = font_tiny.size(cnt_txt)[0] + 14
+        draw_badge_pill(surface, pygame.Rect(cx + card_w - pw_c - 10, cy + 7, pw_c, 20),
+                        cnt_txt, (242, 235, 222), config.COLOR_TEXT_SECONDARY, font_tiny, border_color=config.COLOR_CARD_BORDER)
 
         tile_w = (card_w - 28) // 2
-        tile_h = 44
-        ty1 = cy + 28
-        ty2 = ty1 + tile_h + 6
+        draw_metric_tile(
+            surface, pygame.Rect(cx + 10, cy + 32, tile_w, 40),
+            "Prior Awal", f"{prior * 100:.0f}%",
+            val_color=config.COLOR_TEXT_SECONDARY, font_lbl=font_tiny, font_val=font_sm,
+        )
+        post_col = config.COLOR_STATUS_DANGER if post >= 0.50 else config.COLOR_ACCENT_BLUE
+        draw_metric_tile(
+            surface, pygame.Rect(cx + 18 + tile_w, cy + 32, tile_w, 40),
+            "Posterior P(Ambruk)", f"{post * 100:.1f}%",
+            val_color=post_col, font_lbl=font_tiny, font_val=font_sm,
+        )
+        draw_metric_tile(
+            surface, pygame.Rect(cx + 10, cy + 78, tile_w, 40),
+            "Entropi H(S)", f"{ent:.2f} bit",
+            val_color=config.COLOR_STATUS_SUCCESS, font_lbl=font_tiny, font_val=font_sm,
+        )
+        short_obs = "Retak!" if "Retak" in obs_lbl else ("Kokoh" if "Kokoh" in obs_lbl else "-")
+        obs_col = config.COLOR_STATUS_DANGER if short_obs == "Retak!" else config.COLOR_ACCENT_BLUE
+        draw_metric_tile(
+            surface, pygame.Rect(cx + 18 + tile_w, cy + 78, tile_w, 40),
+            "Bukti Terakhir", short_obs,
+            val_color=obs_col, font_lbl=font_tiny, font_val=font_sm,
+        )
 
-        draw_metric_tile(surface, pygame.Rect(cx + 10, ty1, tile_w, tile_h),
-                         "SCAN SONAR", f"{scan_count}x",
-                         val_color=config.COLOR_ACCENT_BLUE,
-                         font_lbl=font_tiny, font_val=font_sm)
+        self.btn_inspect.rect = pygame.Rect(cx + 10, cy + 124, card_w - 20, 34)
+        self.btn_inspect.draw(surface)
 
-        draw_metric_tile(surface, pygame.Rect(cx + 18 + tile_w, ty1, tile_w, tile_h),
-                         "SINYAL TERAKHIR", last_sig,
-                         val_color=config.COLOR_ACCENT_GOLD,
-                         font_lbl=font_tiny, font_val=font_tiny)
+        # 3. KARTU EXPECTED COST & REKOMENDASI
+        cy += card_bayes_h + gap
+        card_exp_h = 84
+        draw_card(
+            surface, pygame.Rect(cx, cy, card_w, card_exp_h), config.COLOR_CARD_BG,
+            border_color=config.COLOR_CARD_BORDER, border_radius=8,
+        )
+        surface.blit(font_tiny.render("Expected Cost:", True, config.COLOR_TEXT_SECONDARY), (cx + 10, cy + 8))
+        rec_txt = exp["recommend_text"]
+        rec_fg = config.COLOR_ACCENT_GOLD if exp["recommend_detour"] else config.COLOR_STATUS_SUCCESS
+        rec_bg = (255, 242, 216) if exp["recommend_detour"] else (232, 248, 236)
+        pw_r = font_tiny.size(rec_txt)[0] + 14
+        draw_badge_pill(surface, pygame.Rect(cx + card_w - pw_r - 10, cy + 5, pw_r, 20), rec_txt, rec_bg, rec_fg, font_tiny, border_color=rec_fg)
 
-        draw_metric_tile(surface, pygame.Rect(cx + 10, ty2, tile_w, tile_h),
-                         "PUNCAK PELUANG", f"{map_prob * 100:.2f}%",
-                         val_color=config.COLOR_STATUS_SUCCESS,
-                         font_lbl=font_tiny, font_val=font_sm)
+        exp_up_str = "INF" if exp["expected_upper"] == float("inf") else f"{exp['expected_upper']:.1f}"
+        draw_metric_tile(
+            surface, pygame.Rect(cx + 10, cy + 32, tile_w, 42),
+            "Exp. Cost Jembatan", exp_up_str,
+            val_color=config.COLOR_STATUS_DANGER if exp["recommend_detour"] else config.COLOR_ACCENT_BLUE,
+            font_lbl=font_tiny, font_val=font_sm,
+        )
+        draw_metric_tile(
+            surface, pygame.Rect(cx + 18 + tile_w, cy + 32, tile_w, 42),
+            "Cost Pulau Tengah", f"{exp['safe_cost']:.1f}",
+            val_color=config.COLOR_STATUS_SUCCESS, font_lbl=font_tiny, font_val=font_sm,
+        )
 
-        draw_metric_tile(surface, pygame.Rect(cx + 18 + tile_w, ty2, tile_w, tile_h),
-                         "ENTROPI (BIT)", f"{entropy:.2f} bit",
-                         val_color=config.COLOR_TEXT_PRIMARY,
-                         font_lbl=font_tiny, font_val=font_sm)
+        # 4. KARTU KONTROL CUACA & PARAMETER PROBABILITAS
+        cy += card_exp_h + gap
+        card_ctrl_h = 144
+        draw_card(
+            surface, pygame.Rect(cx, cy, card_w, card_ctrl_h), config.COLOR_CARD_BG,
+            border_color=config.COLOR_CARD_BORDER, border_radius=8,
+        )
+        self.slider_prior.rect = pygame.Rect(cx + 10, cy + 8, card_w - 20, 36)
+        self.slider_prior.draw(surface)
 
-        # 3. KARTU KANDIDAT LOKASI TERATAS (MAP ESTIMATE)
-        cy += card_m_h + gap
-        card_cand_h = 120
-        draw_card(surface, pygame.Rect(cx, cy, card_w, card_cand_h), config.COLOR_CARD_BG,
-                  border_color=config.COLOR_CARD_BORDER, border_radius=8)
+        self.slider_acc.rect = pygame.Rect(cx + 10, cy + 52, card_w - 20, 36)
+        self.slider_acc.draw(surface)
 
-        c_title = font_tiny.render("── TEBAKAN LOKASI (POSTERIOR) ──", True, config.COLOR_TEXT_SECONDARY)
-        surface.blit(c_title, (cx + (card_w - c_title.get_width()) // 2, cy + 6))
-
-        if found:
-            render_fitted_text(surface, font_tiny, "Relik sudah ditemukan! Buff Boss Battle aktif.",
-                               config.COLOR_STATUS_SUCCESS, (cx + 12, cy + 38), card_w - 24)
-        elif scan_count == 0 or not sonar:
-            render_fitted_text(surface, font_tiny, "Tekan [F] di peta untuk memancarkan sonar pertama.",
-                               config.COLOR_TEXT_MUTED, (cx + 12, cy + 38), card_w - 24)
-            render_fitted_text(surface, font_tiny, "Prior saat ini seragam di seluruh daratan.",
-                               config.COLOR_TEXT_SECONDARY, (cx + 12, cy + 58), card_w - 24)
-        else:
-            top3 = sonar.get_top_candidates(3)
-            ry = cy + 28
-            for idx, (pos, prob) in enumerate(top3, start=1):
-                row_r = pygame.Rect(cx + 10, ry, card_w - 20, 26)
-                draw_card(surface, row_r, (250, 246, 238), border_color=(226, 216, 202), border_radius=4)
-                lbl = f"#{idx} Grid ({pos[0]}, {pos[1]})"
-                val = f"{prob * 100:.2f}%"
-                col = config.COLOR_STATUS_SUCCESS if idx == 1 else config.COLOR_TEXT_PRIMARY
-                surface.blit(font_tiny.render(lbl, True, col), (row_r.x + 8, row_r.y + 5))
-                v_surf = font_tiny.render(val, True, config.COLOR_ACCENT_BLUE)
-                surface.blit(v_surf, (row_r.right - v_surf.get_width() - 8, row_r.y + 5))
-                ry += 29
-
-        # 4. TOMBOL AKSI
-        cy += card_cand_h + gap
-        btn_w = (card_w - 8) // 2
-        self.btn_scan.rect = pygame.Rect(cx, cy, btn_w, 38)
-        self.btn_heatmap.rect = pygame.Rect(cx + btn_w + 8, cy, btn_w, 38)
-        self.btn_heatmap.text = f"Heatmap: {'ON' if heatmap_on else 'OFF'}"
-        self.btn_scan.draw(surface)
-        self.btn_heatmap.draw(surface)
+        self.btn_weather.text = "Ubah Cuaca: Cerah" if is_rain else "Ubah Cuaca: Hujan Deras"
+        self.btn_weather.rect = pygame.Rect(cx + 10, cy + 100, card_w - 20, 34)
+        self.btn_weather.draw(surface)
 
     def draw_popups(self, surface: pygame.Surface) -> None:
         pass

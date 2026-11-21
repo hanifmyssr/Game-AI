@@ -18,7 +18,7 @@ from .battle.battle_system import BattleSystem
 from .ai.battle_ai import ACTION_ATTACK, ACTION_HEAVY, ACTION_DEFEND, ACTION_POTION
 from .ai.npc_config_csp import NPCConfigCSP
 from .ai.npc_config_optimizer import NPCOptimizer
-from .ai.uncertainty import BayesianRelicSonar
+from .ai.uncertainty import BridgeUncertaintyEngine
 from .battle.npc_squad import NPCSquad, NPCMember
 from .battle.battle_vfx import BattleVFXManager
 from .battle.battle_background import BattleArenaBackground
@@ -64,7 +64,6 @@ K_4 = getattr(pygame, "K_4", 52)
 K_5 = getattr(pygame, "K_5", 53)
 K_w = getattr(pygame, "K_w", 119)
 K_e = getattr(pygame, "K_e", 101)
-K_f = getattr(pygame, "K_f", 102)
 K_RETURN = getattr(pygame, "K_RETURN", 13)
 K_KP_ENTER = getattr(pygame, "K_KP_ENTER", 1073741912)
 K_UP = getattr(pygame, "K_UP", 1073741906)
@@ -404,13 +403,11 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
 
         # State Fitur Tahap 4 / Plan Dev: Stealth, Whistle & Boss Portal Menara Kuno
         self.whistle_waves = []
-        self.sonar_waves = []
-        self.relic_sonar = None
+        self.bridge_uncertainty = BridgeUncertaintyEngine()
         self.inspected_tile = None
         self.ai_ticker_info = None
         self.is_boss_battle = False
         self._tower_prompted = False
-        self._init_relic_sonar()
 
         # Rencana awal problem patroli dunia
         s0_init, goal_init, actions_init = create_world_patrol_problem("A")
@@ -485,11 +482,12 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
             if hasattr(self, "task_executor") and self.task_executor:
                 self.task_executor.set_plan(self.latest_plan_result)
 
-        # 6. Reset State Stealth, Whistle, Boss Portal & Sonar Materi 09
+        # 6. Reset State Stealth, Whistle, Jembatan M9 & Boss Portal
         self.whistle_waves.clear()
-        self.sonar_waves.clear()
+        if hasattr(self, "bridge_uncertainty") and self.bridge_uncertainty:
+            self.bridge_uncertainty.reset()
+        self._sync_bridge_walkability()
         self.inspected_tile = None
-        self._init_relic_sonar()
         self.ai_ticker_info = None
         self.is_boss_battle = False
         self._tower_prompted = False
@@ -760,20 +758,7 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
             camera_target = (self.player.px, self.player.py)
             self.camera.follow(camera_target, smooth=True, dt=dt)
             self._last_camera_target = camera_target
-
-            # Update animasi cincin sonar Bayesian & cek penemuan Relik Tersembunyi
-            for sw in getattr(self, "sonar_waves", [])[:]:
-                sw["radius"] += 220.0 * dt
-                sw["alpha"] -= 170.0 * dt
-                if sw["alpha"] <= 0:
-                    self.sonar_waves.remove(sw)
-            if (
-                getattr(self, "relic_sonar", None)
-                and not self.relic_sonar.found
-                and self.relic_sonar.relic_pos == self.player.grid
-                and not self.player.moving
-            ):
-                self._collect_hidden_relic()
+            self._update_bridge_uncertainty(dt)
 
             # Cek jika pemain tiba di ubin portal Menara Kuno (Abandoned Tower)
             portal_pos = getattr(self.map, "boss_portal", {"x": 38, "y": 5})
@@ -1296,8 +1281,6 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
                 self.player.try_move(mapping[key])
             elif key == K_SPACE:
                 self._trigger_whistle()
-            elif key == K_f:
-                self._trigger_sonar_scan()
             elif key == K_b:
                 # Tombol pintas untuk masuk fase Pre-Battle
                 self.enter_pre_battle()
@@ -1315,11 +1298,9 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
             self._draw_sparkles()
             self._draw_dust_particles()
             self._draw_swaying_ground_foliage()
-            self._draw_relic_heatmap()
             self._draw_chests()
             self._draw_tower_portal()
             self._draw_whistle_waves()
-            self._draw_sonar_waves()
             self._draw_chickens()
             player_alpha = 150 if getattr(self.player, "is_hidden", False) else 255
             self._draw_sprite(self.player.sprite.current_image, self.player.px, self.player.py, alpha=player_alpha)
@@ -1330,6 +1311,7 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
             self._draw_sprite(self.npc_shiro.sprite.current_image, self.npc_shiro.px, self.npc_shiro.py)
             self._draw_npc_speech_bubbles()
             self._draw_swaying_tree_canopies()
+            self._draw_bridge_uncertainty_overlay()
             if self.player.call_bubble_visible:
                 self._draw_call_bubble()
             self._draw_npc_offscreen_indicator()

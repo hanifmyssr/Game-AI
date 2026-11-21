@@ -66,6 +66,10 @@ class MapData:
         self.obstacle_set = set()
         self.walkable_set = set()
         self.dirt_road_set = set()
+        self.bridge_set = set()
+        self.upper_bridge_tiles = []
+        self.risky_bridges = {}
+        self.dynamic_blocked_set = set()
 
         self._ground_surface = None
         self._obstacle_surface = None
@@ -108,6 +112,25 @@ class MapData:
             for key, cell_info in layer_dict.items():
                 if _is_bridge_cell(cell_info):
                     bridge_set.add(key)
+        self.bridge_set = bridge_set
+        self.upper_bridge_tiles = sorted([k for k in bridge_set if k[1] <= 8])
+        self.risky_bridges = {
+            "atas": {
+                "label": "Jembatan Atas",
+                "tiles": sorted([k for k in bridge_set if k[1] <= 8]),
+                "safe_exits": ((22, 6), (28, 6)),
+            },
+            "kiri": {
+                "label": "Jembatan Kiri",
+                "tiles": sorted([k for k in bridge_set if k[0] <= 8]),
+                "safe_exits": ((5, 18), (5, 23)),
+            },
+            "bawah": {
+                "label": "Jembatan Bawah",
+                "tiles": sorted([k for k in bridge_set if k[1] >= 33]),
+                "safe_exits": ((21, 36), (28, 36)),
+            },
+        }
 
         # Identifikasi seluruh sel jalan tanah & jembatan (bobot langkah 1.0)
         self.dirt_road_set = set()
@@ -189,7 +212,10 @@ class MapData:
         return tuple(pos) in self.ground_set
 
     def is_walkable(self, pos):
-        return tuple(pos) in self.walkable_set
+        t = tuple(pos)
+        if t in getattr(self, "dynamic_blocked_set", ()):
+            return False
+        return t in self.walkable_set
 
     def is_obstacle(self, pos):
         return not self.is_walkable(pos)

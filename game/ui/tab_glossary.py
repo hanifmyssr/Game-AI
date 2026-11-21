@@ -115,17 +115,17 @@ TAB_GLOSSARY_DATA: Dict[int, Dict[str, object]] = {
     6: {
         "title": "PANDUAN: 09 UNCERTAINTY",
         "phase": "AKTIF DI EXPLORATION",
-        "purpose": "Melacak lokasi Relik Tersembunyi di pulau memakai Bayesian Belief Filtering meski sinyal sonar mengandung noise.",
+        "purpose": "Menimbang risiko melintasi Jembatan Atas saat hujan menggunakan Bayesian Belief Update & Expected Cost.",
         "cards": [
             ("INFORMASI DI TAB INI", config.COLOR_ACCENT_BLUE, [
-                ("Akurasi Sensor", "Mengatur tingkat akurasi sonar (60%-95%); sisanya adalah peluang noise/salah baca."),
-                ("Metrik Bayesian Belief", "Scan ke-N, Sinyal terakhir, Puncak Peluang (MAP), dan Entropi (bit)."),
-                ("Tebakan Lokasi", "3 koordinat grid dengan probabilitas posterior tertinggi saat ini."),
+                ("Cuaca & Status Jembatan", "Cerah/Hujan menentukan Prior awal; jembatan berstatus UTUH, RAWAN, atau AMBRUK."),
+                ("Cek Jembatan (Bayes)", "Melakukan observasi ber-noise (Derit Retak / Kokoh) untuk memperbarui Posterior P(Ambruk) & Entropi."),
+                ("Expected Cost", "Membandingkan biaya harapan lewat Jembatan Atas (risiko kehilangan item non-kunci) vs memutar aman."),
             ]),
             ("PENGERTIAN ISTILAH", config.COLOR_ACCENT_GOLD, [
-                ("Prior & Posterior", "Prior adalah peluang awal seragam; Posterior adalah peluang terbaru setelah menerima sinyal."),
-                ("Bayes' Rule", "P(X|e) = alpha * P(e|X) * P(X): memperbarui peluang tiap sel lalu menormalkannya."),
-                ("MAP & Entropi", "MAP = sel berpeluang tertinggi; Entropi = ukuran ketidakpastian (makin kecil makin yakin)."),
+                ("Prior & Posterior", "Prior adalah peluang awal dari cuaca; Posterior adalah peluang terbaru setelah tombol Cek Jembatan."),
+                ("Bayes' Rule", "P(Rapuh|e) = alpha * P(e|Rapuh) * P(Rapuh): memperbarui keyakinan dari bukti observasi."),
+                ("Entropi H(S)", "Ukuran ketidakpastian (bit); makin kecil setelah Cek Jembatan berarti sistem makin yakin."),
             ]),
         ],
     },

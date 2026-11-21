@@ -10,7 +10,6 @@ from ..core import config
 from ..ui.components import draw_card
 from ..battle.npc_squad import NPCSquad
 from ..ai.battle_ai import ACTION_ATTACK, ACTION_HEAVY, ACTION_DEFEND, ACTION_POTION
-from ..ai.uncertainty import BayesianRelicSonar
 from ..planning.domain_world_patrol import create_world_patrol_problem
 from ..planning.domain_battle_tactics import create_battle_tactics_problem
 
@@ -1676,188 +1675,264 @@ class ExplorationModeMixin:
         self.enter_boss_pre_battle()
 
     # =========================================================================
-    # MATERI 09: DECISION UNDER UNCERTAINTY (BAYESIAN BELIEF SONAR & RELIK)
+    # MATERI 09: JEMBATAN ANTARPULAU AMBRUK & BAYESIAN BELIEF UPDATE
     # =========================================================================
 
-    def _init_relic_sonar(self):
-        """Menempatkan Relik Tersembunyi secara acak di daratan walkable & menginisialisasi Prior seragam."""
-        blocked = {tuple(c["pos"]) for c in getattr(self, "chests", [])}
-        portal = getattr(self.map, "boss_portal", {"x": 38, "y": 5})
-        blocked.add((portal.get("x", 38), portal.get("y", 5)))
-        player_g = getattr(self.player, "grid", (0, 0)) if getattr(self, "player", None) else (0, 0)
-
-        walkable = []
-        for gx in range(self.map.width):
-            for gy in range(self.map.height):
-                pos = (gx, gy)
-                if pos in blocked:
-                    continue
-                if self.map.is_walkable(pos):
-                    walkable.append(pos)
-
-        far_candidates = [p for p in walkable if abs(p[0] - player_g[0]) + abs(p[1] - player_g[1]) >= 10]
-        pool = far_candidates or [p for p in walkable if p != player_g] or walkable
-        relic_pos = random.choice(pool) if pool else None
-
-        if getattr(self, "relic_sonar", None) is None:
-            self.relic_sonar = BayesianRelicSonar(walkable, sensor_accuracy=0.82)
-            self.relic_sonar.reset(walkable_cells=walkable, relic_pos=relic_pos)
-        else:
-            self.relic_sonar.reset(walkable_cells=walkable, relic_pos=relic_pos)
-
-    def _trigger_sonar_scan(self):
-        """Memancarkan gelombang sonar Cyan [F] tanpa memancing NPC & memperbarui Belief via Bayes' Rule."""
-        sonar = getattr(self, "relic_sonar", None)
-        if not sonar:
+    def _sync_bridge_walkability(self) -> None:
+        eng = getattr(self, "bridge_uncertainty", None)
+        risky_map = getattr(self.map, "risky_bridges", {})
+        if not eng or not risky_map:
             return
-        # Matikan overlay jalur pathfinding A* agar tampilan heatmap sonar tetap bersih
-        if hasattr(self, "overlay") and self.overlay:
-            self.overlay.show_path_visualization = False
-            self.overlay.stop_path_animation()
-            dock = getattr(self.overlay, "dock", None)
-            tab_search = dock.tabs.get(1) if dock and hasattr(dock, "tabs") else None
-            if tab_search and hasattr(tab_search, "btn_toggle_path"):
-                tab_search.show_path_line = False
-                tab_search.btn_toggle_path.text = "Toggle Jalur di Peta: OFF"
-        if sonar.found:
+        dyn = getattr(self.map, "dynamic_blocked_set", None)
+        if dyn is None:
+            dyn = set()
+            self.map.dynamic_blocked_set = dyn
+
+        changed = False
+        for key, b_info in risky_map.items():
+            tiles = b_info.get("tiles", [])
+            if not tiles:
+                continue
+            tile_set = set(tiles)
+            exits = b_info.get("safe_exits", ((22, 6), (28, 6)))
+            is_collapsed = eng.bridges.get(key, {}).get("collapsed", False)
+            if is_collapsed:
+                if not tile_set.issubset(dyn):
+                    dyn.update(tile_set)
+                    changed = True
+                for npc_obj in (getattr(self, "npc", None), getattr(self, "npc_kuro", None), getattr(self, "npc_shiro", None)):
+                    if npc_obj and tuple(npc_obj.grid) in tile_set:
+                        nx, ny = npc_obj.grid
+                        safe_g = min(exits, key=lambda e: abs(e[0] - nx) + abs(e[1] - ny))
+                        npc_obj.grid = safe_g
+                        wx, wy = self.map.world_to_px(safe_g)
+                        npc_obj.px, npc_obj.py = wx, wy
+                        npc_obj.moving = False
+                        npc_obj.path = []
+                        changed = True
+            else:
+                if dyn & tile_set:
+                    dyn.difference_update(tile_set)
+                    changed = True
+
+        if changed and hasattr(self, "refresh_search_focus"):
+            self.refresh_search_focus(force=True)
+
+    def _check_upper_bridge_crossing(self) -> None:
+        eng = getattr(self, "bridge_uncertainty", None)
+        risky_map = getattr(self.map, "risky_bridges", {})
+        if not eng or not risky_map or not getattr(self, "player", None) or self.player.moving:
+            return
+
+        pg = tuple(self.player.grid)
+        # Auto-pilih jembatan terdekat di Tab 7 jika Bolu mendekat
+        best_key = None
+        best_dist = 999
+        for key, b_info in risky_map.items():
+            for t in b_info.get("tiles", []):
+                d = abs(pg[0] - t[0]) + abs(pg[1] - t[1])
+                if d < best_dist:
+                    best_dist = d
+                    best_key = key
+        if best_key and best_dist <= 4:
+            eng.select_bridge(best_key)
+
+        for key, b_info in risky_map.items():
+            tiles = b_info.get("tiles", [])
+            if pg not in set(tiles):
+                continue
+            if eng.bridges.get(key, {}).get("collapsed", False):
+                continue
+            res = eng.try_cross_bridge(key)
+            if not res.get("collapsed"):
+                return
+
+            self._sync_bridge_walkability()
+            exits = b_info.get("safe_exits", ((22, 6), (28, 6)))
+            safe_exit = min(exits, key=lambda e: abs(e[0] - pg[0]) + abs(e[1] - pg[1]))
+            self.player.grid = safe_exit
+            wx, wy = self.map.world_to_px(safe_exit)
+            self.player.px, self.player.py = wx, wy
+            self.player.moving = False
+            self.player.path = []
+
+            loss_msg = ""
+            if getattr(self.player, "persistent_potions", 0) > 0:
+                self.player.persistent_potions -= 1
+                inv = getattr(self.player, "inventory", [])
+                if "Ramuan" in inv:
+                    inv.remove("Ramuan")
+                loss_msg = "1 Ramuan hanyut terbawa arus!"
+            else:
+                inv = getattr(self.player, "inventory", [])
+                non_key_idx = next((i for i, it in enumerate(inv) if "kunci" not in str(it).lower() and "rune" not in str(it).lower()), None)
+                if non_key_idx is not None:
+                    lost_item = inv.pop(non_key_idx)
+                    loss_msg = f"Item '{lost_item}' hanyut terbawa arus!"
+                else:
+                    self.player.persistent_hp = max(1, self.player.persistent_hp - 10)
+                    loss_msg = "Bolu terjatuh ke tepi (-10 HP)!"
+
+            if hasattr(self, "audio") and self.audio and hasattr(self.audio, "play_reroll"):
+                self.audio.play_reroll()
+
+            b_label = b_info.get("label", "Jembatan").upper()
             self.ai_ticker_info = {
-                "title": "[BAYES SONAR] Relik Ikan Emas Kuno sudah ditemukan!",
-                "detail": "Buff Relik sudah aktif di inventaris Bolu untuk melawan Boss Kage.",
-                "timer": 3.5,
+                "title": f"[M9: {b_label} AMBRUK!] Arus deras memutus jembatan!",
+                "detail": f"{loss_msg} Memutar lewat pulau tengah (Kunci Rune tetap aman).",
+                "timer": 5.5,
             }
             return
 
-        self.sonar_waves.append({
-            "pos": (self.player.px, self.player.py),
-            "radius": 10.0,
-            "alpha": 225.0,
-        })
-        res = sonar.scan(self.player.grid)
-        mp = res["map_pos"]
-        mp_txt = f"({mp[0]}, {mp[1]})" if mp else "-"
-        noise_tag = " [Sinyal Ber-noise]" if res["is_noisy"] else ""
-        self.ai_ticker_info = {
-            "title": f"[BAYES SONAR #{res['scan_num']}] Sinyal: {res['signal']}{noise_tag}",
-            "detail": f"Puncak Peluang: {res['map_prob'] * 100:.2f}% di {mp_txt} | Entropi: {res['entropy']:.2f} bit",
-            "timer": 4.5,
-        }
+    def _update_bridge_uncertainty(self, dt: float) -> None:
+        eng = getattr(self, "bridge_uncertainty", None)
+        if not eng:
+            return
+        self._sync_bridge_walkability()
+        self._check_upper_bridge_crossing()
 
-    def _collect_hidden_relic(self):
-        """Mengambil Relik Tersembunyi saat Bolu menginjak lokasinya."""
-        sonar = getattr(self, "relic_sonar", None)
-        if not sonar or sonar.found:
+        if eng.weather_state != "HUJAN":
             return
-        sonar.found = True
-        self.player.atk_bonus += 10
-        self.player.def_bonus += 6
-        self.player.persistent_hp = config.MAX_HP
-        self.player.persistent_potions += 1
-        if hasattr(self.player, "inventory") and "Relik Ikan Emas" not in self.player.inventory:
-            self.player.inventory.append("Relik Ikan Emas")
-        if hasattr(self, "overlay") and hasattr(self.overlay, "nav_rail"):
-            self.overlay.nav_rail.set_badge(6, active=True, color=config.COLOR_STATUS_SUCCESS)
-        self.ai_ticker_info = {
-            "title": "[RELIK DITEMUKAN!] Relik Ikan Emas Kuno diperoleh!",
-            "detail": "HP Pulih Penuh, +10 ATK, +6 DEF, & +1 Ramuan untuk persiapan Boss Kage!",
-            "timer": 5.5,
-        }
+        sw, sh = self.screen.get_size()
+        drops = getattr(self, "_rain_drops", None)
+        if drops is None:
+            drops = [
+                {
+                    "x": random.uniform(0, max(1, sw)),
+                    "y": random.uniform(0, max(1, sh)),
+                    "speed": random.uniform(620.0, 920.0) if i < 65 else random.uniform(440.0, 620.0),
+                    "len": random.uniform(14.0, 22.0) if i < 65 else random.uniform(8.0, 14.0),
+                    "fg": i < 65,
+                }
+                for i in range(125)
+            ]
+            self._rain_drops = drops
+        for d in drops:
+            d["x"] -= d["speed"] * 0.25 * dt
+            d["y"] += d["speed"] * dt
+            if d["y"] > sh + 24 or d["x"] < -24:
+                d["x"] = random.uniform(-20, sw + 120)
+                d["y"] = random.uniform(-45, -5)
 
-    def _draw_relic_heatmap(self):
-        """Merender heatmap probabilitas Bayesian Belief sebagai kabut gradien halus (smoothscale)."""
-        sonar = getattr(self, "relic_sonar", None)
-        if not sonar or not sonar.heatmap_visible:
+        splashes = getattr(self, "_rain_splashes", None)
+        if splashes is None:
+            splashes = [
+                {
+                    "x": random.uniform(0, max(1, sw)),
+                    "y": random.uniform(0, max(1, sh)),
+                    "t": random.uniform(0.0, 0.45),
+                    "max_t": 0.45,
+                }
+                for _ in range(18)
+            ]
+            self._rain_splashes = splashes
+        for sp in splashes:
+            sp["t"] += dt
+            if sp["t"] >= sp["max_t"]:
+                sp["x"] = random.uniform(40, max(41, sw - 20))
+                sp["y"] = random.uniform(40, max(41, sh - 20))
+                sp["t"] = 0.0
+
+    def _draw_bridge_uncertainty_overlay(self) -> None:
+        eng = getattr(self, "bridge_uncertainty", None)
+        risky_map = getattr(self.map, "risky_bridges", {})
+        if not eng or not risky_map:
             return
-        if sonar.scan_count <= 0 and not sonar.found:
-            return
-        map_pos, max_p = sonar.get_map_estimate()
+
+        sw, sh = self.screen.get_size()
         zoom = self.camera.zoom
         sz = max(4, int(round(self.map.cell_size * zoom)))
+        ticks = pygame.time.get_ticks()
 
-        if sonar.scan_count > 0 and max_p > 0.0 and sonar.belief:
-            n_cells = max(1, len(sonar.belief))
-            uniform_p = 1.0 / float(n_cells)
-            concentration = max_p / uniform_p
-            high_count = sum(1 for p in sonar.belief.values() if p >= 0.70 * max_p)
-            focus_t = min(1.0, max(0.0, (concentration - 1.2) / 4.0))
+        # 1. Efek hujan deras dua lapis + riak percikan air + tint badai sejuk
+        if eng.weather_state == "HUJAN":
+            tint = getattr(self, "_rain_tint_surf", None)
+            if tint is None or tint.get_size() != (sw, sh):
+                tint = pygame.Surface((sw, sh), SRCALPHA)
+                tint.fill((14, 24, 48, 64))
+                self._rain_tint_surf = tint
+            self.screen.blit(tint, (0, 0))
 
-            cache = getattr(self, "_heatmap_cache", None)
-            cache_key = (sonar.scan_count, sonar.relic_pos, round(zoom, 3), id(sonar.belief))
-            if cache and cache.get("key") == cache_key:
-                heat_surf = cache["surf"]
-            else:
-                mw, mh = self.map.width, self.map.height
-                grid_surf = pygame.Surface((mw, mh), SRCALPHA)
-                for (gx, gy), prob in sonar.belief.items():
-                    ratio = prob / max_p
-                    if ratio < 0.30:
-                        continue
-                    if ratio >= 0.65:
-                        t = min(1.0, (ratio - 0.65) / 0.35)
-                        r = 255
-                        g = int(210 - 55 * t)
-                        b = int(65 - 35 * t)
-                        a = int((55 + 75 * focus_t) * (0.55 + 0.45 * t))
-                    else:
-                        t = (ratio - 0.30) / 0.35
-                        r = int(45 + 115 * t)
-                        g = int(195 + 18 * t)
-                        b = int(225 - 60 * t)
-                        a = int(24 + 34 * t)
-                    if 0 <= gx < mw and 0 <= gy < mh:
-                        grid_surf.set_at((gx, gy), (r, g, b, max(0, min(255, a))))
+            drops = getattr(self, "_rain_drops", None)
+            splashes = getattr(self, "_rain_splashes", None)
+            if drops or splashes:
+                rain_surf = pygame.Surface((sw, sh), SRCALPHA)
+                if drops:
+                    for d in drops:
+                        x1, y1, ln = int(d["x"]), int(d["y"]), d["len"]
+                        if d.get("fg"):
+                            col = (210, 232, 255, 165)
+                            w_line = 2
+                        else:
+                            col = (175, 205, 245, 95)
+                            w_line = 1
+                        pygame.draw.line(rain_surf, col, (x1, y1), (int(x1 - ln * 0.25), int(y1 + ln)), w_line)
+                if splashes:
+                    for sp in splashes:
+                        p = sp["t"] / max(0.01, sp["max_t"])
+                        rx = int(4 + p * 8)
+                        ry = int(2 + p * 3)
+                        al = int(125 * (1.0 - p))
+                        pygame.draw.ellipse(rain_surf, (205, 232, 255, al), pygame.Rect(int(sp["x"]) - rx, int(sp["y"]) - ry, rx * 2, ry * 2), 1)
+                self.screen.blit(rain_surf, (0, 0))
 
-                mid_surf = pygame.transform.smoothscale(grid_surf, (max(1, mw * 3), max(1, mh * 3)))
-                target_w = max(1, int(round(self.map_w * zoom)))
-                target_h = max(1, int(round(self.map_h * zoom)))
-                heat_surf = pygame.transform.smoothscale(mid_surf, (target_w, target_h))
-                self._heatmap_cache = {"key": cache_key, "surf": heat_surf}
+        # 2. Visual & Badge Saran Memutar untuk setiap jembatan berisiko (Atas, Kiri, Bawah)
+        font_tiny = self.fonts.get("tiny") or pygame.font.Font(None, 13)
+        pulse = 0.5 + 0.5 * math.sin(ticks * 0.005)
 
-            self.screen.blit(heat_surf, (int(self.camera.offset_x), int(self.camera.offset_y)))
-
-            # 1. Penanda Tebakan AI Terbaik (MAP) -> Siku bidik Cyan (berbeda dari Relik asli)
-            if map_pos and sonar.scan_count >= 2 and high_count <= 150:
-                wx, wy = self.map.world_to_px(map_pos)
-                sx, sy = self.camera.world_to_screen(wx, wy)
-                half = max(6, sz // 2 - 2)
-                arm = max(4, half // 2)
-                cx_m, cy_m = int(sx), int(sy)
-                cyan_col = (25, 175, 225)
-                for dx_s, dy_s in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
-                    px_c = cx_m + dx_s * half
-                    py_c = cy_m + dy_s * half
-                    pygame.draw.line(self.screen, cyan_col, (px_c, py_c), (px_c - dx_s * arm, py_c), 2)
-                    pygame.draw.line(self.screen, cyan_col, (px_c, py_c), (px_c, py_c - dy_s * arm), 2)
-
-        # 2. Penanda Relik Asli (muncul saat <= 2 ubin, atau selalu tampil untuk demo setelah ditemukan jika Heatmap ON)
-        if sonar.relic_pos:
-            d = abs(self.player.grid[0] - sonar.relic_pos[0]) + abs(self.player.grid[1] - sonar.relic_pos[1])
-            if sonar.found or d <= 2:
-                wx, wy = self.map.world_to_px(sonar.relic_pos)
-                sx, sy = self.camera.world_to_screen(wx, wy)
-                bob = 0.0 if sonar.found else math.sin(pygame.time.get_ticks() * 0.007) * 2.5
-                rx_c, ry_c = int(sx), int(sy + bob)
-                r_gem = max(6, int(sz * 0.28))
-                pts = [(rx_c, ry_c - r_gem), (rx_c + r_gem, ry_c), (rx_c, ry_c + r_gem), (rx_c - r_gem, ry_c)]
-                pygame.draw.polygon(self.screen, (255, 215, 55), pts)
-                border_c = (45, 165, 75) if sonar.found else (170, 95, 15)
-                pygame.draw.polygon(self.screen, border_c, pts, 2)
-                pygame.draw.circle(self.screen, (255, 250, 220), (rx_c - r_gem // 4, ry_c - r_gem // 4), max(2, r_gem // 4))
-
-    def _draw_sonar_waves(self):
-        """Menggambar cincin gelombang sonar warna Cyan saat [F] ditekan."""
-        for wave in getattr(self, "sonar_waves", []):
-            wx, wy = wave["pos"]
-            sx, sy = self.camera.world_to_screen(wx, wy)
-            r = int(round(wave["radius"] * self.camera.zoom))
-            if r <= 2:
+        for key, b_info in risky_map.items():
+            tiles = b_info.get("tiles", [])
+            if not tiles:
                 continue
-            surf = pygame.Surface((r * 2 + 4, r * 2 + 4), SRCALPHA)
-            alpha = max(0, min(255, int(wave.get("alpha", 200))))
-            pygame.draw.circle(surf, (45, 205, 230, alpha), (r + 2, r + 2), r, width=2)
-            if r > 14:
-                inner_r = max(2, r - int(10 * self.camera.zoom))
-                pygame.draw.circle(surf, (150, 240, 255, int(alpha * 0.55)), (r + 2, r + 2), inner_r, width=1)
-            self.screen.blit(surf, (int(sx - r - 2), int(sy - r - 2)))
+            b_state = eng.bridges.get(key, {})
+            post = b_state.get("posterior", 0.1)
+            status = eng.get_bridge_status(key)
+            exp = eng.get_expected_cost_comparison(key)
+            rec_detour = exp["recommend_detour"]
+
+            if status == "AMBRUK":
+                for gx, gy in tiles:
+                    wx, wy = self.map.world_to_px((gx, gy))
+                    sx, sy = self.camera.world_to_screen(wx, wy)
+                    rect = pygame.Rect(int(sx - sz // 2), int(sy - sz // 2), sz, sz)
+                    fill_s = pygame.Surface((sz, sz), SRCALPHA)
+                    fill_s.fill((28, 78, 128, 175))
+                    self.screen.blit(fill_s, rect.topleft)
+                    pygame.draw.rect(self.screen, (198, 52, 48), rect, 1)
+                    pad = max(3, sz // 5)
+                    pygame.draw.line(self.screen, (235, 72, 65), (rect.x + pad, rect.y + pad), (rect.right - pad, rect.bottom - pad), 2)
+                    pygame.draw.line(self.screen, (235, 72, 65), (rect.right - pad, rect.y + pad), (rect.x + pad, rect.bottom - pad), 2)
+            elif status == "RAWAN" or eng.weather_state == "HUJAN":
+                alpha_fill = int(42 + 34 * pulse) if status == "RAWAN" else 26
+                col_border = (218, 115, 28) if status == "RAWAN" else (65, 145, 215)
+                col_fill = (245, 155, 45, alpha_fill) if status == "RAWAN" else (95, 175, 245, alpha_fill)
+                for gx, gy in tiles:
+                    wx, wy = self.map.world_to_px((gx, gy))
+                    sx, sy = self.camera.world_to_screen(wx, wy)
+                    rect = pygame.Rect(int(sx - sz // 2), int(sy - sz // 2), sz, sz)
+                    fill_s = pygame.Surface((sz, sz), SRCALPHA)
+                    fill_s.fill(col_fill)
+                    self.screen.blit(fill_s, rect.topleft)
+                    pygame.draw.rect(self.screen, col_border, rect, 1)
+
+            if eng.weather_state == "HUJAN" or status != "UTUH":
+                mid_tile = tiles[len(tiles) // 2]
+                wx, wy = self.map.world_to_px(mid_tile)
+                sx, sy = self.camera.world_to_screen(wx, wy)
+                if status == "AMBRUK":
+                    b_txt = "AMBRUK • Memutar Lewat Tengah"
+                    b_bg, b_fg, b_bd = (252, 232, 230), (185, 42, 38), (195, 58, 52)
+                elif rec_detour:
+                    b_txt = f"RAWAN {post * 100:.0f}% • Disarankan Memutar"
+                    b_bg, b_fg, b_bd = (255, 242, 214), (175, 82, 14), (210, 115, 28)
+                else:
+                    b_txt = f"P(Ambruk) {post * 100:.0f}% • Aman"
+                    b_bg, b_fg, b_bd = (235, 244, 254), (35, 95, 165), (70, 140, 210)
+                tw, th = font_tiny.size(b_txt)
+                pill = pygame.Rect(int(sx) - (tw + 14) // 2, int(sy) - sz // 2 - th - 10, tw + 14, th + 6)
+                pygame.draw.rect(self.screen, b_bg, pill, border_radius=6)
+                pygame.draw.rect(self.screen, b_bd, pill, 1, border_radius=6)
+                self.screen.blit(font_tiny.render(b_txt, True, b_fg), (pill.x + 7, pill.y + 3))
 
     # =========================================================================
     # KLIK-UNTUK-INSPEKSI ELEMEN MAP (O(1) SAAT KLIK, NOL BEBAN IDLE)
@@ -2004,12 +2079,6 @@ class ExplorationModeMixin:
                 chest_hit = next((c for c in getattr(self, "chests", []) if tuple(c["pos"]) == grid_pos), None)
                 portal = getattr(self.map, "boss_portal", {"x": 38, "y": 5})
                 portal_pos = (portal.get("x", 38), portal.get("y", 5))
-                sonar = getattr(self, "relic_sonar", None)
-                relic_visible = bool(
-                    sonar and sonar.relic_pos == grid_pos and (
-                        sonar.found or abs(self.player.grid[0] - gx) + abs(self.player.grid[1] - gy) <= 2
-                    )
-                )
                 if chest_hit:
                     opened = chest_hit.get("opened", False)
                     info = (
@@ -2021,8 +2090,28 @@ class ExplorationModeMixin:
                 elif grid_pos == portal_pos:
                     rk = len(getattr(self.player, "rune_keys", []))
                     info = ("BOSS PORTAL", "Portal Menara Kuno", f"Butuh 3 Kunci Rune (Saat ini: {rk}/3) untuk lawan Boss Kage.", (135, 70, 195))
-                elif relic_visible:
-                    info = ("RELIK M9", "Relik Ikan Emas Kuno", "Artefak Materi 09: +10 ATK, +6 DEF, HP Penuh & +1 Potion.", (210, 145, 25))
+                elif any(grid_pos in b_info.get("tiles", []) for b_info in getattr(self.map, "risky_bridges", {}).values()):
+                    matched_key, matched_info = next(
+                        (k, v) for k, v in self.map.risky_bridges.items() if grid_pos in v.get("tiles", [])
+                    )
+                    tiles = list(matched_info.get("tiles", []))
+                    eng = getattr(self, "bridge_uncertainty", None)
+                    if eng:
+                        eng.select_bridge(matched_key)
+                        exp = eng.get_expected_cost_comparison(matched_key)
+                        st = eng.get_bridge_status(matched_key)
+                        b_state = eng.bridges.get(matched_key, {})
+                        col = (195, 52, 48) if st == "AMBRUK" else ((185, 95, 20) if st == "RAWAN" else (45, 125, 195))
+                        info = (
+                            "JEMBATAN M9",
+                            f"{matched_info.get('label', 'Jembatan')} ({st})",
+                            f"P(Ambruk): {b_state.get('posterior', 0.1) * 100:.1f}% | Entropi: {eng.get_entropy(matched_key):.2f} bit | {exp['recommend_text']}.",
+                            col,
+                        )
+                    else:
+                        info = ("JEMBATAN", matched_info.get("label", "Jembatan"), "Jalur pintas antarpulau.", (155, 105, 45))
+                elif grid_pos in getattr(self.map, "bridge_set", set()):
+                    info = ("JEMBATAN AMAN", "Jembatan Pulau Tengah", "Jalur memutar aman (0% risiko ambruk).", (45, 145, 75))
                 elif self.map.is_bush(grid_pos):
                     info = ("STEALTH", "Semak Persembunyian", "Bolu tak terlihat NPC dari jarak > 1 ubin saat di sini.", (45, 145, 75))
                 else:

@@ -1,177 +1,249 @@
-"""Materi 09: Decision Under Uncertainty — Bayesian Belief Filtering (Sonar Relik).
+"""Materi 09: Decision Under Uncertainty — Jembatan Antarpulau Ambruk & Bayesian Belief Update.
 
-Mengimplementasikan filter probabilistik Bayes pada grid peta untuk melacak
-lokasi Relik Tersembunyi menggunakan sinyal jarak ber-noise.
+Mengimplementasikan:
+1. Hidden State (RAPUH vs KOKOH) untuk 3 jembatan pintas antarpulau (Atas, Kiri, Bawah);
+   jembatan pulau tengah tetap aman 0% ambruk (anti soft-lock).
+2. Sequential Bayesian Belief Update melalui aksi 'Cek Jembatan' (sensor ber-noise).
+3. Perhitungan Shannon Entropy H(S) dan Expected Cost / Decision Theory.
 """
 
 import math
 import random
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Any, Tuple, Optional
 
-SIGNAL_VERY_CLOSE = "SANGAT DEKAT"
-SIGNAL_NEAR = "DEKAT"
-SIGNAL_MEDIUM = "SEDANG"
-SIGNAL_FAR = "JAUH"
+WEATHER_CERAH = "CERAH"
+WEATHER_HUJAN = "HUJAN"
 
-SIGNALS: Tuple[str, ...] = (
-    SIGNAL_VERY_CLOSE,
-    SIGNAL_NEAR,
-    SIGNAL_MEDIUM,
-    SIGNAL_FAR,
-)
+OBS_CRACK = "DERIT_RETAK"
+OBS_SOLID = "TERLIHAT_KOKOH"
+
+OBS_LABELS: Dict[str, str] = {
+    OBS_CRACK: "Derit Retak (Bahaya)",
+    OBS_SOLID: "Terlihat Kokoh",
+}
+
+BRIDGE_KEYS: Tuple[str, ...] = ("atas", "kiri", "bawah")
+BRIDGE_NAMES: Dict[str, str] = {
+    "atas": "Jembatan Atas",
+    "kiri": "Jembatan Kiri",
+    "bawah": "Jembatan Bawah",
+}
 
 
 def manhattan_dist(a: Tuple[int, int], b: Tuple[int, int]) -> int:
+    """Menghitung jarak Manhattan antar dua koordinat grid."""
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 
-def band_for_distance(dist: int) -> str:
-    if dist <= 4:
-        return SIGNAL_VERY_CLOSE
-    if dist <= 10:
-        return SIGNAL_NEAR
-    if dist <= 18:
-        return SIGNAL_MEDIUM
-    return SIGNAL_FAR
+class BridgeUncertaintyEngine:
+    """Engine Materi 09 untuk 3 Jembatan Pintas Antarpulau (Bayes' Rule + Expected Cost)."""
 
+    def __init__(self, rain_prior: float = 0.40, sensor_accuracy: float = 0.85) -> None:
+        self.clear_prior: float = 0.10
+        self.rain_prior: float = max(0.05, min(0.95, float(rain_prior)))
+        self.sensor_accuracy: float = max(0.65, min(0.95, float(sensor_accuracy)))
+        self.max_inspections: int = 4
 
-class BayesianRelicSonar:
-    """Bayesian Belief Filter untuk melacak Relik Tersembunyi di grid peta."""
-
-    def __init__(self, walkable_cells: List[Tuple[int, int]], sensor_accuracy: float = 0.82):
-        self.walkable_cells: List[Tuple[int, int]] = list(walkable_cells)
-        self.sensor_accuracy: float = max(0.55, min(0.98, float(sensor_accuracy)))
-        self.belief: Dict[Tuple[int, int], float] = {}
-        self.relic_pos: Optional[Tuple[int, int]] = None
-        self.scan_count: int = 0
-        self.last_signal: Optional[str] = None
-        self.last_true_band: Optional[str] = None
-        self.last_is_noisy: bool = False
-        self.last_player_pos: Optional[Tuple[int, int]] = None
-        self.history: List[Dict[str, Any]] = []
-        self.found: bool = False
-        self.heatmap_visible: bool = True
+        self.weather_state: str = WEATHER_CERAH
+        self.selected_bridge: str = "atas"
+        self.bridges: Dict[str, Dict[str, Any]] = {}
         self.reset()
 
-    def reset(
-        self,
-        walkable_cells: Optional[List[Tuple[int, int]]] = None,
-        relic_pos: Optional[Tuple[int, int]] = None,
-    ) -> None:
-        if walkable_cells is not None:
-            self.walkable_cells = list(walkable_cells)
-        n = len(self.walkable_cells)
-        if n > 0:
-            uniform_p = 1.0 / float(n)
-            self.belief = {cell: uniform_p for cell in self.walkable_cells}
-        else:
-            self.belief = {}
-        self.relic_pos = relic_pos
-        self.scan_count = 0
-        self.last_signal = None
-        self.last_true_band = None
-        self.last_is_noisy = False
-        self.last_player_pos = None
-        self.history.clear()
-        self.found = False
+    @property
+    def active_prior(self) -> float:
+        return self.rain_prior if self.weather_state == WEATHER_HUJAN else self.clear_prior
 
-    def observation_likelihood(self, signal: str, dist: int) -> float:
-        """Model observasi P(Sinyal | Jarak): error sensor hanya bergeser maksimal +-1 band."""
-        true_band = band_for_distance(dist)
-        idx_sig = SIGNALS.index(signal) if signal in SIGNALS else 0
-        idx_true = SIGNALS.index(true_band)
-        diff = abs(idx_sig - idx_true)
-        acc = self.sensor_accuracy
-        err = max(0.02, 1.0 - acc)
-        if diff == 0:
-            return acc
-        if diff == 1:
-            return err * 0.50
-        return 0.015
+    def _cur(self, key: Optional[str] = None) -> Dict[str, Any]:
+        k = key if key in self.bridges else self.selected_bridge
+        return self.bridges[k]
 
-    def _sample_noisy_signal(self, player_pos: Tuple[int, int]) -> Tuple[str, str, bool]:
-        if not self.relic_pos:
-            return SIGNAL_FAR, SIGNAL_FAR, False
-        true_d = manhattan_dist(player_pos, self.relic_pos)
-        true_band = band_for_distance(true_d)
-        idx_true = SIGNALS.index(true_band)
-        if random.random() < self.sensor_accuracy:
-            return true_band, true_band, False
-        neighbors = [i for i in (idx_true - 1, idx_true + 1) if 0 <= i < len(SIGNALS)]
-        chosen_idx = random.choice(neighbors) if neighbors else idx_true
-        chosen = SIGNALS[chosen_idx]
-        return chosen, true_band, (chosen != true_band)
+    @property
+    def posterior(self) -> float:
+        return self._cur()["posterior"]
 
-    def scan(self, player_pos: Tuple[int, int]) -> Dict[str, Any]:
-        """Memancarkan sonar ber-noise dari player_pos dan memperbarui Belief via Bayes' Rule."""
-        signal, true_band, is_noisy = self._sample_noisy_signal(player_pos)
-        self.update_belief(player_pos, signal)
-        self.scan_count += 1
-        self.last_signal = signal
-        self.last_true_band = true_band
-        self.last_is_noisy = is_noisy
-        self.last_player_pos = player_pos
+    @property
+    def true_fragile(self) -> bool:
+        return self._cur()["true_fragile"]
 
-        map_pos, map_prob = self.get_map_estimate()
-        entropy = self.get_entropy()
-        entry = {
-            "scan_num": self.scan_count,
-            "player_pos": player_pos,
-            "signal": signal,
-            "true_band": true_band,
-            "is_noisy": is_noisy,
-            "map_pos": map_pos,
-            "map_prob": map_prob,
-            "entropy": entropy,
+    @true_fragile.setter
+    def true_fragile(self, val: bool) -> None:
+        self._cur()["true_fragile"] = bool(val)
+
+    @property
+    def collapsed(self) -> bool:
+        return self._cur()["collapsed"]
+
+    @property
+    def observations(self) -> List[Dict[str, Any]]:
+        return self._cur()["observations"]
+
+    @property
+    def last_obs(self) -> str:
+        return self._cur()["last_obs"]
+
+    @property
+    def bridge_status(self) -> str:
+        return self.get_bridge_status(self.selected_bridge)
+
+    def get_bridge_status(self, key: str) -> str:
+        b = self._cur(key)
+        if b["collapsed"]:
+            return "AMBRUK"
+        if b["posterior"] >= 0.50:
+            return "RAWAN"
+        return "UTUH"
+
+    def select_bridge(self, key: str) -> None:
+        if key in self.bridges:
+            self.selected_bridge = key
+
+    def reset(self) -> None:
+        self.weather_state = WEATHER_CERAH
+        self.selected_bridge = "atas"
+        self.bridges = {k: self._new_bridge_state() for k in BRIDGE_KEYS}
+
+    def _new_bridge_state(self) -> Dict[str, Any]:
+        p = self.active_prior
+        return {
+            "posterior": p,
+            "true_fragile": random.random() < p,
+            "collapsed": False,
+            "observations": [],
+            "last_obs": "-",
         }
-        self.history.append(entry)
-        return entry
 
-    def update_belief(self, player_pos: Tuple[int, int], signal: str) -> None:
-        """P(X | e) <- alpha * P(e | X) * P(X) lalu normalisasi."""
-        if not self.belief:
+    def _reset_uncollapsed_beliefs(self) -> None:
+        p = self.active_prior
+        for k, b in self.bridges.items():
+            if not b["collapsed"]:
+                b["posterior"] = p
+                b["true_fragile"] = random.random() < p
+                b["observations"].clear()
+                b["last_obs"] = "-"
+
+    def set_weather(self, new_weather: str) -> None:
+        if new_weather not in (WEATHER_CERAH, WEATHER_HUJAN):
             return
-        total = 0.0
-        updated: Dict[Tuple[int, int], float] = {}
-        for cell, prior_p in self.belief.items():
-            if prior_p <= 0.0:
-                updated[cell] = 0.0
-                continue
-            d = manhattan_dist(player_pos, cell)
-            post = prior_p * self.observation_likelihood(signal, d)
-            updated[cell] = post
-            total += post
+        self.weather_state = new_weather
+        self._reset_uncollapsed_beliefs()
 
-        if total > 0.0:
-            inv = 1.0 / total
-            for cell in updated:
-                updated[cell] *= inv
+    def toggle_weather(self) -> str:
+        nxt = WEATHER_HUJAN if self.weather_state == WEATHER_CERAH else WEATHER_CERAH
+        self.set_weather(nxt)
+        return nxt
+
+    def set_rain_prior(self, val: float) -> None:
+        self.rain_prior = max(0.05, min(0.95, float(val)))
+        if self.weather_state == WEATHER_HUJAN:
+            self._reset_uncollapsed_beliefs()
+
+    def set_sensor_accuracy(self, val: float) -> None:
+        self.sensor_accuracy = max(0.65, min(0.95, float(val)))
+
+    def inspect_bridge(self, key: Optional[str] = None) -> Dict[str, Any]:
+        """Melakukan 1 kali observasi ber-noise pada jembatan target & memperbarui Posterior Bayes."""
+        k = key if key in self.bridges else self.selected_bridge
+        b = self.bridges[k]
+        if b["collapsed"]:
+            return {
+                "updated": False,
+                "bridge": k,
+                "reason": f"{BRIDGE_NAMES[k]} sudah ambruk.",
+                "posterior": 1.0,
+                "entropy": 0.0,
+                "obs": b["last_obs"],
+            }
+        if len(b["observations"]) >= self.max_inspections:
+            return {
+                "updated": False,
+                "bridge": k,
+                "reason": f"Batas {self.max_inspections}x inspeksi tercapai.",
+                "posterior": b["posterior"],
+                "entropy": self.get_entropy(k),
+                "obs": b["last_obs"],
+            }
+
+        acc = self.sensor_accuracy
+        if b["true_fragile"]:
+            obs = OBS_CRACK if random.random() < acc else OBS_SOLID
         else:
-            n = len(self.belief)
-            inv_n = 1.0 / float(n) if n else 0.0
-            for cell in updated:
-                updated[cell] = inv_n
+            obs = OBS_SOLID if random.random() < acc else OBS_CRACK
 
-        self.belief = updated
+        prior_before = b["posterior"]
+        if obs == OBS_CRACK:
+            p_e_fragile, p_e_solid = acc, 1.0 - acc
+        else:
+            p_e_fragile, p_e_solid = 1.0 - acc, acc
 
-    def get_map_estimate(self) -> Tuple[Optional[Tuple[int, int]], float]:
-        """Mengembalikan koordinat dan probabilitas tertinggi (Maximum A Posteriori)."""
-        if not self.belief:
-            return None, 0.0
-        best_cell = max(self.belief, key=self.belief.get)  # type: ignore[arg-type]
-        return best_cell, self.belief[best_cell]
+        num = p_e_fragile * prior_before
+        den = num + p_e_solid * (1.0 - prior_before)
+        posterior_after = num / den if den > 1e-12 else prior_before
+        b["posterior"] = max(0.001, min(0.999, posterior_after))
+        b["last_obs"] = OBS_LABELS.get(obs, obs)
 
-    def get_top_candidates(self, k: int = 3) -> List[Tuple[Tuple[int, int], float]]:
-        if not self.belief:
-            return []
-        return sorted(self.belief.items(), key=lambda kv: kv[1], reverse=True)[:k]
+        ent = self.get_entropy(k)
+        rec = {
+            "step": len(b["observations"]) + 1,
+            "obs": obs,
+            "obs_label": b["last_obs"],
+            "prior_before": prior_before,
+            "posterior_after": b["posterior"],
+            "entropy": ent,
+        }
+        b["observations"].append(rec)
+        return {
+            "updated": True,
+            "bridge": k,
+            "obs": obs,
+            "obs_label": b["last_obs"],
+            "prior_before": prior_before,
+            "posterior": b["posterior"],
+            "entropy": ent,
+            "step": rec["step"],
+        }
 
-    def get_entropy(self) -> float:
-        """Entropi Shannon (bit): makin kecil berarti keyakinan lokasi Relik makin pasti."""
-        if not self.belief:
+    def try_cross_bridge(self, key: Optional[str] = None) -> Dict[str, Any]:
+        """Dipanggil saat Bolu melangkah ke salah satu jembatan berisiko."""
+        k = key if key in self.bridges else self.selected_bridge
+        b = self.bridges[k]
+        if b["collapsed"]:
+            return {"collapsed": False, "already_collapsed": True, "bridge": k}
+        if b["true_fragile"]:
+            b["collapsed"] = True
+            b["posterior"] = 1.0
+            return {"collapsed": True, "already_collapsed": False, "bridge": k}
+        return {"collapsed": False, "already_collapsed": False, "bridge": k}
+
+    def get_entropy(self, key: Optional[str] = None) -> float:
+        """Menghitung Shannon Entropy H(S) dalam bit."""
+        b = self._cur(key)
+        if b["collapsed"]:
             return 0.0
-        h = 0.0
-        for p in self.belief.values():
-            if p > 1e-12:
-                h -= p * math.log2(p)
-        return h
+        p = max(1e-9, min(1.0 - 1e-9, b["posterior"]))
+        return -(p * math.log2(p) + (1.0 - p) * math.log2(1.0 - p))
+
+    def get_expected_cost_comparison(
+        self,
+        key: Optional[str] = None,
+        shortcut_cost: float = 12.0,
+        safe_detour_cost: float = 28.0,
+        item_penalty_cost: float = 20.0,
+    ) -> Dict[str, Any]:
+        """Menghitung Expected Cost Jalur Jembatan vs Jalur Aman Memutar Lewat Pulau Tengah."""
+        b = self._cur(key)
+        if b["collapsed"]:
+            return {
+                "expected_upper": float("inf"),
+                "safe_cost": safe_detour_cost,
+                "recommend_detour": True,
+                "recommend_text": "Wajib Memutar (Ambruk)",
+            }
+        p_fail = b["posterior"]
+        expected_upper = p_fail * (safe_detour_cost + item_penalty_cost) + (1.0 - p_fail) * shortcut_cost
+        recommend_detour = expected_upper > safe_detour_cost
+        return {
+            "expected_upper": expected_upper,
+            "safe_cost": safe_detour_cost,
+            "recommend_detour": recommend_detour,
+            "recommend_text": "Disarankan Memutar" if recommend_detour else "Aman Dilintasi",
+        }

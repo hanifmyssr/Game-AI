@@ -49,6 +49,9 @@ def convert():
             cols = int(root.attrib.get("columns", 1))
             tile_count = int(root.attrib.get("tilecount", 1))
             norm_img = img_src.replace("\\", "/").split("assets/")[-1]
+            # Lewati tileset duplikat/usang jika file gambarnya tidak ada di folder assets/
+            if not os.path.exists(os.path.join(GAME_AI_DIR, "assets", norm_img)):
+                continue
 
             ts_list.append((fgid, fgid + tile_count - 1, cols, norm_img, root.attrib.get("name", "")))
         elif "image" in ts:
@@ -120,9 +123,9 @@ def convert():
                 # Layer obstacle di Tiled adalah collision mask murni (logika game, bukan visual).
                 obstacles.append({"x": gx, "y": gy, "src": "", "atlas_x": 0, "atlas_y": ay})
             else:
-                # 1. Deteksi Ayam / Chicken (Free Chicken Sprites, firstgid=817)
+                # 1. Deteksi Ayam / Chicken (berdasarkan nama/gambar Free Chicken Sprites, bukan GID statis)
                 # PENTING: Hanya sprite ayam hidup (bukan Free_Chicken_House / kandang ayam)
-                if (817 <= clean_gid < 825 or "free chicken sprites" in name.lower() or "free chicken sprites" in img.lower()) and "house" not in name.lower() and "house" not in img.lower():
+                if ("free chicken sprites" in name.lower() or "free chicken sprites" in img.lower()) and "house" not in name.lower() and "house" not in img.lower():
                     chickens.append((gx, gy))
                     continue
 

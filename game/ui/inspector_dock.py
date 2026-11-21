@@ -31,7 +31,7 @@ TAB_HEADERS = [
     ("05-06: CSP & LOCAL SEARCH", "Optimasi Skuad Lawan"),
     ("07: LOGIC & REASONING", "Knowledge Base & Resolusi"),
     ("08: AUTOMATED PLANNING", "Perencana Tugas PDDL"),
-    ("09: UNCERTAINTY", "Bayesian Belief Sonar"),
+    ("09: UNCERTAINTY", "Jembatan Atas & Bayes"),
     ("PENGATURAN & AUDIO", "Volume & Sesi Permainan"),
 ]
 

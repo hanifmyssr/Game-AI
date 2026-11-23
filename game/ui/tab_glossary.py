@@ -67,7 +67,7 @@ TAB_GLOSSARY_DATA: Dict[int, Dict[str, object]] = {
             ("INFORMASI DI TAB INI", config.COLOR_ACCENT_BLUE, [
                 ("Target Kesulitan", "Slider target 'Fun Zone'; mode Adaptif mengikuti HP/buff Hero, atau geser untuk Manual (+ tombol Auto)."),
                 ("Metrik Optimasi", "Difficulty aktual skuad, Fitness (-|diff - target|), jumlah Iterasi, dan Waktu AI."),
-                ("Validasi C1-C4", "Menjamin total HP, Ramuan, ATK, dan keunikan job memenuhi batasan CSP."),
+                ("Validasi C1-C8", "Menjamin total HP, Ramuan, ATK, dan keunikan job memenuhi 8 batasan CSP."),
             ]),
             ("PENGERTIAN ALGORITMA", config.COLOR_ACCENT_GOLD, [
                 ("CSP (MRV, LCV, AC-3)", "Constraint Satisfaction: menyaring domain nilai agar konfigurasi awal tim 100% legal."),

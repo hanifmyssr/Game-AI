@@ -68,13 +68,12 @@ class TabMinimax:
             active_color=(230, 220, 205),
             border_color=config.COLOR_CARD_BORDER,
         )
-
-    def resize(self, rect: pygame.Rect) -> None:
-        self.rect = pygame.Rect(rect)
-
         self.btn_depth_minus = pygame.Rect(0, 0, 28, 26)
         self.btn_depth_plus = pygame.Rect(0, 0, 28, 26)
         self.btn_move_ordering = pygame.Rect(0, 0, 95, 26)
+
+    def resize(self, rect: pygame.Rect) -> None:
+        self.rect = pygame.Rect(rect)
 
     @property
     def battle_system(self):
@@ -95,6 +94,14 @@ class TabMinimax:
                 bs.update_ai_preview()
 
     def _on_open_tree(self) -> None:
+        if getattr(self.app, "game_mode", "EXPLORATION") != "BATTLE":
+            if self.app is not None:
+                self.app.ai_ticker_info = {
+                    "title": "[MINIMAX TREE] Hanya Aktif di Mode Battle",
+                    "detail": "Masuk ke duel (temui NPC atau tekan [B] -> [SPASI]) lalu tekan [T] untuk melihat Pohon Minimax.",
+                    "timer": 3.5,
+                }
+            return
         if hasattr(self.app, "overlay") and hasattr(self.app.overlay, "toggle_tree_overlay"):
             self.app.overlay.toggle_tree_overlay()
 

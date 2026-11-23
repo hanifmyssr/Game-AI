@@ -82,6 +82,8 @@ class TabSearch:
         if hasattr(self.app, "overlay"):
             self.app.overlay.show_path_visualization = self.show_path_line
             if self.show_path_line:
+                if hasattr(self.app, "refresh_search_focus"):
+                    self.app.refresh_search_focus(force=True)
                 self.app.overlay.start_path_animation()
             else:
                 self.app.overlay.stop_path_animation()
@@ -123,6 +125,24 @@ class TabSearch:
         gap = 5 if compact else (8 if banner_h > 0 else 12)
 
         # 1. KARTU PILIH ALGORITMA & TARGET NPC FOKUS
+        overlay_ref = getattr(self.app, "overlay", None)
+        if overlay_ref is not None:
+            vis_now = bool(getattr(overlay_ref, "show_path_visualization", True))
+            if vis_now != self.show_path_line:
+                self.show_path_line = vis_now
+                self.btn_toggle_path.text = f"Toggle Jalur di Peta: {'AKTIF' if vis_now else 'OFF'}"
+        focus_now = getattr(self.app, "search_focus_mode", "AUTO")
+        for idx, (opt_k, _) in enumerate(self.dropdown_focus.options):
+            if opt_k == focus_now:
+                self.dropdown_focus.selected_idx = idx
+                break
+        npc_ref = getattr(self.app, "npc", None)
+        if npc_ref is not None and hasattr(npc_ref, "algorithm"):
+            for idx, (opt_k, _) in enumerate(self.dropdown_algo.options):
+                if opt_k == npc_ref.algorithm:
+                    self.dropdown_algo.selected_idx = idx
+                    break
+
         card_algo_h = 128 if compact else 144
         draw_card(surface, pygame.Rect(cx, cy, card_w, card_algo_h), config.COLOR_CARD_BG,
                   border_color=config.COLOR_CARD_BORDER, border_radius=8)

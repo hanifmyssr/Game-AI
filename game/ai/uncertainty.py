@@ -214,6 +214,18 @@ class BridgeUncertaintyEngine:
             return {"collapsed": True, "already_collapsed": False, "bridge": k}
         return {"collapsed": False, "already_collapsed": False, "bridge": k}
 
+    def repair_bridge(self, key: Optional[str] = None) -> Dict[str, Any]:
+        """Memperbaiki jembatan yang ambruk / mereset kondisi jembatan terpilih untuk demo ulang."""
+        k = key if key in self.bridges else self.selected_bridge
+        b = self.bridges[k]
+        was_collapsed = b["collapsed"]
+        b["collapsed"] = False
+        b["observations"].clear()
+        b["last_obs"] = "-"
+        b["posterior"] = self.active_prior
+        b["true_fragile"] = random.random() < self.active_prior
+        return {"repaired": True, "was_collapsed": was_collapsed, "bridge": k, "posterior": b["posterior"]}
+
     def get_entropy(self, key: Optional[str] = None) -> float:
         """Menghitung Shannon Entropy H(S) dalam bit."""
         b = self._cur(key)

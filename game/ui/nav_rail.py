@@ -112,6 +112,7 @@ class NavRail:
     def set_active_tab(self, tab_id: int) -> None:
         if 0 <= tab_id < len(self.tabs):
             self.active_tab = tab_id
+            self.tabs[tab_id].has_badge = False
             if self.on_tab_changed:
                 self.on_tab_changed(tab_id)
 
@@ -135,6 +136,8 @@ class NavRail:
                 return True
             for tab_id, btn_rect in self.item_rects.items():
                 if btn_rect.collidepoint(event.pos):
+                    if 0 <= tab_id < len(self.tabs):
+                        self.tabs[tab_id].has_badge = False
                     if tab_id == self.active_tab:
                         if self.on_tab_toggled:
                             self.on_tab_toggled(tab_id)

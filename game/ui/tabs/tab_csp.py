@@ -107,6 +107,14 @@ class TabCSP:
             self.app._run_optimization()
 
     def _on_tree_modal_clicked(self) -> None:
+        if getattr(self.app, "game_mode", "EXPLORATION") != "PRE_BATTLE":
+            if self.app is not None:
+                self.app.ai_ticker_info = {
+                    "title": "[CSP / LOCAL SEARCH] Aktif di Fase Pre-Battle",
+                    "detail": "Masuk ke Pre-Battle (temui NPC atau tekan [B]) lalu tekan [T] untuk membuka Visualizer Skuad.",
+                    "timer": 3.5,
+                }
+            return
         if hasattr(self.app, "pre_battle_visualizer"):
             self.app.pre_battle_visualizer.toggle()
         elif hasattr(self.app, "overlay") and hasattr(self.app.overlay, "toggle_tree_overlay"):
@@ -144,6 +152,12 @@ class TabCSP:
         )
 
         # 1. KARTU PENGATURAN ALGORITMA LOCAL SEARCH
+        ls_now = getattr(self.app, "selected_ls_algo", None)
+        if ls_now:
+            for idx, (opt_k, _) in enumerate(self.dropdown_ls.options):
+                if opt_k == ls_now:
+                    self.dropdown_ls.selected_idx = idx
+                    break
         card_algo_h = 78
         draw_card(surface, pygame.Rect(cx, cy, card_w, card_algo_h), config.COLOR_CARD_BG,
                   border_color=config.COLOR_CARD_BORDER, border_radius=8)

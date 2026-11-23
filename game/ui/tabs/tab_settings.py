@@ -158,11 +158,11 @@ class TabSettings:
 
         infos = [
             "Proyek Game AI: Bakekok",
-            "Mata Kuliah: Kecerdasan Buatan (SEM 3)",
-            "Universitas Pendidikan Indonesia",
-            "Materi: Search (01-03), Minimax (04),",
-            "CSP & Local Search (05-06),",
-            "Logic KB (07), Automated Planning (08)",
+            "Kecerdasan Buatan (Ilmu Komputer UPI)",
+            "Search (UCS/A*), Minimax & Alpha-Beta,",
+            "CSP (C1-C8) & Local Search Optimizer,",
+            "Logic KB (TELL/ASK) & PDDL Planning,",
+            "Decision Uncertainty (Bayes & Expected Cost)",
         ]
         iy = cy + 34
         for line in infos:

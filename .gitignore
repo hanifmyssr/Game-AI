@@ -20,12 +20,20 @@ eggs/
 .eggs/
 *.egg-info/
 
+# Environment & Secrets
+.env
+.env.*
+*.key
+
 # IDE & Editor
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+*.tmp
+*.bak
+*.orig
 .DS_Store
 Thumbs.db
 
@@ -36,8 +44,13 @@ Thumbs.db
 # Scratch temporary screenshots, logs & helper scripts
 scratch/*.png
 scratch/*.jpg
+scratch/**/*.png
+scratch/**/*.jpg
+scratch/screenshots/
+scratch/biom_tiles/
 scratch/*.ps1
 scratch/*.log
+scratch/**/*.log
 
 # Dokumen Laporan & Benchmark (Word & PDF)
 *.docx
@@ -59,3 +72,6 @@ assets/logo_upi.png
 # Agent & AI Assistant Workspace Configurations (Internal)
 .gemini/
 .agents/
+.agent/
+.claude/
+.cursor/

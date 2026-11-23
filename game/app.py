@@ -483,6 +483,9 @@ class App(ExplorationModeMixin, PreBattleModeMixin, BattleModeMixin):
                 n._spawn()
         if hasattr(self, "overlay"):
             self.overlay.set_chasing_visualization(False)
+            if hasattr(self.overlay, "nav_rail") and hasattr(self.overlay.nav_rail, "tabs"):
+                for _t in self.overlay.nav_rail.tabs:
+                    _t.has_badge = False
 
         # 4. Kamera fokus ulang ke Player
         if hasattr(self, "camera") and self.camera:

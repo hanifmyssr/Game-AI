@@ -87,6 +87,17 @@ class TabUncertainty:
             border_color=config.COLOR_ACCENT_BLUE,
         )
 
+        self.btn_repair = UIButton(
+            pygame.Rect(self.rect.x + 12, self.rect.y + 464, self.rect.width - 24, 34),
+            "Perbaiki Jembatan",
+            btn_font,
+            on_click=self._on_repair_clicked,
+            bg_color=(235, 248, 238),
+            hover_color=(246, 254, 248),
+            active_color=(218, 238, 222),
+            border_color=config.COLOR_STATUS_SUCCESS,
+        )
+
     def resize(self, rect: pygame.Rect) -> None:
         self.rect = pygame.Rect(rect)
 
@@ -141,6 +152,22 @@ class TabUncertainty:
             "timer": 4.0,
         }
 
+    def _on_repair_clicked(self) -> None:
+        eng = getattr(self.app, "bridge_uncertainty", None)
+        if not eng:
+            return
+        res = eng.repair_bridge()
+        b_name = BRIDGE_NAMES.get(res.get("bridge", "atas"), "Jembatan")
+        if hasattr(self.app, "_sync_bridge_walkability"):
+            self.app._sync_bridge_walkability()
+        if hasattr(self.app, "refresh_search_focus"):
+            self.app.refresh_search_focus(force=True)
+        self.app.ai_ticker_info = {
+            "title": f"[JEMBATAN DIPERBAIKI] {b_name} Kembali Utuh!",
+            "detail": f"Jalur dibuka ulang untuk demo. Prior saat ini: {eng.active_prior * 100:.0f}%.",
+            "timer": 4.0,
+        }
+
     def handle_event(self, event: pygame.event.Event) -> bool:
         for btn in self.bridge_btns.values():
             if btn.handle_event(event):
@@ -152,6 +179,8 @@ class TabUncertainty:
         if self.slider_acc.handle_event(event):
             return True
         if self.btn_weather.handle_event(event):
+            return True
+        if self.btn_repair.handle_event(event):
             return True
         return False
 
@@ -303,7 +332,7 @@ class TabUncertainty:
 
         # 4. KARTU KONTROL CUACA & PARAMETER PROBABILITAS
         cy += card_exp_h + gap
-        card_ctrl_h = 144
+        card_ctrl_h = 184
         draw_card(
             surface, pygame.Rect(cx, cy, card_w, card_ctrl_h), config.COLOR_CARD_BG,
             border_color=config.COLOR_CARD_BORDER, border_radius=8,
@@ -317,6 +346,11 @@ class TabUncertainty:
         self.btn_weather.text = "Ubah Cuaca: Cerah" if is_rain else "Ubah Cuaca: Hujan Deras"
         self.btn_weather.rect = pygame.Rect(cx + 10, cy + 100, card_w - 20, 34)
         self.btn_weather.draw(surface)
+
+        b_label = BRIDGE_NAMES.get(sel_key, "Jembatan")
+        self.btn_repair.text = f"Perbaiki {b_label}" if status == "AMBRUK" else f"Perbaiki / Reset {b_label}"
+        self.btn_repair.rect = pygame.Rect(cx + 10, cy + 140, card_w - 20, 34)
+        self.btn_repair.draw(surface)
 
     def draw_popups(self, surface: pygame.Surface) -> None:
         pass

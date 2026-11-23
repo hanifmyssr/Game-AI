@@ -82,11 +82,22 @@ class PlanningOverlay:
 
     def _on_engine_selected(self, index: int, key: str) -> None:
         self.current_engine_idx = index
+        if self.app is not None:
+            self.app.selected_planning_engine = key
         self._solve_active_domain()
+        if self.app is not None and self.latest_plan_result is not None:
+            self.app.latest_plan_result = self.latest_plan_result
+            if getattr(self.app, "game_mode", "EXPLORATION") != "BATTLE" and getattr(self.app, "task_executor", None):
+                self.app.task_executor.set_plan(self.latest_plan_result)
 
     def _solve_active_domain(self) -> None:
         """Menjalankan pemecahan domain aktif (Eksplorasi vs Battle)."""
         mode = getattr(self.app, "game_mode", "EXPLORATION") if self.app else "EXPLORATION"
+        if self.app is not None:
+            eng_key = getattr(self.app, "selected_planning_engine", "FORWARD_A_STAR")
+            self.current_engine_idx = 1 if eng_key == "BACKWARD_REGRESSION" else 0
+            if hasattr(self, "dropdown_engine"):
+                self.dropdown_engine.selected_idx = self.current_engine_idx
 
         if mode == "BATTLE":
             warrior = "Oyen the Warrior"
@@ -99,7 +110,12 @@ class PlanningOverlay:
                 healer = m[2].name if len(m) > 2 else m[1].name
             s0, goal, actions = create_battle_tactics_problem(warrior, tank, healer)
         else:
-            s0, goal, actions = create_world_patrol_problem("A")
+            chest_tag = "A"
+            chests = getattr(self.app, "chests", []) if self.app else []
+            for idx, tag in enumerate(("A", "B", "C")):
+                if idx < len(chests) and chests[idx].get("opened", False):
+                    chest_tag = tag
+            s0, goal, actions = create_world_patrol_problem(chest_tag)
 
         if self.current_engine_idx == 0:
             self.latest_plan_result = self.forward_planner.plan(s0, goal, actions)

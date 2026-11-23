@@ -1,4 +1,4 @@
-# Bakekok - Dokumentasi Sistem Game Tahap 4
+# Bakekok — Dokumentasi Sistem Game AI
 
 > **Tugas Besar Mata Kuliah Kecerdasan Buatan**  
 > Program Studi Ilmu Komputer — Universitas Pendidikan Indonesia  
@@ -34,355 +34,150 @@ python main.py
 
 ---
 
-## 3. Skenario Panduan Fitur AI (Tahap 4: Materi 07 & 08)
+## 3. Ringkasan Permainan & Sistem AI Utama
 
-Tahap 4 mengintegrasikan dua materi inti penalaran simbolik dan perencanaan otonom ke dalam ekosistem game:
-1. **Materi 07: Logika Proposisional & Resolution Refutation** (*Knowledge-Based Systems*)
-2. **Materi 08: Classical Automated Planning PDDL / STRIPS** (*Forward A\* vs Backward Regression*)
+**Bakekok** adalah game petualangan 2D berbasis grid (`44 × 40` ubin pada `data/map_tubes.json`) di mana pemain (**Bolu**, spawn awal di `(22, 20)`) harus mengumpulkan **3 Kunci Rune** dari peti harta karun untuk membuka **Portal Menara Kuno** (`(38, 5)`) dan menghadapi **Boss Kage** (*Kage the Shadow Lord*), sambil menghindari atau menghadapi 3 penjaga pulau:
+* **Oyen** (*Warrior*): berpatroli di sektor kiri bawah sekitar **Peti B** `(5, 24)`.
+* **Kuro** (*Ranger*): berpatroli di sektor kanan bawah sekitar **Peti C** `(34, 28)`.
+* **Shiro** (*Mage*): berpatroli di sektor kiri atas sekitar **Peti A** `(9, 3)`.
 
-Alur kerja agen cerdas dalam merespons aksi pemain divisualisasikan melalui diagram berikut:
+Selain sistem pencarian jalur (*Pathfinding* UCS/A*), pertarungan *turn-based* (*Minimax & Alpha-Beta Pruning*), dan optimasi skuad lawan (*CSP & Local Search*), game ini mengintegrasikan tiga sistem kecerdasan buatan tingkat lanjut:
+
+1. **Logika Proposisional & Basis Pengetahuan (*Knowledge Representation & Resolution Refutation*)**
+2. **Perencanaan Otomatis (*Automated Classical Planning — PDDL / STRIPS*)**
+3. **Pengambilan Keputusan di Bawah Ketidakpastian (*Decision Under Uncertainty — Bayes' Rule, Shannon Entropy & Expected Cost*)**
 
 ```mermaid
 flowchart TD
-    A["1. Player Membuka Peti (Tombol E)<br/>(Sensorik Dunia: Percept Acquisition)"] --> B["2. Injeksi Fakta Baru ke KB (TELL)<br/>(ChestOpened_A & HasLootedItem_Player)"]
-    B --> C["3. Penalaran Deduktif Logika Proposisional (Materi 07)<br/>(Inference Engine: KB ∪ {¬α} ⊢ □)"]
-    C --> D["4. Penetapan Peran Inter-Agen NPC<br/>(Kuro: Chaser | Shiro & Oyen: Perimeter Guardians)"]
-    D --> E["5. Perencanaan Klasik Otomatis PDDL (Materi 08)<br/>(Forward Progression A* / Backward Regression STRIPS)"]
-    E --> F["6. Eksekusi Rencana Taktis di Dunia & Battle<br/>(Intercept Choke Point & Battle Tactical Rotation)"]
-    F --> G["7. Inspeksi Visualizer Interaktif<br/>(Overlay HUD [K], [P], Fullscreen Modal [T], & [ESC] Exit)"]
+    A["1. Bolu Membuka Peti (Tombol E)<br/>(Percept: Peti Terbuka & Kunci Rune Diperoleh)"] --> B["2. Injeksi Fakta ke Knowledge Base (TELL)<br/>(ChestOpened_X, HasLootedItem_Player, HasKey_X)"]
+    B --> C["3. Penalaran Logika Proposisional (ASK)<br/>(Resolution Refutation hingga Klausa Kosong [])"]
+    C --> D["4. Koordinasi Penjaga & Portal<br/>(1 Chaser Mengejar, 2 Guardian Siaga, Cek R6_PORTAL)"]
+    D --> E["5. Perencanaan Klasik PDDL / STRIPS<br/>(Forward Progression A* vs Backward Regression)"]
+    E --> F["6. Penyeberangan Jembatan Berisiko<br/>(Bayes' Rule, Entropi H(S), & Expected Cost)"]
+    F --> G["7. Inspeksi Interaktif & Demo Pause<br/>(Panel Tab, Overlay [K]/[P], Graf [T], & Pause [V])"]
 ```
 
 ---
 
-### Langkah 1: Interaksi Peti Harta & Injeksi Fakta (`TELL`) ke Knowledge Base
-* Gerakkan karakter **Bolu** mendekati salah satu peti harta karun (jarak $\le 1$ petak), lalu tekan **`[E]`**.
-* Roda gacha akan berputar memberikan *buff* item (Pedang ATK, Perisai DEF, atau Ramuan Potion).
-* **Mekanisme Logika**: Peristiwa ini langsung mengirimkan persepsi sensorik baru ke dalam basis pengetahuan agen:
-  ```python
-  kb.tell("ChestOpened_A")
-  kb.tell("HasLootedItem_Player")
-  ```
+## 4. Fitur AI & Cara Menggunakannya di Dalam Game
 
-### Langkah 2: Penalaran Deduktif Logika Proposisional (Shortcut `[K]`)
-* Tekan tombol **`[K]`** pada keyboard saat berada di peta untuk membuka **HUD Overlay Logika Proposisional**.
-* Sistem mengeksekusi inferensi resolusi refutasi formal untuk menjawab query (`ASK`):
-  * **Query 1**: Apakah Kuro harus memburu pemain? $\alpha = \text{AssignChaser\_Kuro}$.
-  * **Query 2**: Apakah Shiro harus mengunci perimeter peti B? $\beta = \text{AssignTightGuard\_Shiro}$.
-  * **Query 3**: Apakah Oyen harus bersiaga di peti cadangan C? $\gamma = \text{AssignTightGuard\_Oyen}$.
-* Mesin inferensi menyatukan $KB$ dengan negasi query ($\neg \alpha$) dan melakukan resolusi klausul CNF hingga menghasilkan **klausa kosong ($\square$)** sebagai bukti kontradiksi matematis ($KB \models \alpha$).
+### A. Logika Proposisional & Basis Pengetahuan (`game/logic/`)
+* **Pemisahan KB dan Mesin Inferensi**: Aturan logika disimpan secara deklaratif dalam bentuk *Conjunctive Normal Form* (CNF) pada `KnowledgeBase` (`game/logic/kb_rules.py`), terpisah dari algoritma pembuktian pada `ResolutionRefutationEngine` (`game/logic/inference_engine.py`).
+* **Siklus `TELL` → `ASK`**:
+  1. Saat Bolu membuka peti dengan **`[E]`** (jarak `<= 1` ubin), sistem memanggil `TELL` fakta `ChestOpened_{A/B/C}`, `HasLootedItem_Player`, serta `HasKey_{A/B/C}`.
+  2. Sistem melakukan `ASK` (`engine.prove(kb, query)`) untuk menentukan satu NPC pengejar (`AssignChaser`: Peti A → Shiro, Peti B → Oyen, Peti C → Kuro) dan dua NPC penjaga peti tersisa (`AssignTightGuard`).
+  3. Aturan **`R6_PORTAL`** (`HasKey(A) ∧ HasKey(B) ∧ HasKey(C) => PortalActive`) memverifikasi bahwa Portal Menara Kuno `(38, 5)` hanya aktif setelah ketiga Kunci Rune terkumpul.
+* **Inspeksi di Game**:
+  * Buka **Tab ke-5 (`07: LOGIC & REASONING`)** untuk melihat percept `TELL`, daftar aturan CNF KB (termasuk `R6_PORTAL`), jejak resolusi refutasi, kesimpulan `ASK`, dan status `Portal (R6)`.
+  * Tekan **`[K]`** untuk membuka overlay alur `TELL -> KB CNF -> ASK -> []` di atas peta, atau klik **`Buka Pembuktian Resolusi [K]`** untuk membuka pohon resolusi lengkap di `UnifiedGraphModal`.
 
-### Langkah 3: Perencanaan Klasik Otomatis PDDL / STRIPS (Shortcut `[P]`)
-* Tekan tombol **`[P]`** pada keyboard untuk membuka **HUD Overlay Perencanaan Otomatis PDDL**.
-* Dari hasil deduksi logika, sistem membangkitkan *goal state* strategis:
-  $$\text{Goal} = \{\text{PerimeterLocked}(B), \text{InCombat}(\text{Kuro}, \text{Bolu}), \text{IslandSecure}\}$$
-* Mesin perencana secara otonom menyusun sekuens aksi multi-agen:
-  1. $\text{MoveToChokePoint}(\text{Kuro}, \text{Tebing\_Utara}, \text{Jembatan})$
-  2. $\text{InterceptPlayer}(\text{Kuro}, \text{Bolu}, \text{Jembatan})$
-  3. $\text{MoveToSector}(\text{Shiro}, \text{Dermaga\_Timur}, \text{Peti\_B})$
-  4. $\text{ReinforceGuard}(\text{Shiro}, \text{Peti\_B})$
-* Anda dapat beralih antara algoritma **Forward Progression (A\*)** dan **Backward Regression (STRIPS)** secara *real-time*.
+### B. Perencanaan Otomatis — PDDL / STRIPS (`game/planning/`)
+* **Dua Mesin Perencana (`planner_engine.py`)**:
+  * **Forward Progression (`A*`)**: mencari maju dari `Initial State (s0)` ke `Goal State` menggunakan heuristik jumlah predikat goal yang belum terpenuhi.
+  * **Backward Regression (`STRIPS`)**: mencari mundur dari `Goal State` ke `s0` menggunakan aksi yang *relevant* dan *consistent*, lalu memvalidasi rencana secara maju.
+* **Dua Domain Perencanaan**:
+  1. **Domain Patroli Dunia (`domain_world_patrol.py`)**: menyusun 4 langkah terstruktur (`MoveToChokePoint` → `InterceptPlayer` → `MoveToSector` → `ReinforceGuard`) dan dieksekusi ke perilaku NPC melalui `TaskExecutor`.
+  2. **Domain Taktik Duel (`domain_battle_tactics.py`)**: saat duel *Tag-Team* dan HP petarung garis depan kritis, perencana menyusun rotasi tim otomatis (`SwapRetreat` → `CastDefend` → `HealTeammate`).
+* **Inspeksi di Game**:
+  * Buka **Tab ke-6 (`08: AUTOMATED PLANNING`)** untuk mengganti algoritma perencana, melihat `State Awal (s0)` vs `Sasaran (Goal)`, serta daftar sekuens aksi STRIPS.
+  * Tekan **`[P]`** (atau klik **`Lihat Info Rencana PDDL [P]`**) untuk membuka overlay rincian *Preconditions*, *Add List*, dan *Delete List*, lalu tekan **`[T]`** (atau klik **`Buka Pohon Rencana PDDL [T]`**) untuk membuka pohon rencana PDDL.
 
-### Langkah 4: Buka Fullscreen Universal Decision Tree & Graph Modal (Shortcut `[T]`)
-* Tekan tombol **`[T]`** untuk membuka **Modal Pohon Graf Interaktif Fullscreen**:
-  * **Tab Pohon Resolusi Logika**: Memperlihatkan pohon penurunan resolusi dari klausul awal hingga klausa kosong ($\square$).
-  * **Tab Pohon Aksi PDDL**: Menampilkan graf ketergantungan aksi STRIPS (*action graph*), kondisi prasyarat (*preconditions*), efek penambahan (*add-list*), dan efek penghapusan (*delete-list*).
-  * Dilengkapi tombol navigasi langkah, zoom, pan, dan penjelasan detail teori pada panel samping kanan.
-
-### Langkah 5: Rotasi Skuad Taktis di Arena Battle & Tombol Keluar Damai
-* Saat Kuro berhasil mencegat Bolu, duel *turn-based* dimulai.
-* **Rotasi Taktis PDDL Battle**: Banner taktis di bagian atas arena memantau kondisi frontline musuh. Jika HP frontline kritis ($\le 25\%$), perencana taktis STRIPS mengeksekusi rotasi tim secara otomatis:
-  $$\text{SwapRetreat}(\text{Oyen}, \text{Kage}) \longrightarrow \text{CastDefend}(\text{Kage}) \longrightarrow \text{HealTeammate}(\text{Shiro}, \text{Oyen})$$
-* **Tombol `[ESC] Keluar`**: Terletak di sudut kiri atas arena pertarungan. Klik tombol ini (atau tekan `[Esc]`) untuk keluar secara damai dari pertarungan kembali ke mode eksplorasi peta.
-* **Reset Damai & Pemulihan Jalur**: Setelah keluar dari battle, status mengejar seluruh NPC direset damai, fakta pencurian dicabut dari KB, dan visualisasi pathfinding ubin kuning (*closed set*) serta biru (*shortest path*) langsung dipulihkan secara otomatis.
-* **Harta Rampasan Perang (*Spoils of War*)**: Mengalahkan musuh menampilkan modal hasil rampasan bertema hangat (Gold, EXP, Drop Item) yang langsung tersinkronisasi ke tab inventaris Bolu.
+### C. Pengambilan Keputusan di Bawah Ketidakpastian (`game/ai/uncertainty.py`)
+* **3 Jembatan Pintas Berisiko vs Jembatan Aman**:
+  * Tiga jembatan pintas antarpulau (**Atas** `(23..27, 6)`, **Kiri** `(5, 19..22)`, **Bawah** `(22..27, 36)`) memiliki probabilitas ambruk tersembunyi (*Hidden State*: `RAPUH` vs `KOKOH`).
+  * Jembatan melalui **Pulau Tengah** memiliki risiko ambruk **$0\%$** sebagai rute memutar yang selalu aman.
+* **Bayesian Belief Update, Entropi, & Expected Cost (`BridgeUncertaintyEngine`)**:
+  * **Prior Cuaca**: `10%` saat **Cerah**, dan default `40%` saat **Hujan Deras** (dapat diatur `5%–95%` melalui slider).
+  * **Cek Jembatan (Observasi Bayes)**: menekan tombol **`Cek Jembatan (Observasi Bayes)`** (maksimal 4 kali per jembatan per siklus cuaca) menghasilkan observasi sensor ber-*noise* (`Derit Retak` atau `Terlihat Kokoh` sesuai slider **Akurasi Sensor Cek** `65%–95%`), memperbarui **Posterior $P(\text{Ambruk})$** melalui *Bayes' Rule*, menurunkan **Entropi $H(S)$**, dan mengevaluasi ulang rekomendasi rute (*Redo Decision*).
+  * **Expected Cost**: membandingkan nilai harapan biaya jembatan pintas (`shortcut_cost = 12.0`, `safe_detour_cost = 28.0`, `item_penalty_cost = 20.0`) terhadap rute aman Pulau Tengah (`28.0`) untuk menentukan status **`Aman Dilintasi`** atau **`Disarankan Memutar`**.
+  * **Konsekuensi Ambruk**: jika nekat melintas dan jembatan ambruk, ubin jembatan diblokir permanen (`X` merah) sehingga pathfinding otomatis memutar lewat Pulau Tengah, karakter didorong ke tepi aman, dan pemain kehilangan 1 item non-kunci (atau `-10 HP` jika tas kosong), sementara **Kunci Rune tetap aman**.
+* **Inspeksi di Game**:
+  * Buka **Tab ke-7 (`09: UNCERTAINTY`)** untuk memilih jembatan (`Atas` / `Kiri` / `Bawah`), mengubah cuaca (`Hujan Deras` / `Cerah`), mengatur slider `Prior Hujan` dan `Akurasi Sensor Cek`, melakukan `Cek Jembatan`, serta menggunakan tombol **`Perbaiki Jembatan`** untuk memulihkan jembatan yang ambruk.
+  * Klik ubin jembatan di peta untuk melihat popup status, $P(\text{Ambruk})$, Entropi, dan rekomendasi rute.
 
 ---
 
-## 4. Ringkasan Kontrol Permainan Khusus Tahap 4
+## 5. Kontrol & Pintasan Keyboard Lengkap
 
-| Mode / Antarmuka | Tombol Keyboard | Aksi / Fungsi Khusus Tahap 4 |
+| Mode / Konteks | Tombol / Klik | Fungsi |
 |:---|:---|:---|
-| **Navigasi Tab/Panel** | `Tab` | **Membuka / Menutup (Toggle) Inspector Dock Panel (Semua Mode)** |
-| | `Alt + Tab` / `Ctrl + Tab` | **Berpindah (Cycle) Tab Materi AI secara Siklis (Hero -> Search -> Minimax -> CSP -> Logic -> Planning -> Settings)** |
-| | `Alt + Shift + Tab` | **Berpindah Tab secara Mundur (Reverse Cycle)** |
-| **Eksplorasi Peta** | `E` | Membuka peti harta karun $\to$ Mengirim persepsi `TELL` ke KB Logika |
-| | `K` | **Membuka/Menutup Overlay Penalaran Logika Proposisional (Materi 07)** |
-| | `P` | **Membuka/Menutup Overlay Perencanaan Klasik PDDL STRIPS (Materi 08)** |
-| | `T` | **Membuka Fullscreen Modal Graf Pohon Resolusi & PDDL Action Graph** |
-| | `W, A, S, D` / `Panah` | Menggerakkan karakter Bolu di grid peta |
-| | `Ctrl` | Menampilkan overlay visualisasi pathfinding (ubin kuning & biru) |
-| | `B` | Memicu perjumpaan battle secara langsung |
-| **Arena Pertarungan** | `1` / `W` | Serangan Biasa (*Attack*) |
-| | `2` / `A` | Serangan Kuat (*Heavy Attack*) |
-| | `3` / `D` | Bertahan (*Defend*) |
-| | `4` / `S` | Meminum Ramuan (*Potion*) |
-| | `T` | Membuka pohon pencarian Minimax, Resolusi KB, atau Graf PDDL |
-| | `Klik [ESC] Keluar` / `Esc` | **Keluar dari pertarungan secara damai & pulihkan status eksplorasi** |
-| **Modal Graf & Pohon** | Drag Mouse / Tombol Zoom | Menggeser (*pan*) dan memperbesar/memperkecil kanvas visualisasi |
-| | Tombol Langkah (Step) | Menelusuri rantai inferensi resolusi dan urutan aksi langkah demi langkah |
-| | `X` / `Esc` | Menutup jendela modal inspeksi |
+| **Global / Panel** | `Tab` | Membuka / menutup Panel Inspektur di sisi kiri |
+| | `Alt + Tab` / `Ctrl + Tab` | Berpindah tab AI ke tab berikutnya (`Shift` untuk mundur) |
+| | `H` atau klik **`[H] Buku Panduan`** | Membuka / menutup modal Misi, Panduan Tab, & Metode AI |
+| | `F11` | Masuk / keluar mode layar penuh (*fullscreen*) |
+| | `+` / `-` | Memperbesar / memperkecil zoom kamera peta |
+| **Eksplorasi Peta** | `W, A, S, D` / `Panah` | Menggerakkan Bolu pada grid peta |
+| | `E` | Membuka peti harta (`<= 1` ubin) atau interaksi Portal Menara Kuno (`<= 2` ubin) |
+| | `Spasi` | Membunyikan peluit pemancing NPC ke posisi suara |
+| | `V` atau klik **`[V] Pause`** | Menjeda (*Demo Pause*) gerak Bolu, NPC, & pemicu Pre-Battle agar demonstrasi tab/pohon lebih leluasa (data tab tetap *live*) |
+| | `K` | Membuka / menutup overlay Logika Proposisional & Resolusi (mengaktifkan *Auto-Pause*) |
+| | `P` | Membuka / menutup overlay Perencanaan PDDL / STRIPS (mengaktifkan *Auto-Pause*) |
+| | `Ctrl` | Menampilkan / menyembunyikan garis jalur *Pathfinding* di peta |
+| | `Klik Ubin Peta` | Menginspeksi koordinat ubin, terrain cost, atau status jembatan |
+| | `B` | Pintasan langsung masuk ke fase *Pre-Battle* |
+| **Pre-Battle & Duel** | `1–5` / `R` (Pre-Battle) | Memilih algoritma optimasi skuad / mengacak ulang skuad lawan |
+| | `T` | Membuka / menutup visualizer CSP/Local Search (Pre-Battle) atau Pohon Minimax (Battle) |
+| | `Spasi` / `Enter` (Pre-Battle) | Memulai pertarungan duel (*Battle*) |
+| | `1` / `W`, `2` / `A`, `3` / `D`, `4` / `S` (Battle) | Memilih aksi *Attack*, *Heavy*, *Defend*, atau *Potion* |
+| | `Esc` / klik `[ESC] Keluar` | Menutup modal/overlay atau keluar damai dari pertarungan ke peta |
 
 ---
 
-## 5. Arsitektur Sistem & Struktur Direktori Modul Tahap 4
-
-Implementasi Tahap 4 dibangun dengan struktur kode modular yang memisahkan logika inferensi proposisional, perencanaan domain STRIPS, dan visualisasi UI:
+## 6. Struktur Direktori Utama
 
 ```
 Game-AI/
-├── main.py                           # Entry point utama aplikasi
-├── requirements.txt                  # Dependensi pustaka (pygame-ce >= 2.5.0)
-├── README.md                         # Dokumentasi teknis sistem Tahap 4
-├── laporan_tahap4_materi7_8.md       # Laporan akademis lengkap Materi 07 & 08 (siap konversi docx)
+├── main.py                           # Entry point aplikasi Bakekok
+├── requirements.txt                  # Dependensi (pygame-ce >= 2.5.0)
+├── README.md                         # Dokumentasi proyek ini
 │
 ├── game/
-│   ├── logic/                        # === MODUL MATERI 07: KNOWLEDGE-BASED LOGIC ===
-│   │   ├── kb_rules.py               # Basis Pengetahuan (KB), 12 Klausul CNF, & Fakta Dinamis
-│   │   ├── inference_engine.py       # Mesin Resolusi Refutasi Proposisional (KB ∪ {¬α} ⊢ □)
-│   │   └── inter_npc_manager.py      # Manajer koordinasi persepsi sensorik & pembagian tugas agen
-│   │
-│   ├── planning/                     # === MODUL MATERI 08: CLASSICAL AUTOMATED PLANNING ===
-│   │   ├── pddl_types.py             # Struktur formal PDDL (Action, Predicate, State, PlanStep)
-│   │   ├── domain_world_patrol.py    # Definisi domain STRIPS Patroli Dunia & Pertahanan Peti
-│   │   ├── domain_battle_tactics.py  # Definisi domain STRIPS Taktik Rotasi & Pemulihan Battle
-│   │   ├── planner_engine.py         # Mesin Forward Progression A* (h_add/h_max) & Backward STRIPS
-│   │   └── task_executor.py          # Jembatan eksekusi rencana simbolik ke pergerakan NPC di game
-│   │
-│   ├── ui/                           # === MODUL VISUALISASI AKADEMIS TAHAP 4 ===
-│   │   ├── logic_overlay.py          # Panel HUD in-game penalaran logika proposisional (Key: K)
-│   │   ├── planning_overlay.py       # Panel HUD in-game perencanaan otomatis PDDL (Key: P)
-│   │   ├── graph_modal.py            # Modal visualisasi graf fullscreen pohon resolusi & PDDL (Key: T)
-│   │   ├── tabs/
-│   │   │   ├── tab_logic.py          # Tab inspeksi Logika Proposisional pada dock panel
-│   │   │   └── tab_planning.py       # Tab inspeksi Automated Planning pada dock panel
-│   │   └── components.py             # Diamond Action Hub, tombol keluar battle, & modal rampasan
-│   │
-│   ├── battle/
-│   │   ├── battle_system.py          # Integrasi banner taktis PDDL, tombol keluar [ESC], & spoils of war
-│   │   └── npc_squad.py              # Logika pergantian giliran tag-team & cadangan skuad
-│   │
+│   ├── app.py                        # Orkestrator utama (loop, event, resize, Demo Pause)
+│   ├── core/config.py                # Konfigurasi warna, skala UI, & ukuran layar
+│   ├── ai/
+│   │   ├── pathfinding.py            # Pencarian rute UCS & A*
+│   │   ├── minimax.py                # AI duel turn-based (Minimax & Alpha-Beta)
+│   │   ├── csp.py & optimizer.py     # CSP & Local Search optimasi skuad
+│   │   └── uncertainty.py            # BridgeUncertaintyEngine (Bayes, Entropi, Expected Cost)
+│   ├── logic/
+│   │   ├── kb_rules.py               # KnowledgeBase deklaratif (CNF, R1-R4 & R6_PORTAL)
+│   │   ├── inference_engine.py       # ResolutionRefutationEngine (KB ∪ {¬α} ⊢ [])
+│   │   └── inter_npc_manager.py      # Siklus TELL/ASK koordinasi NPC & portal
+│   ├── planning/
+│   │   ├── pddl_types.py             # Predicate, State, ActionSchema, PlanStep
+│   │   ├── domain_world_patrol.py    # Domain PDDL patroli & penjagaan pulau
+│   │   ├── domain_battle_tactics.py  # Domain PDDL rotasi taktik duel tag-team
+│   │   ├── planner_engine.py         # ForwardProgressionPlanner (A*) & BackwardRegressionPlanner
+│   │   └── task_executor.py          # Eksekutor rencana PDDL ke NPC
+│   ├── modes/
+│   │   ├── exploration_mode.py       # Logika eksplorasi, peti, stealth, jembatan, & HUD
+│   │   ├── pre_battle_mode.py        # Fase persiapan & optimasi skuad lawan
+│   │   └── battle_mode.py            # Fase duel turn-based & boss battle
+│   ├── ui/
+│   │   ├── inspector_dock.py         # Panel inspektur dengan resize & scroll vertikal
+│   │   ├── nav_rail.py               # Navigasi ikon tab di sisi paling kiri
+│   │   ├── logic_overlay.py          # Overlay pembuktian logika [K]
+│   │   ├── planning_overlay.py       # Overlay rencana PDDL [P]
+│   │   ├── graph_modal.py            # Modal graf pohon resolusi, PDDL, & Minimax
+│   │   ├── guide_modal.py            # Modal Buku Panduan [H]
+│   │   └── tabs/                     # Implementasi Tab 0..7 (Companion hingga Settings)
 │   └── world/
-│       ├── mapdata.py                # Koordinat grid, choke point jembatan, dan lokasi peti
-│       └── npc.py                    # Karakter NPC multi-agen (Oyen, Kuro, Shiro)
+│       ├── mapdata.py                # Peta grid, peti, portal, & dynamic_blocked_set
+│       └── npc.py                    # Agen NPC (Oyen, Kuro, Shiro)
 │
-└── scratch/                          # === SUITE PENGUJIAN OTOMATIS TAHAP 4 ===
-    ├── test_tahap4_integration.py    # Pengujian integrasi penuh end-to-end Modul 07 & 08
-    ├── test_logic_resolution.py      # Unit test pembuktian kontradiksi Resolusi Refutasi (Materi 07)
-    ├── test_automated_planning.py    # Unit test Forward A* vs Backward Regression STRIPS (Materi 08)
-    ├── test_battle_exit_and_chase.py # Pengujian tombol keluar battle, reset damai, & ubin path
-    └── test_spoils_and_companion_inventory.py # Pengujian sinkronisasi rampasan ke inventaris
+└── scratch/                          # Skrip pengujian integrasi & verifikasi otomatis
 ```
 
 ---
 
-## 6. Landasan Teori & Pemetaan Materi Kuliah
+## 7. Skrip Pengujian Otomatis
 
-Sistem AI pada Tahap 4 mengimplementasikan secara murni dua pilar utama materi kuliah Kecerdasan Buatan:
+Seluruh pengujian dapat dijalankan langsung dari folder `Game-AI` menggunakan terminal:
 
+```bash
+python scratch/test_tahap4_integration.py
+python scratch/test_plan_dev_boss_integration.py
+python scratch/test_fullscreen_tab_fix.py
+python scratch/test_logic_resolution.py
+python scratch/test_automated_planning.py
 ```
-                              ┌────────────────────────────────────────┐
-                              │  Percept: Player Membuka Peti Harta    │
-                              └───────────────────┬────────────────────┘
-                                                  │ TELL (Fact Assertion)
-                                                  ▼
-                               ┌────────────────────────────────────────┐
-                               │     MATERI 07: KNOWLEDGE-BASED LOGIC    │
-                               │  - 12 Aturan CNF Domain                │
-                               │  - Inference Engine: Resolution        │
-                               │  - Pembuktian Kontradiksi (KB ∪ {¬α})  │
-                               └───────────────────┬────────────────────┘
-                                                   │ Hasil ASK (Deduksi Peran)
-                                                   ▼
-                               ┌────────────────────────────────────────┐
-                               │   MATERI 08: AUTOMATED PLANNING PDDL   │
-                               │  - Forward A* Search (h_add / h_max)   │
-                               │  - Backward Relevant-States Regression │
-                               │  - Forward State Transition Validation │
-                               └───────────────────┬────────────────────┘
-                                                   │ Sekuens Rencana Aksi
-                                                   ▼
-                               ┌────────────────────────────────────────┐
-                               │     Aktuator Game: Multi-Agent Action  │
-                               │  - Kuro Cegat Jembatan, Shiro Jaga B   │
-                               │  - Rotasi Taktis Skuad di Arena Battle │
-                               └────────────────────────────────────────┘
-```
-
----
-
-### 1. Materi 07: Logika Proposisional & Resolution Refutation
-
-Agen cerdas tidak hanya bereaksi terhadap stimulus numerik, melainkan memiliki representasi pengetahuan deklaratif (*declarative knowledge*) yang terpisah dari mesin inferensi deduktifnya.
-
-#### A. Representasi Basis Pengetahuan (Knowledge Base / KB)
-Basis Pengetahuan disimpan dalam bentuk **Conjunctive Normal Form (CNF)**, yaitu konjungsi dari satu atau lebih klausul disjungsi literal:
-$$KB = \bigwedge_{i=1}^{M} C_i, \quad C_i = \bigvee_{j=1}^{K_i} l_{ij}$$
-
-#### B. 12 Aturan Domain Terstandarisasi (R1 - R5)
-Dalam domain permainan, aturan diubah dari bentuk implikasi alami ($P \implies Q \equiv \neg P \lor Q$) ke dalam klausul CNF standar:
-
-1. **Aturan Deteksi Peti (R1A – R1D)**:
-   $$\text{ChestOpened}_X \implies \text{Alert}_Y \equiv (\text{Alert}_Y \lor \neg \text{ChestOpened}_X)$$
-   * $R_{1A}$: `(Alert_Kuro ∨ ~ChestOpened_A)`
-   * $R_{1B}$: `(Alert_Kuro ∨ ~ChestOpened_B)`
-   * $R_{1C}$: `(Alert_Shiro ∨ ~ChestOpened_C)`
-   * $R_{1D}$: `(Alert_Shiro ∨ ~ChestOpened_D)`
-2. **Aturan Penugasan Pemburu (R2A – R2B)**:
-   $$(\text{Alert}_Y \land \text{HasLootedItem}_\text{Player}) \implies \text{AssignChaser}_Y \equiv (\neg \text{Alert}_Y \lor \text{AssignChaser}_Y \lor \neg \text{HasLootedItem}_\text{Player})$$
-   * $R_{2A}$: `(~Alert_Kuro ∨ AssignChaser_Kuro ∨ ~HasLootedItem_Player)`
-   * $R_{2B}$: `(~Alert_Shiro ∨ AssignChaser_Shiro ∨ ~HasLootedItem_Player)`
-3. **Aturan Komunikasi Alarm Antar-Agen (R3A – R3B)**:
-   $$\text{AssignChaser}_Y \implies \text{BroadcastAlarm}_Z \equiv (\neg \text{AssignChaser}_Y \lor \text{BroadcastAlarm}_Z)$$
-   * $R_{3A}$: `(~AssignChaser_Kuro ∨ BroadcastAlarm_Shiro)`
-   * $R_{3B}$: `(~AssignChaser_Shiro ∨ BroadcastAlarm_Kuro)`
-4. **Aturan Kunci Perimeter Sektor Peti (R4A – R4B)**:
-   $$(\text{BroadcastAlarm}_Z \land \text{Unopened}_W) \implies \text{AssignTightGuard}_Z \equiv (\text{AssignTightGuard}_Z \lor \neg \text{BroadcastAlarm}_Z \lor \neg \text{Unopened}_W)$$
-   * $R_{4A}$: `(AssignTightGuard_Shiro ∨ ~BroadcastAlarm_Shiro ∨ ~Unopened_B)`
-   * $R_{4B}$: `(AssignTightGuard_Kuro ∨ ~BroadcastAlarm_Kuro ∨ ~Unopened_A)`
-5. **Aturan Penjagaan Cadangan Oyen (R5A – R5B)**:
-   $$(\text{BroadcastAlarm} \land \text{Unopened}_C) \implies \text{AssignTightGuard}_\text{Oyen}$$
-   * $R_{5A}$: `(AssignTightGuard_Oyen ∨ ~BroadcastAlarm_Shiro ∨ ~Unopened_C)`
-   * $R_{5B}$: `(AssignTightGuard_Oyen ∨ ~BroadcastAlarm_Kuro ∨ ~Unopened_C)`
-
-#### C. Teorema Pembuktian Kontradiksi (Resolution Refutation)
-Untuk membuktikan bahwa query $\alpha$ merupakan konsekuensi logis dari basis pengetahuan ($KB \models \alpha$), kita membuktikan bahwa $KB \land \neg \alpha$ tidak dapat dipenuhi (*unsatisfiable*):
-$$KB \models \alpha \iff (KB \land \neg \alpha) \vdash \square$$
-
-Aturan resolusi diterapkan secara iteratif pada dua klausul yang mengandung literal komplementer ($P$ dan $\neg P$):
-$$\frac{l_1 \lor \dots \lor P \lor \dots \lor l_k, \quad m_1 \lor \dots \lor \neg P \lor \dots \lor m_n}{(l_1 \lor \dots \lor l_k \lor m_1 \lor \dots \lor m_n) \setminus \{P, \neg P\}}$$
-
-Jika proses penurunan menghasilkan **klausa kosong ($\square$)**, maka kontradiksi tercapai, membuktikan hipotesis $\neg \alpha$ salah sehingga $\alpha$ **pasti bernilai benar (True)**.
-
----
-
-### 2. Materi 08: Classical Automated Planning PDDL / STRIPS
-
-Jika logika proposisional menjawab pertanyaan *"apa yang sedang terjadi dan siapa yang bertugas"*, *Automated Planning* menjawab pertanyaan *"bagaimana urutan aksi konkret untuk mencapai tujuan tersebut"*.
-
-#### A. Representasi Formal Operator Aksi STRIPS
-Setiap aksi $a$ didefinisikan sebagai tripel formal:
-$$a = \langle \text{Precond}(a), \text{Add}(a), \text{Del}(a) \rangle$$
-* $\text{Precond}(a)$: Himpunan literal proposisi yang wajib bernilai benar agar aksi $a$ dapat dieksekusi.
-* $\text{Add}(a)$: Efek penambahan literal ke dalam state dunia setelah $a$ selesai.
-* $\text{Del}(a)$: Efek penghapusan literal dari state dunia akibat eksekusi $a$.
-
-Fungsi transisi state deterministik dievaluasi melalui manipulasi himpunan simbolik:
-$$\text{Result}(s, a) = (s \setminus \text{Del}(a)) \cup \text{Add}(a)$$
-
-#### B. Dua Domain Masalah Perencanaan
-1. **Domain 1: Patroli Dunia & Pertahanan Pulau (`domain_world_patrol.py`)**:
-   * *State Awal ($s_0$)*: Posisi awal NPC di base, status peti terbuka/tertutup, fakta pencurian pemain.
-   * *Aksi*:
-     * $\text{MoveToChokePoint}(\text{agent}, \text{from}, \text{to})$
-     * $\text{InterceptPlayer}(\text{agent}, \text{target}, \text{location})$
-     * $\text{MoveToSector}(\text{agent}, \text{from}, \text{sector})$
-     * $\text{ReinforceGuard}(\text{agent}, \text{target\_chest})$
-   * *Goal State ($g$)*: $\{\text{PerimeterLocked}(B), \text{InCombat}(\text{Kuro}, \text{Bolu}), \text{IslandSecure}\}$.
-2. **Domain 2: Taktik Rotasi & Pemulihan Battle (`domain_battle_tactics.py`)**:
-   * *State Awal ($s_0$)*: Frontline sekarat, bangku cadangan (*bench*) siap, ketersediaan ramuan healer.
-   * *Aksi*:
-     * $\text{SwapRetreat}(\text{frontline}, \text{tank})$
-     * $\text{CastDefend}(\text{tank})$
-     * $\text{HealTeammate}(\text{healer}, \text{target})$
-   * *Goal State ($g$)*: $\{\text{ActiveFrontline}(\text{Kage}), \text{HPHealthy}(\text{Oyen}), \text{Healed}(\text{Oyen}), \text{GuardActive}(\text{Kage})\}$.
-
-#### C. Dua Mesin Algoritma Perencanaan Klasik
-Sistem mengimplementasikan dan membandingkan dua pendekatan fundamental:
-
-1. **Forward State-Space Search (Progression Planning)**:
-   * Menjelajahi ruang state secara maju dari $s_0$ menuju $g$ menggunakan algoritma **A\*** terpandu.
-   * Menggunakan fungsi evaluasi $f(s) = g(s) + h(s)$.
-   * **Heuristik Relaksasi Graf ($h_{\text{add}}$ dan $h_{\text{max}}$)**:
-     Diperoleh dengan menghapus efek penghapusan (*delete lists*) dari seluruh aksi:
-     $$h_{\text{add}}(g, s) = \sum_{p \in g} \text{cost}(p, s), \quad h_{\text{max}}(g, s) = \max_{p \in g} \text{cost}(p, s)$$
-     Heuristik ini menjamin sifat *admissible* sehingga solusi yang ditemukan berbiaya optimal.
-2. **Backward Relevant-States Search (Regression Planning)**:
-   * Melakukan regresi mundur dari goal $g$ menuju $s_0$.
-   * Aksi $a$ dikatakan *relevan* jika $\text{Add}(a) \cap g \neq \emptyset$ dan $\text{Del}(a) \cap g = \emptyset$.
-   * Menghitung himpunan sub-goal pendahulu (*predecessor*):
-     $$g' = (g \setminus \text{Add}(a)) \cup \text{Precond}(a)$$
-   * Pencarian berhenti saat $g' \subseteq s_0$. Pendekatan ini secara drastis memangkas faktor percabangan (*branching factor*) karena hanya mengevaluasi aksi yang berkontribusi langsung pada pencapaian tujuan (*goal-directed*).
-3. **Validasi Transisi State Maju (*Forward State Transition Validation*)**:
-   Setiap rencana yang dihasilkan oleh Backward Regression selalu divalidasi ulang dengan mensimulasikannya secara maju dari $s_0$ ke $g$ untuk memastikan bebas dari interferensi efek hapus (*delete-list clobbering*).
-
----
-
-## 7. Hasil Eksperimen & Analisis Benchmark Tahap 4
-
-Seluruh data pengujian di bawah ini dihasilkan secara riil melalui skrip benchmark di folder `scratch/` tanpa angka halusinasi:
-
-### 1. Kinerja Inferensi Deduktif Logika Proposisional (`scratch/test_logic_resolution.py`)
-
-Pengujian dilakukan terhadap 12 klausul basis pengetahuan dalam berbagai skenario game:
-
-| Skenario Pengujian Logika | Query yang Dibuktikan ($\alpha$) | Waktu Komputasi | Langkah Resolusi | Hasil Pembuktian ($KB \models \alpha$) |
-|:---|:---|:---:|:---:|:---:|
-| **Kondisi Awal (Damai / Belum Ada Peti Terbuka)** | `AssignChaser_Kuro` | 0.03 ms | 3 langkah | **False** (Tidak ada kontradiksi) |
-| **Bolu Membuka Peti A & Mencuri Item** | `AssignChaser_Kuro` | **0.05 ms** | **10 langkah** | **True** (Muncul klausa kosong $\square$) |
-| **Penyebaran Sinyal Alarm ke Shiro** | `AssignTightGuard_Shiro` | **0.04 ms** | **7 langkah** | **True** (Muncul klausa kosong $\square$) |
-| **Penjagaan Cadangan Sektor Peti C oleh Oyen** | `AssignTightGuard_Oyen` | **0.04 ms** | **7 langkah** | **True** (Muncul klausa kosong $\square$) |
-
-#### Rincian Langkah Penurunan Kontradiksi Peti A:
-```
-Langkah 5 : Resolve (~Alert_Kuro) & (Alert_Kuro ∨ ~ChestOpened_B)                => (~ChestOpened_B)
-Langkah 6 : Resolve (~Alert_Kuro) & (Alert_Kuro ∨ ~ChestOpened_A)                => (~ChestOpened_A)
-Langkah 7 : Resolve (~ChestOpened_B ∨ ~HasLootedItem_Player) & (HasLootedItem)   => (~ChestOpened_B)
-Langkah 8 : Resolve (~ChestOpened_A ∨ ~HasLootedItem_Player) & (ChestOpened_A)   => (~HasLootedItem_Player)
-Langkah 9 : Resolve (~ChestOpened_A ∨ ~HasLootedItem_Player) & (HasLootedItem)   => (~ChestOpened_A)
-Langkah 10: Resolve (~ChestOpened_A) & (ChestOpened_A)                           => [] (KONTRADIKSI / EMPTY CLAUSE)
-```
-> **Kesimpulan Deduktif**:
-> Pada langkah ke-10, pertemuan antara literal tunggal $(\neg \text{ChestOpened}_A)$ dan fakta $(\text{ChestOpened}_A)$ menghasilkan resolvent kosong `[]`. Hal ini membuktikan secara matematis tanpa keraguan bahwa hipotesis negasi salah, sehingga penugasan Kuro sebagai pemburu adalah mutlak sah dan valid.
-
----
-
-### 2. Kinerja Komparatif Automated Planning PDDL STRIPS (`scratch/test_automated_planning.py`)
-
-Perbandingan performa antara **Forward Progression (A\*)** dan **Backward Regression (STRIPS)**:
-
-| Domain Masalah | Pendekatan Algoritma | Waktu Komputasi | Simpul Dievaluasi | Panjang Rencana | Validasi Eksekusi Maju |
-|:---|:---|:---:|:---:|:---:|:---:|
-| **Domain 1: Patroli & Pertahanan Pulau** | **Forward Progression (A\* + $h_{\text{add}}$)** | **0.03 ms** | **5 node** | 4 aksi | **100% Valid** |
-| | **Backward Regression (STRIPS)** | 0.04 ms | 9 node | 4 aksi | **100% Valid** |
-| **Domain 2: Taktik Rotasi & Pemulihan Battle** | **Forward Progression (A\* + $h_{\text{add}}$)** | **0.01 ms** | **4 node** | 3 aksi | **100% Valid** |
-| | **Backward Regression (STRIPS)** | 0.03 ms | 8 node | 3 aksi | **100% Valid** |
-
-#### Rencana Aksi Optimal yang Dihasilkan:
-* **Domain 1 (Patroli Dunia)**:
-  $$\text{MoveToChokePoint}(\text{Kuro}, \text{Tebing}, \text{Jembatan}) \longrightarrow \text{InterceptPlayer}(\text{Kuro}, \text{Bolu}, \text{Jembatan}) \longrightarrow \text{MoveToSector}(\text{Shiro}, \text{Dermaga}, \text{Peti}_B) \longrightarrow \text{ReinforceGuard}(\text{Shiro}, \text{Peti}_B)$$
-* **Domain 2 (Taktik Battle)**:
-  $$\text{SwapRetreat}(\text{Oyen}, \text{Kage}) \longrightarrow \text{CastDefend}(\text{Kage}) \longrightarrow \text{HealTeammate}(\text{Shiro}, \text{Oyen})$$
-
-> **Analisis Kinerja**:
-> * **Kecepatan Sub-Milidetik**: Kedua algoritma menyelesaikan pencarian dalam waktu di bawah $0.05\text{ ms}$, sangat efisien untuk dieksekusi secara dinamis di tengah *game loop* 60 FPS tanpa menurunkan *frame rate*.
-> * **Efisiensi Heuristik**: Forward A\* terbukti sedikit lebih cepat dan mengevaluasi simpul lebih sedikit berkat ketepatan pemanduan heuristik relaksasi $h_{\text{add}}$.
-> * **Keandalan 100%**: Seluruh rencana yang dihasilkan lulus validasi simulasi transisi state maju tanpa ada kegagalan pra-kondisi (*precondition violation*).
-
----
-
-## 8. Panduan Skrip Pengujian Otomatis Mandiri Tahap 4
-
-Pengujian seluruh fungsionalitas Tahap 4 dapat dijalankan secara mandiri langsung dari terminal tanpa perlu menjalankan jendela visual permainan:
-
-1. **Uji Integrasi Penuh End-to-End Tahap 4 (Logika + Planning + UI)**:
-   ```bash
-   python scratch/test_tahap4_integration.py
-   ```
-2. **Uji Deduksi Logika Proposisional & Bukti Kontradiksi (Materi 07)**:
-   ```bash
-   python scratch/test_logic_resolution.py
-   ```
-3. **Uji Komparasi Forward A\* vs Backward Regression STRIPS (Materi 08)**:
-   ```bash
-   python scratch/test_automated_planning.py
-   ```
-4. **Uji Tombol Keluar Battle, Reset Damai, & Pemulihan Pathfinding**:
-   ```bash
-   python scratch/test_battle_exit_and_chase.py
-   ```
-5. **Uji Sinkronisasi Harta Rampasan Duel (*Spoils of War*) ke Inventaris**:
-   ```bash
-   python scratch/test_spoils_and_companion_inventory.py
-   ```
-
----

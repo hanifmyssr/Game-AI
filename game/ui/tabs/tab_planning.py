@@ -47,7 +47,7 @@ class TabPlanning:
         btn_w = self.rect.width - 24
         self.btn_plan_tree = UIButton(
             pygame.Rect(self.rect.x + 12, self.rect.y + 480, btn_w, 38),
-            "Buka Pohon Rencana PDDL [P]",
+            "Lihat Info Rencana PDDL [P]",
             fonts.get("sm") or pygame.font.Font(None, 16),
             on_click=self._on_open_plan_tree,
             bg_color=(242, 235, 222),
@@ -92,7 +92,9 @@ class TabPlanning:
                 self.app.task_executor.set_plan(self.app.latest_plan_result)
 
     def _on_open_plan_tree(self) -> None:
-        if hasattr(self.app, "open_graph_modal"):
+        if hasattr(self.app, "planning_overlay") and self.app.planning_overlay:
+            self.app.planning_overlay.toggle()
+        elif hasattr(self.app, "open_graph_modal"):
             self.app.open_graph_modal("PLANNING")
 
     def handle_event(self, event: pygame.event.Event) -> bool:
@@ -115,6 +117,9 @@ class TabPlanning:
         card_w = self.rect.width - 24
 
         # 1. KARTU MESIN PERENCANA (PLANNING ENGINE)
+        if self.app is not None:
+            eng_key = getattr(self.app, "selected_planning_engine", "FORWARD_A_STAR")
+            self.dropdown_engine.selected_idx = 1 if eng_key == "BACKWARD_REGRESSION" else 0
         card_eng_h = 78
         draw_card(surface, pygame.Rect(cx, cy, card_w, card_eng_h), config.COLOR_CARD_BG,
                   border_color=config.COLOR_CARD_BORDER, border_radius=8)
@@ -191,7 +196,7 @@ class TabPlanning:
                 add_list = [_clean_pred_str(p) for p in act.add_list]
                 pre_txt = ", ".join(pre_list) if pre_list else "None"
                 add_txt = ", ".join(add_list) if add_list else "None"
-                plan_steps.append((f"{idx}. {act.name}()", f"Pre: {pre_txt[:15]} │ Add: {add_txt[:15]}"))
+                plan_steps.append((f"{idx}. {act.name}()", f"Pre: {pre_txt[:24]} │ Add: {add_txt[:24]}"))
         elif mode_str == "BATTLE":
             plan_steps = [
                 ("1. SwapToTank()", "Pre: LowHP │ Add: TankActive"),

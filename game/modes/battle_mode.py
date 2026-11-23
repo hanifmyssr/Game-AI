@@ -819,7 +819,7 @@ class BattleModeMixin:
 
         line1 = f"* SwapRetreat: {w_name} mundur -> {d_name} maju pasang [DEFEND]!"
         line2 = f"* HealTeammate: {h_name} pulihkan {w_name} (+{h_amt} HP di cadangan)!"
-        line3 = "Tekan [P] untuk melihat pohon rencana PDDL (Forward Progression A*)"
+        line3 = "Tekan [P] untuk detail rencana PDDL (lalu [T] untuk pohon graf)"
 
         s_l1 = font_tiny.render(line1, True, (45, 35, 25))
         s_l2 = font_tiny.render(line2, True, (35, 120, 65))

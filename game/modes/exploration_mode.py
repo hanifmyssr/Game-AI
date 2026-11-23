@@ -310,6 +310,36 @@ class ExplorationModeMixin:
         self.screen.blit(p_pill, self.btn_pause_pill.topleft)
         self.screen.blit(p_surf, p_surf.get_rect(center=self.btn_pause_pill.center))
 
+        # Indikator jelas di tengah agak bawah layar saat game dalam mode Pause
+        if manual_paused or auto_paused:
+            sc = float(getattr(config, "UI_SCALE", 1.0))
+            sh = self.screen.get_height()
+            vp_left = getattr(self.camera, "left_panel_w", 0)
+            vp_cx = vp_left + (sw - vp_left) // 2
+            banner_txt = (
+                "GAME DIJEDA (PAUSED)  •  Tekan [V] untuk Lanjut"
+                if manual_paused
+                else "GAME DIJEDA OTOMATIS  •  Tutup Overlay atau Tekan [V]"
+            )
+            f_pause = self.fonts.get("sm", font_sm)
+            b_surf = f_pause.render(
+                banner_txt,
+                True,
+                (120, 53, 15) if manual_paused else (12, 74, 110),
+            )
+            bw_p = b_surf.get_width() + 28
+            bh_p = max(32, b_surf.get_height() + 12)
+            by_p = sh - int(round(146 * sc))
+            bx_p = vp_cx - bw_p // 2
+            banner_rect = pygame.Rect(bx_p, by_p, bw_p, bh_p)
+            banner_bg = pygame.Surface((bw_p, bh_p), SRCALPHA)
+            bg_c = (254, 243, 199, 240) if manual_paused else (224, 242, 254, 240)
+            bd_c = (217, 119, 6) if manual_paused else (56, 189, 248)
+            pygame.draw.rect(banner_bg, bg_c, banner_bg.get_rect(), border_radius=10)
+            pygame.draw.rect(banner_bg, bd_c, banner_bg.get_rect(), 2, border_radius=10)
+            self.screen.blit(banner_bg, banner_rect.topleft)
+            self.screen.blit(b_surf, b_surf.get_rect(center=banner_rect.center))
+
     def _draw_npc_offscreen_indicator(self):
         # Batas area viewport kamera (sebelah kanan sidebar debug)
         panel_w = self.camera.left_panel_w
@@ -1784,6 +1814,8 @@ class ExplorationModeMixin:
                 return
 
             self._sync_bridge_walkability()
+            if hasattr(self, "overlay") and hasattr(self.overlay, "nav_rail"):
+                self.overlay.nav_rail.set_badge(6, active=True)
             exits = b_info.get("safe_exits", ((22, 6), (28, 6)))
             safe_exit = min(exits, key=lambda e: abs(e[0] - pg[0]) + abs(e[1] - pg[1]))
             self.player.grid = safe_exit
